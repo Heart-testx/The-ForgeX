@@ -657,6 +657,18 @@
     </div>
   </div>
 
+  <!-- REDEEM CODE (Patch 3.10) -->
+  <div class="buff-card" style="max-width:480px; margin:18px auto 0;">
+    <h4>🎁 Redeem Code</h4>
+    <div class="desc">กรอกโค้ดจากแอดมินเพื่อรับรางวัลฟรี — แต่ละโค้ดใช้ได้คนละ 1 ครั้งเท่านั้น</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+      <input type="text" id="redeemCodeInput" placeholder="กรอกโค้ดที่นี่" maxlength="30"
+        style="flex:1; min-width:160px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-transform:uppercase;">
+      <button class="btn gold" id="redeemCodeBtn">🎁 ใช้โค้ด</button>
+    </div>
+    <div class="small-note" id="redeemCodeStatus" style="margin-top:6px; min-height:14px;"></div>
+  </div>
+
   <h3 style="margin-top:16px; margin-bottom:6px;">📜 บันทึกกิจกรรม</h3>
   <div class="log-box" id="logBox"></div>
 
@@ -674,6 +686,15 @@
       style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-align:center; margin-bottom:10px;">
     <div class="small-note" id="loginStatus" style="min-height:16px; margin-bottom:8px;"></div>
     <button class="btn gold" id="loginSubmitBtn" style="width:100%;">🚀 เริ่มเล่น</button>
+  </div>
+</div>
+
+<!-- BAN / DELETE NOTICE MODAL (Patch 3.10): แสดงเหตุผลเมื่อบัญชีถูกแอดมินลบถาวร ก่อนเริ่มเกมใหม่อัตโนมัติ -->
+<div class="modal-bg" id="banNoticeModalBg">
+  <div class="modal-box">
+    <h3 style="margin-bottom:10px; color:var(--mythic);">⛔ บัญชีถูกลบ</h3>
+    <div class="small-note" id="banNoticeMsg" style="white-space:pre-wrap; text-align:left; line-height:1.6; margin-bottom:14px;"></div>
+    <button class="btn gold" id="banNoticeOkBtn" style="width:100%;">🔄 เริ่มต้นใหม่</button>
   </div>
 </div>
 
@@ -713,13 +734,43 @@
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small-note" style="margin-bottom:8px; color:var(--mythic);"><b>🗑️ ลบ Player ID ถาวร (Admin Only)</b></div>
-    <div class="small-note" style="margin-bottom:8px;">ลบข้อมูลผู้เล่นออกจากคลาวด์แบบถาวร กู้คืนไม่ได้ — ใช้สำหรับล้าง ID ที่ทดลองเล่นทิ้ง</div>
+    <div class="small-note" style="margin-bottom:8px;">ลบข้อมูลผู้เล่นออกจากคลาวด์แบบถาวร กู้คืนไม่ได้ (รวมทุกอย่างรวมถึง Va Coin/กรอบโปรไฟล์ — ต่างจากปุ่ม Reset Save ของผู้เล่นเองที่ยังเก็บของที่ซื้อด้วย Va Coin ไว้) ผู้เล่นจะเห็นข้อความแจ้งเหตุผลก่อนเริ่มเกมใหม่</div>
     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
       <input type="text" id="adminDeleteTargetId" placeholder="ใส่ Player ID ที่จะลบถาวร"
         style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-      <button class="btn" id="adminDeleteBtn" style="background:var(--mythic); color:#fff;">🗑️ ลบถาวร</button>
+      <select id="adminDeleteReasonSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+        <option value="banned">🚫 โดนแบน</option>
+        <option value="cheat">⚠️ โกง / ใช้บั๊กเกม</option>
+        <option value="griefing">😡 ป่วนผู้เล่นคนอื่น</option>
+        <option value="request">🙋 ผู้เล่นขอลบเอง</option>
+        <option value="other">📝 อื่นๆ (ระบุด้านล่าง)</option>
+      </select>
     </div>
+    <textarea id="adminDeleteReasonNote" placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ) — ผู้เล่นจะเห็นข้อความนี้ด้วย" rows="2"
+      style="width:100%; margin-top:6px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
+    <button class="btn" id="adminDeleteBtn" style="background:var(--mythic); color:#fff; margin-top:8px;">🗑️ ลบถาวร</button>
     <div class="small-note" id="adminDeleteStatus" style="margin-top:6px; min-height:14px;"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>🎁 สร้าง Redeem Code (Admin Only)</b></div>
+    <div class="small-note" style="margin-bottom:8px;">กำหนดโค้ด รางวัลที่จะแจก และจำนวนครั้งที่ใช้ได้ทั้งหมด (เว้นว่างหรือ 0 = ไม่จำกัดจำนวนครั้ง) — ผู้เล่นแต่ละคนใช้โค้ดเดียวกันซ้ำได้แค่ 1 ครั้งเสมอ</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+      <input type="text" id="adminCodeInput" placeholder="ชื่อโค้ด เช่น SUMMER2026" maxlength="30"
+        style="flex:1; min-width:200px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-transform:uppercase;">
+      <input type="number" id="adminCodeMaxUses" min="0" value="0" title="จำกัดใช้ทั้งหมดกี่ครั้ง (0 = ไม่จำกัด)"
+        style="width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);" placeholder="ใช้ได้ทั้งหมดกี่ครั้ง (0=ไม่จำกัด)">
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-bottom:8px;">
+      <label class="small-note">🪙 ทอง<input type="number" id="adminCodeGold" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+      <label class="small-note">⛓️ เหล็ก<input type="number" id="adminCodeIron" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+      <label class="small-note">💎 หินวิญญาณ<input type="number" id="adminCodeSouls" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+      <label class="small-note">🌟 Stardust<input type="number" id="adminCodeStardust" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+      <label class="small-note">✨ Va Coin<input type="number" id="adminCodeVaCoin" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+    </div>
+    <button class="btn gold" id="adminCreateCodeBtn">➕ สร้างโค้ด</button>
+    <div class="small-note" id="adminCodeStatus" style="margin-top:6px; min-height:14px;"></div>
+    <div class="small-note" style="margin-top:14px; margin-bottom:6px;">📋 รายการโค้ดที่มีอยู่ (ล่าสุด 50 โค้ด)</div>
+    <div id="adminCodeList" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small-note" style="margin-bottom:10px;">
@@ -1126,13 +1177,38 @@ function saveLocalPlayer(p){ localStorage.setItem(PLAYER_KEY, JSON.stringify(p))
 // ล้างทั้ง Player ID และเซฟในเครื่องนี้ทิ้งแล้วรีโหลดหน้า initPlayer() จะไม่เจอ PLAYER_KEY เดิมอีก
 // จึงเด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ เหมือนเข้าเกมครั้งแรกทุกอย่าง (เริ่มใหม่หมดจริงๆ)
 let restartingAsNewPlayer = false;
-function restartAsNewPlayer(message){
+// Patch 3.10: เดิมแค่ toast() ข้อความสั้นๆ 1.8 วิแล้ว reload ทันที ผู้เล่นแทบไม่ทันเห็นเหตุผลที่โดนลบเลย
+// ตอนนี้เปลี่ยนมาโชว์ popup ค้างไว้ (#banNoticeModalBg) พร้อมเหตุผล/รายละเอียดที่แอดมินกรอกไว้ตอนลบ
+// (ถ้ามี — อ่านจาก collection "deletedPlayers" ที่แยกไว้ต่างหาก เพราะตอนนี้เอกสารผู้เล่นจริงถูกลบไปแล้ว
+// อ่านจากตรงนั้นไม่ได้อีก) ผู้เล่นต้องกดปุ่มเพื่อเริ่มใหม่เอง หรือถ้าไม่กดจะ reload อัตโนมัติหลัง 15 วิ
+// detail (ถ้ามี) = { reasonLabel, note }
+function restartAsNewPlayer(message, detail){
   if(restartingAsNewPlayer) return; // กันเรียกซ้ำซ้อน (เช่น ถูกเรียกจากทั้ง .get() เริ่มต้นและ onSnapshot พร้อมกัน)
   restartingAsNewPlayer = true;
   localStorage.removeItem(PLAYER_KEY);
   localStorage.removeItem(SAVE_KEY);
-  toast(message);
-  setTimeout(()=>location.reload(), 1500);
+  localStorage.removeItem(SAVE_KEY + "_ts");
+  let full = message;
+  if(detail && detail.reasonLabel){
+    full += `\n\nเหตุผล: ${detail.reasonLabel}`;
+    if(detail.note) full += `\n${detail.note}`;
+  }
+  document.getElementById("banNoticeMsg").textContent = full;
+  document.getElementById("banNoticeModalBg").classList.add("active");
+  document.getElementById("banNoticeOkBtn").onclick = ()=> location.reload();
+  setTimeout(()=>location.reload(), 15000);
+}
+// Patch 3.10: ดึงเหตุผลการลบ (ถ้าแอดมินระบุไว้) จาก collection "deletedPlayers" — เขียนไว้ตอนแอดมินกดลบ
+// ก่อนที่จะลบเอกสารผู้เล่นจริงทิ้ง เพื่อให้ผู้เล่นที่โดนลบยังเห็นเหตุผลได้แม้เอกสารตัวเองจะหายไปแล้ว
+async function fetchDeleteReason(id){
+  try{
+    const snap = await db.collection("deletedPlayers").doc(id).get();
+    if(snap.exists){
+      const d = snap.data();
+      return { reasonLabel: d.reasonLabel || "ไม่ระบุเหตุผล", note: d.note || "" };
+    }
+  }catch(e){ /* อ่านไม่ได้ (ออฟไลน์/ไม่มีสิทธิ์) - แสดงข้อความทั่วไปแทน */ }
+  return null;
 }
 
 
@@ -1222,7 +1298,9 @@ async function pullCloudStateThenWatch(){
     }else if(!doc.exists){
       // Patch 3.0: .get() สำเร็จ (ไม่ใช่ error จากออฟไลน์) แต่ไม่พบเอกสารผู้เล่นเลย = ถูกแอดมินลบถาวรไปแล้ว
       // ล้างข้อมูลในเครื่องนี้ทิ้งแล้วเริ่มเกมใหม่ทั้งหมด (เด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ)
-      restartAsNewPlayer("⚠️ ไม่พบ Player ID ของคุณในระบบ (อาจถูกรีเซ็ตโดยแอดมิน) กำลังเริ่มต้นใหม่...");
+      // Patch 3.10: ดึงเหตุผลการลบมาแสดงให้ผู้เล่นเห็นด้วย (ถ้าแอดมินระบุไว้)
+      const detail = await fetchDeleteReason(myPlayer.id);
+      restartAsNewPlayer("⚠️ ไม่พบ Player ID ของคุณในระบบ บัญชีของคุณถูกลบโดยแอดมิน", detail);
       return false;
     }
   }catch(e){ /* ออฟไลน์ได้ - จะใช้เซฟในเครื่องแทน ไม่ถือว่าถูกลบ */ }
@@ -1233,7 +1311,10 @@ async function pullCloudStateThenWatch(){
     if(!snap.exists){
       // Patch 3.0: กว่าจะมาถึงจุดนี้ได้แปลว่าตอนโหลดครั้งแรกเอกสารยังอยู่แน่ๆ (เช็คด้านบนผ่านมาแล้ว)
       // ถ้าตอนนี้หายไปกลางคันแปลว่าแอดมินเพิ่งลบขณะที่ผู้เล่นเปิดเกมค้างอยู่ -> เริ่มใหม่ทั้งหมดเช่นกัน
-      restartAsNewPlayer("⚠️ บัญชีผู้เล่นของคุณถูกรีเซ็ตโดยแอดมิน กำลังเริ่มต้นใหม่...");
+      // Patch 3.10: ดึงเหตุผลการลบมาแสดงให้ผู้เล่นเห็นด้วย (ถ้าแอดมินระบุไว้)
+      fetchDeleteReason(myPlayer.id).then(detail=>{
+        restartAsNewPlayer("⚠️ บัญชีผู้เล่นของคุณถูกลบโดยแอดมิน", detail);
+      });
       return;
     }
     const data = snap.data();
@@ -2542,6 +2623,7 @@ function openAdminPanel(){
   document.getElementById("adminModalBg").classList.add("active");
   if(myPlayer){ document.getElementById("adminOwnId").textContent = myPlayer.id; document.getElementById("adminOwnName").textContent = myPlayer.username; }
   document.getElementById("adminAuthEmail").textContent = (auth.currentUser && auth.currentUser.email) || "-";
+  renderAdminCodeList(); // Patch 3.10: รีเฟรชรายการ Redeem Code ทุกครั้งที่เปิดแผงแอดมิน
 }
 function closeAdminPanel(){ document.getElementById("adminModalBg").classList.remove("active"); }
 function openAdminLoginModal(){ document.getElementById("adminLoginModalBg").classList.add("active"); document.getElementById("adminLoginPassword").value=""; document.getElementById("adminLoginStatus").textContent=""; }
@@ -2587,21 +2669,33 @@ function getAdminTargetId(){ return document.getElementById("adminTargetId").val
 document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
   const targetId = document.getElementById("adminDeleteTargetId").value.trim().toUpperCase();
   const statusEl = document.getElementById("adminDeleteStatus");
+  const reasonSel = document.getElementById("adminDeleteReasonSelect");
+  const reasonValue = reasonSel.value;
+  const reasonLabel = reasonSel.options[reasonSel.selectedIndex].text;
+  const note = document.getElementById("adminDeleteReasonNote").value.trim();
   if(!targetId){ statusEl.textContent = "⚠️ กรุณาใส่ Player ID ที่จะลบ"; return; }
-  showConfirm(`ลบ Player ID "${targetId}" ถาวร? ข้อมูลผู้เล่นนี้ทั้งหมดจะหายไปจากคลาวด์และกู้คืนไม่ได้`, async ()=>{
+  showConfirm(`ลบ Player ID "${targetId}" ถาวร? (เหตุผล: ${reasonLabel}) ข้อมูลผู้เล่นนี้ทั้งหมดจะหายไปจากคลาวด์และกู้คืนไม่ได้ (รวม Va Coin/กรอบโปรไฟล์ทุกอย่าง)`, async ()=>{
     statusEl.textContent = "⏳ กำลังลบ...";
     try{
       const ref = db.collection("players").doc(targetId);
       const doc = await ref.get();
       if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+      // Patch 3.10: บันทึกเหตุผลการลบไว้ใน collection แยกต่างหาก ("deletedPlayers") ก่อนลบเอกสารผู้เล่นจริง
+      // เพราะพอลบเอกสารผู้เล่นไปแล้ว จะไม่มีที่เก็บเหตุผลให้ผู้เล่นอ่านตอนเกมเด้งแจ้งเตือนอีกต่อไป
+      await db.collection("deletedPlayers").doc(targetId).set({
+        reason: reasonValue, reasonLabel, note,
+        deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        deletedBy: (auth.currentUser && auth.currentUser.email) || "admin"
+      });
       await ref.delete();
-      statusEl.textContent = `✅ ลบ Player ID "${targetId}" ถาวรแล้ว`;
+      statusEl.textContent = `✅ ลบ Player ID "${targetId}" ถาวรแล้ว (เหตุผล: ${reasonLabel})`;
       toast(`🗑️ ลบ ${targetId} แล้ว`); SFX.sell();
       document.getElementById("adminDeleteTargetId").value = "";
+      document.getElementById("adminDeleteReasonNote").value = "";
       // ถ้าดันลบ ID ที่กำลังใช้อยู่ในเครื่องนี้เข้า ต้องล้างข้อมูล player ในเครื่องด้วย ไม่งั้นเกมจะพยายาม
       // อ่าน/ฟังเอกสารที่ไม่มีอยู่แล้วไปเรื่อย ๆ ตอนโหลดหน้าครั้งถัดไป
       if(myPlayer && targetId === myPlayer.id){
-        restartAsNewPlayer("🔄 ลบ ID ของตัวเองที่ใช้อยู่ กำลังเริ่มต้นใหม่...");
+        restartAsNewPlayer("🔄 ลบ ID ของตัวเองที่ใช้อยู่", { reasonLabel, note });
       }
     }catch(e){
       // Patch 3.0: โชว์ error code จริงจาก Firebase (เช่น permission-denied) แทนข้อความรวมๆ
@@ -2612,6 +2706,125 @@ document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
     }
   });
 });
+
+/* ================= ADMIN: REDEEM CODE SYSTEM (Patch 3.10) =================
+   แอดมินสร้างโค้ดพร้อมกำหนดรางวัล (ทอง/เหล็ก/หินวิญญาณ/stardust/Va Coin) และจำนวนครั้งที่ใช้ได้ทั้งหมด
+   (0 = ไม่จำกัด) ผู้เล่นกรอกโค้ดในแท็บ "อันดับ" — ใช้ Firestore transaction กันไม่ให้ผู้เล่นคนเดียวกด
+   รัวๆ ใช้โค้ดซ้ำได้ หรือคนใช้พร้อมกันแล้วเกินโควตาที่ตั้งไว้ (race condition) */
+const REDEEM_RESOURCE_ICONS = {gold:"🪙",iron:"⛓️",souls:"💎",stardust:"🌟",vaCoin:"✨"};
+document.getElementById("adminCreateCodeBtn").addEventListener("click", async ()=>{
+  const code = document.getElementById("adminCodeInput").value.trim().toUpperCase();
+  const statusEl = document.getElementById("adminCodeStatus");
+  if(!code){ statusEl.textContent = "⚠️ กรุณาใส่ชื่อโค้ด"; return; }
+  const maxUses = Math.max(0, parseInt(document.getElementById("adminCodeMaxUses").value) || 0);
+  const rewards = {
+    gold: Math.max(0, parseInt(document.getElementById("adminCodeGold").value) || 0),
+    iron: Math.max(0, parseInt(document.getElementById("adminCodeIron").value) || 0),
+    souls: Math.max(0, parseInt(document.getElementById("adminCodeSouls").value) || 0),
+    stardust: Math.max(0, parseInt(document.getElementById("adminCodeStardust").value) || 0),
+    vaCoin: Math.max(0, parseInt(document.getElementById("adminCodeVaCoin").value) || 0)
+  };
+  if(Object.values(rewards).every(v=>v===0)){ statusEl.textContent = "⚠️ กรุณาใส่รางวัลอย่างน้อย 1 อย่าง"; return; }
+  statusEl.textContent = "⏳ กำลังสร้าง...";
+  try{
+    const ref = db.collection("redeemCodes").doc(code);
+    const existing = await ref.get();
+    if(existing.exists){ statusEl.textContent = "⚠️ มีโค้ดนี้อยู่แล้ว ใช้ชื่ออื่น"; SFX.error(); return; }
+    await ref.set({
+      rewards, maxUses, usedCount: 0, redeemedBy: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: (auth.currentUser && auth.currentUser.email) || "admin"
+    });
+    statusEl.textContent = `✅ สร้างโค้ด "${code}" สำเร็จ`;
+    toast(`✅ สร้างโค้ด ${code} แล้ว`); SFX.coin();
+    document.getElementById("adminCodeInput").value = "";
+    ["adminCodeMaxUses","adminCodeGold","adminCodeIron","adminCodeSouls","adminCodeStardust","adminCodeVaCoin"].forEach(id=>{ document.getElementById(id).value = 0; });
+    renderAdminCodeList();
+  }catch(e){
+    console.error("Create code failed:", e);
+    statusEl.textContent = `⚠️ สร้างไม่สำเร็จ: ${e.code || e.message || "unknown error"}`;
+    SFX.error();
+  }
+});
+async function renderAdminCodeList(){
+  const box = document.getElementById("adminCodeList");
+  if(!box) return;
+  box.innerHTML = `<div class="small-note">⏳ กำลังโหลด...</div>`;
+  try{
+    const snap = await db.collection("redeemCodes").orderBy("createdAt","desc").limit(50).get();
+    if(snap.empty){ box.innerHTML = `<div class="small-note">ยังไม่มีโค้ด</div>`; return; }
+    box.innerHTML = "";
+    snap.forEach(doc=>{
+      const d = doc.data();
+      const rewardsText = Object.entries(d.rewards||{}).filter(([k,v])=>v>0)
+        .map(([k,v])=>`${REDEEM_RESOURCE_ICONS[k]||""}${fmt(v)}`).join(" ") || "-";
+      const usesText = d.maxUses>0 ? `${d.usedCount||0}/${d.maxUses}` : `${d.usedCount||0}/∞`;
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; justify-content:space-between; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:6px 10px; font-size:.78rem;";
+      row.innerHTML = `<div><b style="color:var(--gold);">${doc.id}</b> — ${rewardsText} <span class="small-note">(ใช้แล้ว ${usesText})</span></div>`;
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn"; delBtn.style.cssText = "padding:3px 10px; font-size:.7rem; background:var(--mythic); color:#fff; flex-shrink:0;";
+      delBtn.textContent = "🗑️";
+      delBtn.onclick = ()=>{
+        showConfirm(`ลบโค้ด "${doc.id}" ? (ผู้เล่นที่ยังไม่เคยใช้จะใช้โค้ดนี้ไม่ได้อีก)`, async ()=>{
+          try{ await db.collection("redeemCodes").doc(doc.id).delete(); toast("🗑️ ลบโค้ดแล้ว"); renderAdminCodeList(); }
+          catch(e){ console.error(e); toast("⚠️ ลบไม่สำเร็จ"); }
+        });
+      };
+      row.appendChild(delBtn);
+      box.appendChild(row);
+    });
+  }catch(e){
+    console.error("Load code list failed:", e);
+    box.innerHTML = `<div class="small-note">⚠️ โหลดรายการไม่สำเร็จ: ${e.code || e.message}</div>`;
+  }
+}
+
+/* ================= PLAYER: ใช้ Redeem Code (Patch 3.10) ================= */
+document.getElementById("redeemCodeBtn").addEventListener("click", async ()=>{
+  const raw = document.getElementById("redeemCodeInput").value.trim().toUpperCase();
+  const statusEl = document.getElementById("redeemCodeStatus");
+  if(!raw){ statusEl.textContent = "⚠️ กรุณากรอกโค้ด"; return; }
+  if(!myPlayer){ statusEl.textContent = "⚠️ ไม่พบข้อมูลผู้เล่น"; return; }
+  statusEl.textContent = "⏳ กำลังตรวจสอบโค้ด...";
+  const ref = db.collection("redeemCodes").doc(raw);
+  try{
+    // ใช้ transaction กัน race condition: เช็คว่าเคยใช้/โควตาเต็มหรือยัง แล้วอัปเดต usedCount+redeemedBy
+    // แบบอะตอมมิกในทีเดียว ป้องกันกรณีกดรัวๆ หรือมีคนใช้พร้อมกันจนเกินจำนวนที่กำหนดไว้
+    const rewards = await db.runTransaction(async (tx)=>{
+      const snap = await tx.get(ref);
+      if(!snap.exists) throw new Error("NOT_FOUND");
+      const d = snap.data();
+      const redeemedBy = d.redeemedBy || [];
+      if(redeemedBy.includes(myPlayer.id)) throw new Error("ALREADY_USED");
+      const maxUses = d.maxUses || 0;
+      const usedCount = d.usedCount || 0;
+      if(maxUses > 0 && usedCount >= maxUses) throw new Error("EXHAUSTED");
+      tx.update(ref, {
+        usedCount: usedCount + 1,
+        redeemedBy: firebase.firestore.FieldValue.arrayUnion(myPlayer.id)
+      });
+      return d.rewards || {};
+    });
+    const rewardText = [];
+    Object.keys(REDEEM_RESOURCE_ICONS).forEach(k=>{
+      const amt = rewards[k] || 0;
+      if(amt > 0){ state[k] = (state[k]||0) + amt; rewardText.push(`${REDEEM_RESOURCE_ICONS[k]}${fmt(amt)}`); }
+    });
+    statusEl.textContent = rewardText.length ? `✅ รับรางวัลสำเร็จ: ${rewardText.join(" ")}` : "✅ ใช้โค้ดสำเร็จ!";
+    toast("🎁 ใช้โค้ดสำเร็จ!"); SFX.coin();
+    logMsg(`🎁 ใช้โค้ด <b style="color:var(--gold)">${raw}</b> ได้รับ ${rewardText.join(" ") || "รางวัล"}`);
+    document.getElementById("redeemCodeInput").value = "";
+    renderUI(); renderShopPanel(); saveGame();
+  }catch(e){
+    if(e.message === "NOT_FOUND") statusEl.textContent = "⚠️ ไม่พบโค้ดนี้";
+    else if(e.message === "ALREADY_USED") statusEl.textContent = "⚠️ คุณใช้โค้ดนี้ไปแล้ว";
+    else if(e.message === "EXHAUSTED") statusEl.textContent = "⚠️ โค้ดนี้ถูกใช้ครบจำนวนแล้ว";
+    else { statusEl.textContent = "⚠️ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง"; console.error("Redeem failed:", e); }
+    SFX.error();
+  }
+});
+document.getElementById("redeemCodeInput").addEventListener("keydown", (e)=>{ if(e.key==="Enter") document.getElementById("redeemCodeBtn").click(); });
 
 document.getElementById("adminAddResourceBtn").addEventListener("click", async ()=>{
   const key = document.getElementById("adminResourceSelect").value;
