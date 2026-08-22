@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AFK Relic Master - End Game Edition (Patch 2.0)</title>
+<!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --bg:#0a0a12; --panel:#12121e; --panel2:#181826; --border:#2a2a3d;
@@ -478,11 +481,34 @@
   </div>
 </div>
 
+<!-- LOGIN / PLAYER ID SETUP MODAL (Patch 2.3): ผู้เล่นใหม่ตั้งชื่อครั้งแรก ระบบจะสุ่ม Player ID ให้อัตโนมัติและผูกไว้ถาวร -->
+<div class="modal-bg active" id="loginModalBg">
+  <div class="modal-box">
+    <h3 style="margin-bottom:10px; color:var(--gold);">👤 ยินดีต้อนรับ</h3>
+    <div class="small-note" style="margin-bottom:12px;">ตั้งชื่อผู้เล่นของคุณ ระบบจะสร้าง <b>Player ID</b> ให้อัตโนมัติ ใช้สำหรับให้แอดมินเติมของ/เสกให้คุณได้</div>
+    <input type="text" id="loginUsernameInput" maxlength="20" placeholder="ชื่อผู้เล่น"
+      style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-align:center; margin-bottom:10px;">
+    <div class="small-note" id="loginStatus" style="min-height:16px; margin-bottom:8px;"></div>
+    <button class="btn gold" id="loginSubmitBtn" style="width:100%;">🚀 เริ่มเล่น</button>
+  </div>
+</div>
+
 <!-- ADMIN PANEL POPUP: ซ่อนอยู่ตามค่าเริ่มต้น กด F8 เพื่อเปิด/ปิด (Patch 2.0) -->
 <div class="modal-bg" id="adminModalBg">
   <div class="modal-box wide">
     <span class="modal-close" onclick="closeAdminPanel()">✕</span>
     <h3 style="margin-bottom:8px; color:var(--gold);">🛠️ Admin Panel <span class="small-note">(กด F8 เพื่อปิด)</span></h3>
+    <div class="small-note" style="margin-bottom:10px;">🆔 ID ของคุณ: <b id="adminOwnId" style="color:var(--gold); user-select:all;">-</b> (<span id="adminOwnName">-</span>)</div>
+
+    <hr style="border-color:var(--border); margin:10px 0;">
+    <div class="small-note" style="margin-bottom:8px; color:var(--soul);"><b>🎯 เป้าหมาย (Patch 2.3)</b></div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <input type="text" id="adminTargetId" placeholder="ใส่ Player ID ผู้เล่น (เว้นว่าง = เพิ่มให้ตัวเอง)"
+        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+    </div>
+    <div class="small-note" id="adminTargetStatus" style="margin-top:6px; min-height:14px;"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small-note" style="margin-bottom:10px;">
       เปิด Event เพื่อเพิ่ม<b>โอกาสดรอปของหายาก +1000%</b> จาก <b>The Forge</b> และ <b>หอคอยบอส</b> (ยังคงได้ไอเทม 1 ชิ้นต่อครั้งเหมือนปกติ ไม่ทำให้ไอเทมเฟ้อ)
       พร้อมเพิ่มรางวัลทอง/เหล็ก/หินวิญญาณจากบอส x10
@@ -807,6 +833,119 @@ function unlockAudioOnce(){ ensureAudio(); document.removeEventListener("click",
 document.addEventListener("click", unlockAudioOnce, {once:true});
 document.addEventListener("keydown", unlockAudioOnce, {once:true});
 
+/* ================= CLOUD SYNC / PLAYER ID (Patch 2.3) =================
+   ⚠️ แก้ค่า firebaseConfig ด้านล่างเป็นของโปรเจกต์ Firebase ของคุณเอง
+   (Firebase Console > Project settings > General > Your apps > SDK setup and configuration) */
+const firebaseConfig = {
+  apiKey: "AIzaSyB_uaOxyFwlA7A6IJ8TZKUHatq4u46bKmI",
+  authDomain: "the-forge-34d83.firebaseapp.com",
+  projectId: "the-forge-34d83",
+  storageBucket: "the-forge-34d83.firebasestorage.app",
+  messagingSenderId: "968932346100",
+  appId: "1:968932346100:web:952ab6e11553f68bdc36a1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const PLAYER_KEY = "afk_relic_player_v1";
+const ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ตัดตัวอักษร/ตัวเลขที่สับสนง่ายออก (I,O,0,1,L)
+let myPlayer = null; // { id, username }
+let cloudUnsub = null;
+let applyingRemote = false; // กันไม่ให้ snapshot ที่มาจากการ save ของตัวเองย้อนกลับมาเขียนทับ state ระหว่างพิมพ์
+
+function genPlayerId(){
+  let s = "";
+  for(let i=0;i<6;i++) s += ID_ALPHABET[Math.floor(Math.random()*ID_ALPHABET.length)];
+  return s;
+}
+async function createUniquePlayerId(username){
+  for(let attempt=0; attempt<8; attempt++){
+    const id = genPlayerId();
+    const doc = await db.collection("players").doc(id).get();
+    if(!doc.exists) return id;
+  }
+  throw new Error("ไม่สามารถสร้าง ID ได้ กรุณาลองใหม่");
+}
+function loadLocalPlayer(){
+  try{ const raw = localStorage.getItem(PLAYER_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function saveLocalPlayer(p){ localStorage.setItem(PLAYER_KEY, JSON.stringify(p)); }
+
+// เรียกครั้งเดียวตอนเปิดเกม: ถ้ายังไม่มีชื่อ ให้ผู้เล่นตั้งชื่อ ระบบจะสร้าง Player ID ผูกไว้ถาวรในเครื่องนี้
+function initPlayer(){
+  return new Promise((resolve)=>{
+    const existing = loadLocalPlayer();
+    if(existing && existing.id){ myPlayer = existing; document.getElementById("loginModalBg").classList.remove("active"); resolve(); return; }
+    const modal = document.getElementById("loginModalBg");
+    const input = document.getElementById("loginUsernameInput");
+    const status = document.getElementById("loginStatus");
+    const btn = document.getElementById("loginSubmitBtn");
+    modal.classList.add("active");
+    const submit = async ()=>{
+      const name = input.value.trim();
+      if(!name){ status.textContent = "⚠️ กรุณาใส่ชื่อผู้เล่น"; return; }
+      btn.disabled = true; status.textContent = "⏳ กำลังสร้าง ID...";
+      try{
+        const id = await createUniquePlayerId(name);
+        myPlayer = { id, username: name };
+        saveLocalPlayer(myPlayer);
+        // ย้ายเซฟเดิมในเครื่องนี้ (ถ้ามีจากแพตช์ก่อนหน้าที่ยังไม่มีระบบ ID) ขึ้นคลาวด์ไปเป็นข้อมูลตั้งต้น
+        const localRaw = localStorage.getItem(SAVE_KEY);
+        const initialState = localRaw ? JSON.parse(localRaw) : state;
+        await db.collection("players").doc(id).set({
+          username: name, state: initialState, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        modal.classList.remove("active");
+        resolve();
+      }catch(e){
+        status.textContent = "⚠️ เกิดข้อผิดพลาด ลองใหม่อีกครั้ง";
+        btn.disabled = false;
+      }
+    };
+    btn.addEventListener("click", submit);
+    input.addEventListener("keydown", (e)=>{ if(e.key==="Enter") submit(); });
+  });
+}
+
+// โหลด state ล่าสุดจากคลาวด์ (ถ้ามี) มาทับ state ในเครื่อง แล้วเปิด listener แบบเรียลไทม์
+// เพื่อให้แอดมินเพิ่มของ/เสกให้ผู้เล่นได้แม้ผู้เล่นจะเปิดเกมอยู่คนละเครื่อง
+async function pullCloudStateThenWatch(){
+  const ref = db.collection("players").doc(myPlayer.id);
+  try{
+    const doc = await ref.get();
+    if(doc.exists && doc.data().state){
+      applyingRemote = true;
+      state = Object.assign(state, doc.data().state);
+      applyingRemote = false;
+    }
+  }catch(e){ /* ออฟไลน์ได้ - จะใช้เซฟในเครื่องแทน */ }
+
+  if(cloudUnsub) cloudUnsub();
+  cloudUnsub = ref.onSnapshot((snap)=>{
+    if(!snap.exists || snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง
+    const data = snap.data();
+    if(!data || !data.state) return;
+    applyingRemote = true;
+    state = Object.assign(state, data.state);
+    applyingRemote = false;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    renderUI(); renderInventory(); renderMergePanel(); renderShopPanel(); renderFrameShop();
+    toast("🛠️ แอดมินอัปเดตข้อมูลของคุณ!");
+  });
+}
+
+let cloudSaveTimer = null;
+function cloudSaveState(){
+  if(!myPlayer || applyingRemote) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(()=>{
+    db.collection("players").doc(myPlayer.id).set(
+      { username: myPlayer.username, state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    ).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
+  }, 1500);
+}
+
 /* ================= STATE & SAVE ================= */
 let state = {
   gold: 0, iron: 0, souls: 0, stardust: 0, towerFloor: 1, inventory: [], nextUid: 1,
@@ -828,7 +967,7 @@ let state = {
 let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
-function saveGame(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
+function saveGame(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); cloudSaveState(); }
 function loadGame(){
   try{
     const raw = localStorage.getItem(SAVE_KEY);
@@ -1548,7 +1687,10 @@ function applyFrameVisual(){
 
 /* ================= ADMIN: F8 HIDDEN PANEL (Patch 1.8) ================= */
 /* ================= ADMIN: F8 POPUP PANEL (Patch 2.0) ================= */
-function openAdminPanel(){ document.getElementById("adminModalBg").classList.add("active"); }
+function openAdminPanel(){
+  document.getElementById("adminModalBg").classList.add("active");
+  if(myPlayer){ document.getElementById("adminOwnId").textContent = myPlayer.id; document.getElementById("adminOwnName").textContent = myPlayer.username; }
+}
 function closeAdminPanel(){ document.getElementById("adminModalBg").classList.remove("active"); }
 document.addEventListener("keydown", (e)=>{
   if(e.key === "F8"){
@@ -1557,11 +1699,34 @@ document.addEventListener("keydown", (e)=>{
     if(bg.classList.contains("active")) closeAdminPanel(); else openAdminPanel();
   }
 });
-document.getElementById("adminAddResourceBtn").addEventListener("click", ()=>{
+function getAdminTargetId(){ return document.getElementById("adminTargetId").value.trim().toUpperCase(); }
+
+document.getElementById("adminAddResourceBtn").addEventListener("click", async ()=>{
   const key = document.getElementById("adminResourceSelect").value;
   const amt = parseInt(document.getElementById("adminResourceAmount").value) || 0;
-  state[key] = (state[key]||0) + amt;
-  toast(`✅ เพิ่ม ${key} +${fmt(amt)}`); SFX.coin(); renderUI(); renderShopPanel(); saveGame();
+  const targetId = getAdminTargetId();
+  const statusEl = document.getElementById("adminTargetStatus");
+
+  if(!targetId || (myPlayer && targetId === myPlayer.id)){
+    state[key] = (state[key]||0) + amt;
+    toast(`✅ เพิ่ม ${key} +${fmt(amt)}`); SFX.coin(); renderUI(); renderShopPanel(); saveGame();
+    return;
+  }
+
+  statusEl.textContent = "⏳ กำลังส่ง...";
+  try{
+    const ref = db.collection("players").doc(targetId);
+    const doc = await ref.get();
+    if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+    await ref.update({
+      [`state.${key}`]: firebase.firestore.FieldValue.increment(amt),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = `✅ เพิ่ม ${key} +${fmt(amt)} ให้ผู้เล่น ${targetId} แล้ว`;
+    toast(`✅ ส่งทรัพยากรให้ ${targetId} แล้ว`); SFX.coin();
+  }catch(e){
+    statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
+  }
 });
 
 /* ================= ADMIN: เพิ่มอุปกรณ์ / อาวุธ (Patch 2.0) ================= */
@@ -1595,21 +1760,49 @@ document.getElementById("adminItemSlotSelect").addEventListener("change", popula
 document.getElementById("adminItemRaritySelect").addEventListener("change", populateAdminItemNames);
 populateAdminItemSlots(); populateAdminItemRarities(); populateAdminItemNames();
 
-document.getElementById("adminAddItemBtn").addEventListener("click", ()=>{
+document.getElementById("adminAddItemBtn").addEventListener("click", async ()=>{
   const slot = document.getElementById("adminItemSlotSelect").value;
   const rarity = document.getElementById("adminItemRaritySelect").value;
   const idx = parseInt(document.getElementById("adminItemNameSelect").value);
   const qty = Math.max(1, Math.min(99, parseInt(document.getElementById("adminItemQty").value) || 1));
   const d = ITEM_POOL[slot][rarity][idx];
   if(!d){ toast("⚠️ ไม่พบไอเทมนี้"); SFX.error(); return; }
-  for(let k=0;k<qty;k++){
-    const it = { uid:uid(), type:slot, rarity, name:d.name, emoji:d.emoji, skillId:d.skillId||null, level:0 };
-    state.inventory.push(it);
+  const targetId = getAdminTargetId();
+  const statusEl = document.getElementById("adminTargetStatus");
+
+  if(!targetId || (myPlayer && targetId === myPlayer.id)){
+    for(let k=0;k<qty;k++){
+      const it = { uid:uid(), type:slot, rarity, name:d.name, emoji:d.emoji, skillId:d.skillId||null, level:0 };
+      state.inventory.push(it);
+    }
+    toast(`✅ เพิ่ม ${d.emoji} ${d.name} x${qty} เข้ากระเป๋าแล้ว`);
+    logMsg(`🛠️ <span style="color:var(--gold)">Admin</span> เพิ่มไอเทม <span style="color:${RARITY_META[rarity].color}">${d.emoji} ${d.name}</span> x${qty}`);
+    SFX.dropByRarity(rarity);
+    renderUI(); renderInventory(); renderMergePanel(); saveGame();
+    return;
   }
-  toast(`✅ เพิ่ม ${d.emoji} ${d.name} x${qty} เข้ากระเป๋าแล้ว`);
-  logMsg(`🛠️ <span style="color:var(--gold)">Admin</span> เพิ่มไอเทม <span style="color:${RARITY_META[rarity].color}">${d.emoji} ${d.name}</span> x${qty}`);
-  SFX.dropByRarity(rarity);
-  renderUI(); renderInventory(); renderMergePanel(); saveGame();
+
+  statusEl.textContent = "⏳ กำลังส่ง...";
+  try{
+    const ref = db.collection("players").doc(targetId);
+    const doc = await ref.get();
+    if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+    const targetState = doc.data().state || {};
+    let nextUidRemote = targetState.nextUid || 1;
+    const newItems = [];
+    for(let k=0;k<qty;k++){
+      newItems.push({ uid: nextUidRemote++, type:slot, rarity, name:d.name, emoji:d.emoji, skillId:d.skillId||null, level:0 });
+    }
+    await ref.update({
+      "state.inventory": firebase.firestore.FieldValue.arrayUnion(...newItems),
+      "state.nextUid": nextUidRemote,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = `✅ ส่ง ${d.emoji} ${d.name} x${qty} ให้ผู้เล่น ${targetId} แล้ว`;
+    toast(`✅ ส่งไอเทมให้ ${targetId} แล้ว`); SFX.dropByRarity(rarity);
+  }catch(e){
+    statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
+  }
 });
 
 /* ================= MERGE SYSTEM ================= */
@@ -1999,8 +2192,16 @@ document.getElementById("sfxVolSlider").addEventListener("input", (e)=>{ setSfxV
 document.getElementById("musicVolSlider").addEventListener("input", (e)=>{ setMusicVol(parseFloat(e.target.value)); });
 document.getElementById("sfxVolSlider").addEventListener("change", ()=>{ SFX.click(); });
 
-loadGame(); renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop();
-requestAnimationFrame(afkTick); setInterval(saveGame, 5000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000);
+(async ()=>{
+  await initPlayer();  // ให้ผู้เล่นใหม่ตั้งชื่อ + สร้าง Player ID ก่อน (ผู้เล่นเก่าข้ามขั้นตอนนี้อัตโนมัติ)
+  loadGame();           // โหลดเซฟในเครื่องก่อน (ใช้เป็นค่าตั้งต้น/สำรองตอนออฟไลน์)
+  await pullCloudStateThenWatch(); // คลาวด์คือค่าจริงล่าสุด: ทับ state ในเครื่อง + เปิด listener รับการอัปเดตจากแอดมินแบบเรียลไทม์
+  // ซิงก์ checkbox auto-sell กับ state ล่าสุดหลังจากคลาวด์ทับแล้ว
+  document.getElementById("autoCommonChk").checked = state.autoSellCommon;
+  document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
+  renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop();
+  requestAnimationFrame(afkTick); setInterval(saveGame, 5000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000);
+})();
 </script>
 </body>
 </html>
