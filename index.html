@@ -1399,7 +1399,8 @@ async function pullCloudStateThenWatch(){
 let cloudSaveTimer = null;
 let lastCloudSaveAt = 0;
 let cloudSavePending = false;
-// Patch 3.12: Local save ทุก 3 วินาที; Cloud debounce 0.9 วิ + minimum gap 20 วิ
+// Patch 3.12 / 3.12.1: Local save ทุก 3 วินาที; Cloud debounce 0.9 วิ + minimum gap 20 วิ
+// บัญชีแอดมินที่ออนไลน์จะถูกแสดงในแท็บผู้เล่นออนไลน์และมีป้าย 👑 ADMIN
 const CLOUD_SAVE_MIN_GAP_MS = 20000;
 const CLOUD_SAVE_DEBOUNCE_MS = 900;
 function doCloudSaveNow(){
@@ -2722,8 +2723,16 @@ document.getElementById("adminLoginBtn").addEventListener("click", async ()=>{
       return;
     }
     closeAdminLoginModal();
+    // Patch 3.12.1: หลังล็อกอินแอดมิน ให้ยืนยันสถานะบัญชีบน player doc ทันที เพื่อให้แสดงออนไลน์ได้
+    if(myPlayer){
+      db.collection("players").doc(myPlayer.id).set({
+        username: myPlayer.username, isAdminAccount: true, online: true,
+        lastSeenAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true}).catch(()=>{});
+    }
     openAdminPanel();
     refreshAdminPlayers();
+    if(document.querySelector('.tab-btn[data-tab="online"]')?.classList.contains("active")) renderOnlinePlayers();
     toast("✅ เข้าสู่ระบบแอดมินสำเร็จ");
   }catch(e){
     status.textContent = "⚠️ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
@@ -2765,11 +2774,29 @@ function subscribeAdminPlayers(){
 function refreshAdminPlayers(){if(auth.currentUser&&isAdminUser()) subscribeAdminPlayers();}
 function renderOnlinePlayersFromSnap(snap){
   const now=Date.now();
-  const docs=snap.docs.filter(d=>!d.data().isAdminAccount).map(d=>({id:d.id,...d.data()})).filter(p=>{const ts=p.lastSeenAt;const ms=ts&&typeof ts.toMillis==="function"?ts.toMillis():0;return !!p.online&&ms>0&&now-ms<=ONLINE_TIMEOUT_MS;}).sort((a,b)=>b.lastSeenAt.toMillis()-a.lastSeenAt.toMillis());
+  // Patch 3.12.1: แอดมินต้องสามารถแสดงสถานะออนไลน์ได้ด้วย จึงไม่กรอง isAdminAccount ออกจากรายการ
+  // แต่ติดป้าย 👑 ADMIN ให้เห็นชัดว่าเป็นบัญชีแอดมิน ไม่ใช่ผู้เล่นทั่วไป
+  const docs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>{const ts=p.lastSeenAt;const ms=ts&&typeof ts.toMillis==="function"?ts.toMillis():(typeof ts==="number"?ts:0);return !!p.online&&ms>0&&now-ms<=ONLINE_TIMEOUT_MS;}).sort((a,b)=>{
+    const aAdmin=!!a.isAdminAccount, bAdmin=!!b.isAdminAccount;
+    if(aAdmin!==bAdmin) return aAdmin ? -1 : 1;
+    const am=a.lastSeenAt&&typeof a.lastSeenAt.toMillis==="function"?a.lastSeenAt.toMillis():0;
+    const bm=b.lastSeenAt&&typeof b.lastSeenAt.toMillis==="function"?b.lastSeenAt.toMillis():0;
+    return bm-am;
+  });
   const badge=document.getElementById("onlineCountBadge"), list=document.getElementById("onlineList"), upd=document.getElementById("onlineLastUpdate");
   if(badge) badge.textContent=`(${docs.length})`; if(upd) upd.textContent=`อัปเดต ${new Date().toLocaleTimeString("th-TH")}`; if(!list) return; list.innerHTML="";
   if(!docs.length){list.innerHTML='<div class="small-note" style="text-align:center;padding:18px;">ไม่มีผู้เล่นออนไลน์</div>';return;}
-  docs.forEach(p=>{const row=document.createElement("div");row.className="online-player-row";const dot=document.createElement("span");dot.className="online-dot";const main=document.createElement("div");main.className="online-player-main";const name=document.createElement("div");name.className="online-player-name";name.textContent=(p.username||"ไม่ทราบชื่อ")+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");const meta=document.createElement("div");meta.className="online-player-meta";meta.textContent=`🆔 ${p.id} · พลัง ${fmt(p.power||0)}`;main.append(name,meta);row.append(dot,main);list.appendChild(row);});
+  docs.forEach(p=>{
+    const row=document.createElement("div"); row.className="online-player-row";
+    if(p.isAdminAccount){ row.style.borderColor="var(--gold)"; row.style.boxShadow="0 0 10px #ffd24a33"; }
+    const dot=document.createElement("span"); dot.className="online-dot";
+    const main=document.createElement("div"); main.className="online-player-main";
+    const name=document.createElement("div"); name.className="online-player-name";
+    name.textContent=(p.isAdminAccount?"👑 ":"")+(p.username||"ไม่ทราบชื่อ")+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");
+    const meta=document.createElement("div"); meta.className="online-player-meta";
+    meta.textContent=`🆔 ${p.id} · ${p.isAdminAccount?"ADMIN · ":""}พลัง ${fmt(p.power||0)}`;
+    main.append(name,meta); row.append(dot,main); list.appendChild(row);
+  });
 }
 function subscribeOnlinePlayers(){if(onlinePlayersUnsub) onlinePlayersUnsub();onlinePlayersUnsub=db.collection("players").limit(500).onSnapshot(renderOnlinePlayersFromSnap,()=>{const l=document.getElementById("onlineList");if(l)l.innerHTML='<div class="small-note" style="text-align:center;">⚠️ โหลดผู้เล่นออนไลน์ไม่สำเร็จ</div>';});}
 function renderOnlinePlayers(){subscribeOnlinePlayers();}
