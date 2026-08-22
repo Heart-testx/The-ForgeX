@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AFK Relic Master - End Game Edition (Patch 3.18)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.17)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -314,37 +314,79 @@
   .online-profile-frame{position:relative;width:58px;height:58px;flex:0 0 58px;overflow:visible;}
   .online-profile-frame .frame-ring{inset:-5px;border-radius:15px;}
   .online-profile-avatar{position:relative;z-index:2;width:46px;height:46px;margin:6px;border-radius:12px;background:#1a1a28;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:23px;}
-  .online-player-row{overflow:visible;}
-  /* PATCH 3.18 — ออร่ากรอบโปรไฟล์ในผู้เล่นออนไลน์ */
-  .online-frame-fx-layer{
-    position:absolute;left:-18px;top:-18px;width:94px;height:94px;
-    border-radius:28px;pointer-events:none;overflow:visible;z-index:1;
+  /* Patch 3.18: Online rows now inherit the equipped frame aura across the WHOLE row.
+     The cropped area in the online list gets the same premium FX language as the frame:
+     ambient glow, particles, dust, and Tier-5 shockwaves. */
+  .online-player-row{
+    position:relative;overflow:hidden;isolation:isolate;
+    display:flex;align-items:center;gap:10px;background:var(--panel2);
+    border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+    transition:box-shadow .35s ease,border-color .35s ease,background .35s ease;
   }
-  .online-frame-fx-layer .frame-particle,
-  .online-frame-fx-layer .dust-mote,
-  .online-frame-fx-layer .shockwave-ring{pointer-events:none;}
-  .online-profile-frame > .online-frame-fx-layer{z-index:0;}
-  .online-profile-frame > .frame-ring,
-  .online-profile-frame > .online-profile-avatar{z-index:2;}
-  .online-player-row > .admin-ultimate-frame{z-index:2;overflow:visible;}
-.online-player-row > .admin-ultimate-frame{
-  position:relative;inset:auto;width:58px;height:58px;flex:0 0 58px;
-  display:block;
-}
-
-  .online-player-row > .admin-ultimate-frame > .online-frame-fx-layer{z-index:0;left:-18px;top:-18px;}
-  .online-player-row > .admin-ultimate-frame > .admin-core,
-  .online-player-row > .admin-ultimate-frame > .admin-ray,
-  .online-player-row > .admin-ultimate-frame > .admin-sweep,
-  .online-player-row > .admin-ultimate-frame > .admin-label{z-index:8;}
-  .online-player-row .online-player-main,
-  .online-player-row .online-dot{position:relative;z-index:5;}
-  .online-frame-fx-layer .frame-particle{position:absolute;z-index:3;}
-  .online-frame-fx-layer .dust-mote{position:absolute;z-index:2;}
-  .online-frame-fx-layer .shockwave-ring{position:absolute;z-index:1;}
-
-  .online-profile-frame .frame-burst{inset:-24px;}
-  .online-player-row{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+  .online-player-row > *:not(.online-fx-layer){position:relative;z-index:2;}
+  .online-fx-layer{
+    position:absolute;inset:-18px;border-radius:14px;pointer-events:none;
+    overflow:hidden;z-index:0;opacity:.98;
+  }
+  .online-player-row.fx-online::before{
+    content:"";position:absolute;inset:-24px;z-index:0;pointer-events:none;
+    background:radial-gradient(circle at 16% 50%,var(--online-aura,#fff) 0%,transparent 34%),
+               radial-gradient(circle at 78% 50%,var(--online-aura,#fff) 0%,transparent 30%);
+    filter:blur(12px);opacity:.22;animation:onlineAuraBreath 1.8s ease-in-out infinite;
+  }
+  .online-player-row.fx-online::after{
+    content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;border-radius:13px;
+    background:linear-gradient(90deg,transparent 0%,var(--online-aura-soft,#fff0) 18%,transparent 34%,
+               transparent 66%,var(--online-aura-soft,#fff0) 82%,transparent 100%);
+    mix-blend-mode:screen;opacity:.55;animation:onlineAuraSweep 2.6s linear infinite;
+  }
+  .online-player-row.fx-online.tier-5{
+    box-shadow:0 0 0 1px var(--online-aura,#fff8),
+               0 0 22px var(--online-aura,#fff3),
+               0 0 55px var(--online-aura,#fff2) inset;
+  }
+  .online-player-row.fx-online.tier-5::before{opacity:.38;filter:blur(16px);animation-duration:1.35s;}
+  .online-player-row.fx-online.admin-ultimate{
+    --online-aura:#ffffff;--online-aura-soft:#ff00e5aa;
+    border-color:#fff;box-shadow:0 0 0 1px #fff,0 0 14px #ffd700,
+      0 0 30px #ff00e5,0 0 58px #00e5ff inset,0 0 80px #ff2e6d66;
+    animation:adminOnlineAura 1.15s ease-in-out infinite;
+  }
+  .online-player-row.fx-online.admin-ultimate::before{
+    background:conic-gradient(from 0deg at 50% 50%,#ff0080,transparent 12%,#00e5ff,transparent 26%,
+      #ffd700,transparent 42%,#b400ff,transparent 60%,#ff0080);
+    filter:blur(18px);opacity:.3;animation:adminOnlineSpin 4s linear infinite;
+  }
+  .online-player-row.fx-online.admin-ultimate::after{
+    background:linear-gradient(115deg,transparent 35%,#fff 49%,#ff00e5 52%,transparent 64%);
+    opacity:.8;animation:adminOnlineSweep .85s linear infinite;
+  }
+  .online-player-row.fx-online.admin-ultimate .online-fx-layer{
+    background:radial-gradient(circle at 14% 50%,#ffd70055,transparent 22%),
+               radial-gradient(circle at 86% 50%,#00e5ff44,transparent 24%);
+  }
+  .online-player-row.fx-online.admin-ultimate .online-dot{
+    box-shadow:0 0 10px #58f58a,0 0 22px #ffd700,0 0 34px #ff00e5;
+  }
+  @keyframes onlineAuraBreath{
+    0%,100%{transform:scale(.96);opacity:.18;}
+    50%{transform:scale(1.04);opacity:.38;}
+  }
+  @keyframes onlineAuraSweep{
+    0%{transform:translateX(-28%);opacity:0;}
+    15%{opacity:.65;}
+    55%{opacity:.3;}
+    100%{transform:translateX(28%);opacity:0;}
+  }
+  @keyframes adminOnlineAura{
+    0%,100%{filter:brightness(1);transform:translateZ(0);}
+    50%{filter:brightness(1.18);transform:translateZ(0) scale(1.006);}
+  }
+  @keyframes adminOnlineSpin{to{transform:rotate(360deg);}}
+  @keyframes adminOnlineSweep{
+    0%{transform:translateX(-120%) skewX(-18deg);}
+    100%{transform:translateX(120%) skewX(-18deg);}
+  }
   .online-dot{width:9px;height:9px;border-radius:50%;background:#58f58a;box-shadow:0 0 10px #58f58a;flex:0 0 auto;}
   .online-player-main{min-width:0;flex:1;}
   .online-player-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -466,7 +508,7 @@
   .day-cell.vip-locked{opacity:.5;}
   .day-cell.vip-locked .dc-btn{background:var(--panel); color:var(--mythic); cursor:not-allowed;}
 
-/* PATCH 3.18 — ADMIN ULTIMATE FRAME FIX */
+/* PATCH 3.17 — ADMIN ULTIMATE FRAME FIX */
 .admin-ultimate-frame{
   position:relative;width:58px;height:58px;flex:0 0 58px;
   display:block;isolation:isolate;overflow:visible;
@@ -553,7 +595,7 @@
 
 </style>
 <script>
-/* PATCH 3.18 — shared admin frame renderer */
+/* PATCH 3.17 — shared admin frame renderer */
 function makeAdminUltimateFrame(p, size="online"){
   if(!p || !p.isAdminAccount) return null;
   const wrap=document.createElement("div");
@@ -2934,43 +2976,66 @@ function subscribeAdminPlayers(){
   playerListUnsub=db.collection("players").limit(500).onSnapshot(snap=>renderAdminPlayerList(snap.docs),()=>{document.getElementById("adminTargetStatus").textContent="⚠️ โหลดรายชื่อผู้เล่นไม่สำเร็จ";});
 }
 function refreshAdminPlayers(){if(auth.currentUser&&isAdminUser()) subscribeAdminPlayers();}
+let onlineParticleTimers = [];
 
-let onlineFrameParticleTimers = [];
-function stopOnlineFrameParticles(){
-  onlineFrameParticleTimers.forEach(t=>clearInterval(t));
-  onlineFrameParticleTimers = [];
+function stopOnlineParticles(){
+  onlineParticleTimers.forEach(t=>clearInterval(t));
+  onlineParticleTimers = [];
 }
-function startOnlineFrameAura(frameId, fxLayer){
-  if(!frameId || !fxLayer) return;
+
+function startOnlineRowFX(row, frameId){
+  if(!row || !frameId) return;
+  const layer = row.querySelector(".online-fx-layer");
+  if(!layer) return;
+
   const tier = FRAME_TIER[frameId] || 1;
   const dustCfg = FRAME_DUST[frameId];
-  const sets = FRAME_PARTICLE_SETS[frameId];
-  if(sets) sets.forEach(cfg=>{
-    onlineFrameParticleTimers.push(
-      setInterval(
-        ()=>spawnFrameParticle({...cfg, glow:dustCfg?dustCfg.color:"#ffffff"}, fxLayer),
-        cfg.rate || 550
-      )
-    );
-  });
+  const sets = FRAME_PARTICLE_SETS[frameId] || [];
+
+  row.classList.add("fx-online", "tier-"+tier);
+  if(frameId === "admin_ultimate") row.classList.add("admin-ultimate");
   if(dustCfg){
-    const rate = TIER_DUST_RATE[tier] || 2200;
-    onlineFrameParticleTimers.push(
-      setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), rate)
-    );
+    row.style.setProperty("--online-aura", dustCfg.color);
+    // rgba-like soft tint without requiring a second config table.
+    row.style.setProperty("--online-aura-soft", dustCfg.color + "66");
   }
-  if(tier===5){
-    onlineFrameParticleTimers.push(
-      setInterval(
-        ()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", fxLayer),
-        TIER5_SHOCKWAVE_RATE
-      )
-    );
+
+  // Premium particles: same frame theme as the main profile, but spread over the whole row.
+  sets.forEach(cfg=>{
+    const boosted = {
+      ...cfg,
+      rate: tier === 5 ? Math.max(180, Math.round((cfg.rate||550) * 0.72))
+                       : Math.max(260, Math.round((cfg.rate||550) * 0.9)),
+      size: tier === 5 ? (cfg.size||14) * 1.12 : (cfg.size||14)
+    };
+    onlineParticleTimers.push(setInterval(
+      ()=>spawnFrameParticle({...boosted, glow:dustCfg?dustCfg.color:"#ffffff"}, layer),
+      boosted.rate
+    ));
+  });
+
+  if(dustCfg){
+    const dustRate = Math.max(360, Math.round((TIER_DUST_RATE[tier]||2200) * (tier===5 ? .55 : .8)));
+    onlineParticleTimers.push(setInterval(
+      ()=>spawnDustMote(dustCfg, tier, layer),
+      dustRate
+    ));
+  }
+
+  // Tier 5 gets a much more visible pulse than ordinary frames.
+  if(tier === 5){
+    const shockRate = frameId === "admin_ultimate" ? 2100 : Math.max(2600, TIER5_SHOCKWAVE_RATE - 900);
+    onlineParticleTimers.push(setInterval(
+      ()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", layer),
+      shockRate
+    ));
+    // Kick one off immediately so the aura is visible as soon as the list appears.
+    setTimeout(()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", layer), 120);
   }
 }
 
 function renderOnlinePlayersFromSnap(snap){
-  stopOnlineFrameParticles();
+  stopOnlineParticles();
   const now=Date.now();
   // Patch 3.12.1: แอดมินต้องสามารถแสดงสถานะออนไลน์ได้ด้วย จึงไม่กรอง isAdminAccount ออกจากรายการ
   // แต่ติดป้าย 👑 ADMIN ให้เห็นชัดว่าเป็นบัญชีแอดมิน ไม่ใช่ผู้เล่นทั่วไป
@@ -2987,6 +3052,11 @@ function renderOnlinePlayersFromSnap(snap){
   docs.forEach(p=>{
     const row=document.createElement("div"); row.className="online-player-row";
     if(p.isAdminAccount){ row.style.borderColor="var(--gold)"; row.style.boxShadow="0 0 10px #ffd24a33"; }
+
+    // Patch 3.18: aura layer ครอบทั้งแถวออนไลน์ ให้พื้นที่ข้อมูลที่อยู่ข้างกรอบ
+    // ได้รับเอฟเฟกต์เดียวกับกรอบ ไม่ใช่มีแสงเฉพาะรอบ avatar เท่านั้น
+    const fxLayer = document.createElement("div");
+    fxLayer.className = "online-fx-layer";
 
     // Patch 3.17: render กรอบตาม state.frames.equipped ของผู้เล่นออนไลน์
     const eqFrameId = p.state?.frames?.equipped || null;
@@ -3006,23 +3076,19 @@ function renderOnlinePlayersFromSnap(snap){
       frameWrap.append(ring,avatar);
     }
 
-    // Patch 3.18: ใช้ชุด particle/aura เดียวกับกรอบจริงของเกม
-    // ทำให้ออร่าใน Online Players วิ้ง/เรือง/กระจายตาม Tier และสีของกรอบ
-    if(frameMeta || eqFrameId === "admin_ultimate"){
-      const auraId = eqFrameId;
-      const fxLayer = document.createElement("div");
-      fxLayer.className = "online-frame-fx-layer";
-      frameWrap.appendChild(fxLayer);
-      startOnlineFrameAura(auraId, fxLayer);
-    }
-
     const dot=document.createElement("span"); dot.className="online-dot";
     const main=document.createElement("div"); main.className="online-player-main";
     const name=document.createElement("div"); name.className="online-player-name";
     name.textContent=(p.isAdminAccount?"👑 ":"")+(p.username||"ไม่ทราบชื่อ")+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");
     const meta=document.createElement("div"); meta.className="online-player-meta";
     meta.textContent=`🆔 ${p.id} · ${p.isAdminAccount?"ADMIN · ":""}พลัง ${fmt(p.power||0)}`;
-    main.append(name,meta); row.append(frameWrap,dot,main); list.appendChild(row);
+    main.append(name,meta);
+    row.append(fxLayer,frameWrap,dot,main);
+    list.appendChild(row);
+
+    if(frameMeta){
+      startOnlineRowFX(row, frameMeta.id);
+    }
   });
 }
 function subscribeOnlinePlayers(){if(onlinePlayersUnsub) onlinePlayersUnsub();onlinePlayersUnsub=db.collection("players").limit(500).onSnapshot(renderOnlinePlayersFromSnap,()=>{const l=document.getElementById("onlineList");if(l)l.innerHTML='<div class="small-note" style="text-align:center;">⚠️ โหลดผู้เล่นออนไลน์ไม่สำเร็จ</div>';});}
