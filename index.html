@@ -324,6 +324,7 @@
     <button class="tab-btn" data-tab="merge">🔮 หลอมรวม</button>
     <button class="tab-btn" data-tab="tower" style="color:var(--soul); border-color:var(--soul);">⚔️ หอคอยบอส</button>
     <button class="tab-btn" data-tab="shop" style="color:var(--gold); border-color:var(--gold);">🛒 ร้านค้า</button>
+    <button class="tab-btn" data-tab="rank" style="color:var(--legendary); border-color:var(--legendary);">🏆 อันดับ</button>
   </div>
 
   <!-- PANEL: AFK & FORGE -->
@@ -472,6 +473,18 @@
     <h2 style="text-align:center; color:var(--gold);">🖼️ กรอบโปรไฟล์ (Patch 2.2)</h2>
     <div class="small-note" style="text-align:center; margin-bottom:6px;">กรอบตกแต่งสุดเฟี้ยว มี Motion เคลื่อนไหวรอบตัวละคร ไม่มีผลต่อพลังต่อสู้ ใส่เพื่อความเท่เท่านั้น!</div>
     <div class="frame-shop-grid" id="frameShopGrid"></div>
+  </div>
+
+  <!-- PANEL: RANK TOP 3 (Patch 2.4) -->
+  <div class="panel" id="panel-rank">
+    <h2 style="text-align:center; color:var(--legendary);">🏆 Top 3 พลังต่อสู้รวม</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:14px;">จัดอันดับจากพลังต่อสู้รวมของอุปกรณ์ที่สวมใส่อยู่ อัปเดตทุกครั้งที่เข้าแท็บนี้</div>
+    <div id="rankList" style="display:flex; flex-direction:column; gap:10px; max-width:480px; margin:0 auto;">
+      <div class="small-note" style="text-align:center;">⏳ กำลังโหลด...</div>
+    </div>
+    <div style="text-align:center; margin-top:14px;">
+      <button class="btn primary" id="refreshRankBtn">🔄 รีเฟรชอันดับ</button>
+    </div>
   </div>
 
   <h3 style="margin-top:16px; margin-bottom:6px;">📜 บันทึกกิจกรรม</h3>
@@ -896,7 +909,7 @@ function initPlayer(){
         const localRaw = localStorage.getItem(SAVE_KEY);
         const initialState = localRaw ? JSON.parse(localRaw) : state;
         await db.collection("players").doc(id).set({
-          username: name, state: initialState, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          username: name, state: initialState, power: 0, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         // แสดง Player ID ให้ผู้เล่นเห็น + จดไว้ ก่อนเข้าเกมจริง
         created = true;
@@ -946,7 +959,7 @@ const CLOUD_SAVE_MIN_GAP_MS = 15000; // เขียนขึ้น Firestore �
 function doCloudSaveNow(){
   lastCloudSaveAt = Date.now();
   db.collection("players").doc(myPlayer.id).set(
-    { username: myPlayer.username, state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+    { username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
     { merge: true }
   ).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
 }
@@ -1226,6 +1239,37 @@ function renderAdminPanel(){
   } else {
     statusEl.textContent = "สถานะ: 🔴 ปิดอยู่";
     toggleBtn.textContent = "⚡ เปิด Event (ไม่จำกัดเวลา)";
+  }
+}
+
+/* ================= RANK TOP 3 (Patch 2.4) =================
+   ดึงผู้เล่นพลังต่อสู้รวมสูงสุด 3 อันดับแรกจากทุก Player ID ในระบบ (query จากฟิลด์ power ที่บันทึกไว้ตอน cloudSave) */
+const RANK_MEDALS = ["🥇","🥈","🥉"];
+async function renderRankTop3(){
+  const listEl = document.getElementById("rankList");
+  listEl.innerHTML = `<div class="small-note" style="text-align:center;">⏳ กำลังโหลด...</div>`;
+  try{
+    const snap = await db.collection("players").orderBy("power","desc").limit(3).get();
+    if(snap.empty){ listEl.innerHTML = `<div class="small-note" style="text-align:center;">ยังไม่มีข้อมูลผู้เล่น</div>`; return; }
+    listEl.innerHTML = "";
+    let rank = 0;
+    snap.forEach(doc=>{
+      const d = doc.data();
+      const isMe = myPlayer && doc.id === myPlayer.id;
+      const row = document.createElement("div");
+      row.style.cssText = `display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:var(--panel2); border:1px solid ${isMe?"var(--gold)":"var(--border)"};`;
+      row.innerHTML = `
+        <div style="font-size:1.6rem;">${RANK_MEDALS[rank]||"🏅"}</div>
+        <div style="flex:1;">
+          <div style="font-weight:bold;">${(d.username||"ไม่ทราบชื่อ")}${isMe?' <span style="color:var(--gold); font-size:.75rem;">(คุณ)</span>':""}</div>
+          <div class="small-note">🆔 ${doc.id}</div>
+        </div>
+        <div style="text-align:right; font-weight:bold; color:var(--legendary);">${fmt(d.power||0)}</div>`;
+      listEl.appendChild(row);
+      rank++;
+    });
+  }catch(e){
+    listEl.innerHTML = `<div class="small-note" style="text-align:center;">⚠️ โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง</div>`;
   }
 }
 
@@ -2219,8 +2263,10 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
     btn.classList.add("active"); document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
     SFX.tab();
+    if(btn.dataset.tab === "rank") renderRankTop3();
   };
 });
+document.getElementById("refreshRankBtn").addEventListener("click", renderRankTop3);
 // Patch 1.4: ปุ่มควบคุม Lucky Event ของแอดมิน
 document.getElementById("adminEventToggleBtn").addEventListener("click", ()=>{
   if(isEventActive()) endEvent(true); else startEvent(0);
