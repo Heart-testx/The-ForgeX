@@ -3215,14 +3215,21 @@ document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
       const ref = db.collection("players").doc(targetId);
       const doc = await ref.get();
       if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
-      // Patch 3.10: บันทึกเหตุผลการลบไว้ใน collection แยกต่างหาก ("deletedPlayers") ก่อนลบเอกสารผู้เล่นจริง
-      // เพราะพอลบเอกสารผู้เล่นไปแล้ว จะไม่มีที่เก็บเหตุผลให้ผู้เล่นอ่านตอนเกมเด้งแจ้งเตือนอีกต่อไป
-      await db.collection("deletedPlayers").doc(targetId).set({
+      // Patch 3.22 BUGFIX: เดิม .set() บันทึกเหตุผลกับ ref.delete() เป็นคนละคำสั่งแยกกัน (await ทีละอัน)
+      // ถ้า Firestore Rules ยังไม่ได้เปิดสิทธิ์ write ให้ collection "deletedPlayers" (rule มักถูกลืม publish
+      // เพราะเพิ่งเพิ่มทีหลังใน Patch 3.10) ตัว .set() จะ throw permission-denied ก่อน แล้วโค้ดกระโดดเข้า catch
+      // ทันที ทำให้ ref.delete() ไม่เคยถูกเรียกเลย — ผลคือเอกสารผู้เล่น (รวม Va Coin/กรอบโปรไฟล์) ไม่ได้ถูกลบ
+      // จริง ทั้งที่ตั้งใจจะลบ ต่อไปนี้รวมสองคำสั่งเป็น batch เดียว ให้สำเร็จหรือ fail พร้อมกันเสมอ ไม่มีเคส
+      // ลบครึ่งเดียวอีกต่อไป — ถ้า fail จะ fail ทั้งคู่ และ ref.delete() ก็จะไม่ทำงานเหมือนเดิม แต่อย่างน้อย
+      // ก็จะไม่มีสถานะครึ่งๆ กลางๆ ที่ deletedPlayers มี log แต่ players ยังไม่ถูกลบ (หรือกลับกัน)
+      const deleteBatch = db.batch();
+      deleteBatch.set(db.collection("deletedPlayers").doc(targetId), {
         reason: reasonValue, reasonLabel, note,
         deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
         deletedBy: (auth.currentUser && auth.currentUser.email) || "admin"
       });
-      await ref.delete();
+      deleteBatch.delete(ref);
+      await deleteBatch.commit();
       statusEl.textContent = `✅ ลบ Player ID "${targetId}" ถาวรแล้ว (เหตุผล: ${reasonLabel})`;
       toast(`🗑️ ลบ ${targetId} แล้ว`); SFX.sell();
       document.getElementById("adminDeleteTargetId").value = "";
@@ -3235,8 +3242,10 @@ document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
     }catch(e){
       // Patch 3.0: โชว์ error code จริงจาก Firebase (เช่น permission-denied) แทนข้อความรวมๆ
       // เพื่อให้เช็คได้ง่ายว่าปัญหาคือ Firestore Security Rules ยังไม่ได้ publish/ไม่ตรงอีเมล หรือสาเหตุอื่น
+      // Patch 3.22: ทำให้ข้อความ error เด่นชัด (แดง/ตัวหนา) กันแอดมินเผลอมองผ่านแล้วเข้าใจผิดว่าลบสำเร็จ —
+      // เดิมใช้สี small-note ปกติซึ่งจางเกินไป ทำให้พลาดง่ายเวลากดรัว ๆ หลาย ID ติดกัน
       console.error("Delete player failed:", e);
-      statusEl.textContent = `⚠️ ลบไม่สำเร็จ: ${e.code || e.message || "unknown error"} — ตรวจสอบว่า publish Firestore Rules แล้ว และอีเมลใน rule ตรงกับที่ login ทุกตัวอักษร (เคสตัวพิมพ์เล็ก-ใหญ่มีผล)`;
+      statusEl.innerHTML = `<b style="color:#ff4d4d;">⚠️ ลบไม่สำเร็จ (ข้อมูล/กรอบโปรไฟล์ยังอยู่ครบ ไม่มีอะไรถูกลบ): ${e.code || e.message || "unknown error"}</b><br>ตรวจสอบว่า publish Firestore Rules แล้ว และอีเมลใน rule ตรงกับที่ login ทุกตัวอักษร (เคสตัวพิมพ์เล็ก-ใหญ่มีผล) รวมถึง rule ของ collection "deletedPlayers" ด้วย`;
       SFX.error();
     }
   });
