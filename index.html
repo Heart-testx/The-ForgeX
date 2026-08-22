@@ -941,15 +941,27 @@ async function pullCloudStateThenWatch(){
 }
 
 let cloudSaveTimer = null;
+let lastCloudSaveAt = 0;
+const CLOUD_SAVE_MIN_GAP_MS = 15000; // เขียนขึ้น Firestore ได้บ่อยสุด 1 ครั้งทุก 15 วิ (ลดจำนวนการบันทึกลง)
+function doCloudSaveNow(){
+  lastCloudSaveAt = Date.now();
+  db.collection("players").doc(myPlayer.id).set(
+    { username: myPlayer.username, state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+    { merge: true }
+  ).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
+}
 function cloudSaveState(){
   if(!myPlayer || applyingRemote) return;
-  clearTimeout(cloudSaveTimer);
-  cloudSaveTimer = setTimeout(()=>{
-    db.collection("players").doc(myPlayer.id).set(
-      { username: myPlayer.username, state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
-      { merge: true }
-    ).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
-  }, 1500);
+  const elapsed = Date.now() - lastCloudSaveAt;
+  if(elapsed >= CLOUD_SAVE_MIN_GAP_MS){
+    // ห่างจากครั้งก่อนพอแล้ว รอสั้นๆ เผื่อมีการเปลี่ยนแปลงต่อเนื่องในช่วงนี้ แล้วค่อยบันทึกทีเดียว
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(doCloudSaveNow, 800);
+  }else{
+    // เพิ่งบันทึกไปเมื่อไม่นาน รอจนครบรอบก่อนค่อยบันทึกครั้งถัดไป
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(doCloudSaveNow, CLOUD_SAVE_MIN_GAP_MS - elapsed);
+  }
 }
 
 /* ================= STATE & SAVE ================= */
@@ -1698,9 +1710,11 @@ function openAdminPanel(){
   if(myPlayer){ document.getElementById("adminOwnId").textContent = myPlayer.id; document.getElementById("adminOwnName").textContent = myPlayer.username; }
 }
 function closeAdminPanel(){ document.getElementById("adminModalBg").classList.remove("active"); }
+function isAdminUser(){ return !!(myPlayer && myPlayer.username && myPlayer.username.trim().toLowerCase() === "admin"); }
 document.addEventListener("keydown", (e)=>{
   if(e.key === "F8"){
     e.preventDefault();
+    if(!isAdminUser()){ toast("🚫 คุณไม่มีสิทธิ์เข้าถึง Admin Panel"); return; }
     const bg = document.getElementById("adminModalBg");
     if(bg.classList.contains("active")) closeAdminPanel(); else openAdminPanel();
   }
@@ -2212,7 +2226,7 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
   renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop();
-  requestAnimationFrame(afkTick); setInterval(saveGame, 5000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000);
+  requestAnimationFrame(afkTick); setInterval(saveGame, 15000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000);
 })();
 </script>
 </body>
