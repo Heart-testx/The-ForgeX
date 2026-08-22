@@ -382,7 +382,19 @@
   .modal-bg{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:100;padding:14px;}
   .modal-bg.active{display:flex;}
   .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px;max-width:340px;width:100%;text-align:center;position:relative;}
-  .modal-box.wide{max-width:520px; text-align:left;}
+  .modal-box.wide{max-width:520px; text-align:left; max-height:86vh; overflow-y:auto;}
+  /* Patch 3.11: Admin Panel ยาวเกินจอ (หลายบล็อกฟีเจอร์ต่อกันเป็นแนวยาว) — ทำ 2 อย่างพร้อมกัน
+     1) จำกัดความสูง modal-box.wide ไว้ที่ 86% ของจอ แล้ว scroll ภายในแทนที่จะดันหน้าเว็บทั้งหน้ายาวลงไป
+     2) พับแต่ละบล็อกฟีเจอร์เป็น <details>/<summary> (accordion) แสดงแค่หัวข้อ กดถึงค่อยขยาย ลดความสูง
+        เริ่มต้นลงมาก แทนที่จะกางทุกบล็อกค้างไว้ตลอดเวลาเหมือนเดิม */
+  .admin-section{border-top:1px solid var(--border); padding-top:10px; margin-top:12px;}
+  .admin-section:first-of-type{border-top:none; margin-top:8px; padding-top:0;}
+  .admin-section summary{cursor:pointer; font-weight:700; font-size:.85rem; padding:4px 0; list-style:none;
+    display:flex; align-items:center; justify-content:space-between; gap:8px; user-select:none;}
+  .admin-section summary::-webkit-details-marker{display:none;}
+  .admin-section summary::after{content:"▸"; color:var(--muted); font-weight:400; transition:transform .2s; flex-shrink:0;}
+  .admin-section[open] summary::after{transform:rotate(90deg);}
+  .admin-section .admin-body{padding-top:10px;}
   .modal-close{position:absolute;top:8px;right:12px;cursor:pointer;color:var(--muted);font-size:1.2rem;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);padding:10px 18px;border-radius:10px;font-size:.85rem;opacity:0;transition:opacity .3s;z-index:200; pointer-events:none;}
   .toast.show{opacity:1;}
@@ -724,105 +736,129 @@
       <button class="btn" id="adminLogoutBtn" style="padding:3px 10px; font-size:.72rem; margin-left:8px;">ออกจากระบบ</button>
     </div>
 
-    <hr style="border-color:var(--border); margin:10px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--soul);"><b>🎯 เป้าหมาย (Patch 2.3)</b></div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <input type="text" id="adminTargetId" placeholder="ใส่ Player ID ผู้เล่น (เว้นว่าง = เพิ่มให้ตัวเอง)"
-        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-    </div>
-    <div class="small-note" id="adminTargetStatus" style="margin-top:6px; min-height:14px;"></div>
+    <hr style="border-color:var(--border); margin:10px 0 0;">
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--mythic);"><b>🗑️ ลบ Player ID ถาวร (Admin Only)</b></div>
-    <div class="small-note" style="margin-bottom:8px;">ลบข้อมูลผู้เล่นออกจากคลาวด์แบบถาวร กู้คืนไม่ได้ (รวมทุกอย่างรวมถึง Va Coin/กรอบโปรไฟล์ — ต่างจากปุ่ม Reset Save ของผู้เล่นเองที่ยังเก็บของที่ซื้อด้วย Va Coin ไว้) ผู้เล่นจะเห็นข้อความแจ้งเหตุผลก่อนเริ่มเกมใหม่</div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <input type="text" id="adminDeleteTargetId" placeholder="ใส่ Player ID ที่จะลบถาวร"
-        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-      <select id="adminDeleteReasonSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-        <option value="banned">🚫 โดนแบน</option>
-        <option value="cheat">⚠️ โกง / ใช้บั๊กเกม</option>
-        <option value="griefing">😡 ป่วนผู้เล่นคนอื่น</option>
-        <option value="request">🙋 ผู้เล่นขอลบเอง</option>
-        <option value="other">📝 อื่นๆ (ระบุด้านล่าง)</option>
-      </select>
-    </div>
-    <textarea id="adminDeleteReasonNote" placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ) — ผู้เล่นจะเห็นข้อความนี้ด้วย" rows="2"
-      style="width:100%; margin-top:6px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
-    <button class="btn" id="adminDeleteBtn" style="background:var(--mythic); color:#fff; margin-top:8px;">🗑️ ลบถาวร</button>
-    <div class="small-note" id="adminDeleteStatus" style="margin-top:6px; min-height:14px;"></div>
+    <details class="admin-section" open>
+      <summary style="color:var(--soul);">🎯 เป้าหมาย (Patch 2.3)</summary>
+      <div class="admin-body">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <input type="text" id="adminTargetId" placeholder="ใส่ Player ID ผู้เล่น (เว้นว่าง = เพิ่มให้ตัวเอง)"
+            style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+        </div>
+        <div class="small-note" id="adminTargetStatus" style="margin-top:6px; min-height:14px;"></div>
+      </div>
+    </details>
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>🎁 สร้าง Redeem Code (Admin Only)</b></div>
-    <div class="small-note" style="margin-bottom:8px;">กำหนดโค้ด รางวัลที่จะแจก และจำนวนครั้งที่ใช้ได้ทั้งหมด (เว้นว่างหรือ 0 = ไม่จำกัดจำนวนครั้ง) — ผู้เล่นแต่ละคนใช้โค้ดเดียวกันซ้ำได้แค่ 1 ครั้งเสมอ</div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
-      <input type="text" id="adminCodeInput" placeholder="ชื่อโค้ด เช่น SUMMER2026" maxlength="30"
-        style="flex:1; min-width:200px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-transform:uppercase;">
-      <input type="number" id="adminCodeMaxUses" min="0" value="0" title="จำกัดใช้ทั้งหมดกี่ครั้ง (0 = ไม่จำกัด)"
-        style="width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);" placeholder="ใช้ได้ทั้งหมดกี่ครั้ง (0=ไม่จำกัด)">
-    </div>
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-bottom:8px;">
-      <label class="small-note">🪙 ทอง<input type="number" id="adminCodeGold" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
-      <label class="small-note">⛓️ เหล็ก<input type="number" id="adminCodeIron" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
-      <label class="small-note">💎 หินวิญญาณ<input type="number" id="adminCodeSouls" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
-      <label class="small-note">🌟 Stardust<input type="number" id="adminCodeStardust" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
-      <label class="small-note">✨ Va Coin<input type="number" id="adminCodeVaCoin" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
-    </div>
-    <button class="btn gold" id="adminCreateCodeBtn">➕ สร้างโค้ด</button>
-    <div class="small-note" id="adminCodeStatus" style="margin-top:6px; min-height:14px;"></div>
-    <div class="small-note" style="margin-top:14px; margin-bottom:6px;">📋 รายการโค้ดที่มีอยู่ (ล่าสุด 50 โค้ด)</div>
-    <div id="adminCodeList" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
+    <details class="admin-section">
+      <summary style="color:var(--mythic);">🗑️ ลบ Player ID ถาวร (Admin Only)</summary>
+      <div class="admin-body">
+        <div class="small-note" style="margin-bottom:8px;">ลบข้อมูลผู้เล่นออกจากคลาวด์แบบถาวร กู้คืนไม่ได้ (รวมทุกอย่างรวมถึง Va Coin/กรอบโปรไฟล์ — ต่างจากปุ่ม Reset Save ของผู้เล่นเองที่ยังเก็บของที่ซื้อด้วย Va Coin ไว้) ผู้เล่นจะเห็นข้อความแจ้งเหตุผลก่อนเริ่มเกมใหม่</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <input type="text" id="adminDeleteTargetId" placeholder="ใส่ Player ID ที่จะลบถาวร"
+            style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+          <select id="adminDeleteReasonSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+            <option value="banned">🚫 โดนแบน</option>
+            <option value="cheat">⚠️ โกง / ใช้บั๊กเกม</option>
+            <option value="griefing">😡 ป่วนผู้เล่นคนอื่น</option>
+            <option value="request">🙋 ผู้เล่นขอลบเอง</option>
+            <option value="other">📝 อื่นๆ (ระบุด้านล่าง)</option>
+          </select>
+        </div>
+        <textarea id="adminDeleteReasonNote" placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ) — ผู้เล่นจะเห็นข้อความนี้ด้วย" rows="2"
+          style="width:100%; margin-top:6px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
+        <button class="btn" id="adminDeleteBtn" style="background:var(--mythic); color:#fff; margin-top:8px;">🗑️ ลบถาวร</button>
+        <div class="small-note" id="adminDeleteStatus" style="margin-top:6px; min-height:14px;"></div>
+      </div>
+    </details>
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:10px;">
-      เปิด Event เพื่อเพิ่ม<b>โอกาสดรอปของหายาก +1000%</b> จาก <b>The Forge</b> และ <b>หอคอยบอส</b> (ยังคงได้ไอเทม 1 ชิ้นต่อครั้งเหมือนปกติ ไม่ทำให้ไอเทมเฟ้อ)
-      พร้อมเพิ่มรางวัลทอง/เหล็ก/หินวิญญาณจากบอส x10
-      ผู้เล่นจะเห็นประกาศแจ้งเตือนทันทีทั้งตอนเริ่มและตอนจบ Event
-    </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <button class="btn gold" id="adminEventToggleBtn">⚡ เปิด Event (ไม่จำกัดเวลา)</button>
-      <input type="number" id="adminEventMinutes" min="1" max="1440" value="10"
-        style="width:70px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-      <span class="small-note">นาที</span>
-      <button class="btn primary" id="adminEventStartBtn">▶️ เริ่ม Event ตามเวลา</button>
-    </div>
-    <div class="small-note" style="margin-top:10px;" id="adminEventStatus">สถานะ: 🔴 ปิดอยู่</div>
+    <details class="admin-section">
+      <summary style="color:var(--gold);">🎁 สร้าง Redeem Code (Admin Only)</summary>
+      <div class="admin-body">
+        <div class="small-note" style="margin-bottom:8px;">กำหนดโค้ด รางวัลที่จะแจก และจำนวนครั้งที่ใช้ได้ทั้งหมด (เว้นว่างหรือ 0 = ไม่จำกัดจำนวนครั้ง) — ผู้เล่นแต่ละคนใช้โค้ดเดียวกันซ้ำได้แค่ 1 ครั้งเสมอ</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+          <input type="text" id="adminCodeInput" placeholder="ชื่อโค้ด เช่น SUMMER2026" maxlength="30"
+            style="flex:1; min-width:200px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-transform:uppercase;">
+          <input type="number" id="adminCodeMaxUses" min="0" value="0" title="จำกัดใช้ทั้งหมดกี่ครั้ง (0 = ไม่จำกัด)"
+            style="width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);" placeholder="ใช้ได้ทั้งหมดกี่ครั้ง (0=ไม่จำกัด)">
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-bottom:8px;">
+          <label class="small-note">🪙 ทอง<input type="number" id="adminCodeGold" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+          <label class="small-note">⛓️ เหล็ก<input type="number" id="adminCodeIron" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+          <label class="small-note">💎 หินวิญญาณ<input type="number" id="adminCodeSouls" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+          <label class="small-note">🌟 Stardust<input type="number" id="adminCodeStardust" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+          <label class="small-note">✨ Va Coin<input type="number" id="adminCodeVaCoin" value="0" min="0" style="width:100%; margin-top:2px; padding:6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></label>
+        </div>
+        <button class="btn gold" id="adminCreateCodeBtn">➕ สร้างโค้ด</button>
+        <div class="small-note" id="adminCodeStatus" style="margin-top:6px; min-height:14px;"></div>
+        <div class="small-note" style="margin-top:14px; margin-bottom:6px;">📋 รายการโค้ดที่มีอยู่ (ล่าสุด 50 โค้ด)</div>
+        <div id="adminCodeList" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
+      </div>
+    </details>
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>📢 ประกาศแจ้งข่าว (Patch 3.8)</b></div>
-    <div class="small-note" style="margin-bottom:8px;">
-      พิมพ์ข้อความแล้วกดส่ง — ผู้เล่นที่ออนไลน์อยู่ตอนนั้นทุกคนจะเห็น popup เด้งขึ้นทันทีค้างไว้ 5 วินาทีแล้วหายไปเอง
-      (ผู้เล่นที่เพิ่งเข้าเกม/รีเฟรชหน้าจะไม่เห็นประกาศเก่าเด้งซ้ำ)
-    </div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
-      <textarea id="adminAnnounceInput" placeholder="พิมพ์ข้อความประกาศที่นี่..." rows="2"
-        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
-      <button class="btn gold" id="adminAnnounceSendBtn">📢 ส่งประกาศ</button>
-    </div>
+    <details class="admin-section">
+      <summary>⚡ Lucky Event</summary>
+      <div class="admin-body">
+        <div class="small-note" style="margin-bottom:10px;">
+          เปิด Event เพื่อเพิ่ม<b>โอกาสดรอปของหายาก +1000%</b> จาก <b>The Forge</b> และ <b>หอคอยบอส</b> (ยังคงได้ไอเทม 1 ชิ้นต่อครั้งเหมือนปกติ ไม่ทำให้ไอเทมเฟ้อ)
+          พร้อมเพิ่มรางวัลทอง/เหล็ก/หินวิญญาณจากบอส x10
+          ผู้เล่นจะเห็นประกาศแจ้งเตือนทันทีทั้งตอนเริ่มและตอนจบ Event
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button class="btn gold" id="adminEventToggleBtn">⚡ เปิด Event (ไม่จำกัดเวลา)</button>
+          <input type="number" id="adminEventMinutes" min="1" max="1440" value="10"
+            style="width:70px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+          <span class="small-note">นาที</span>
+          <button class="btn primary" id="adminEventStartBtn">▶️ เริ่ม Event ตามเวลา</button>
+        </div>
+        <div class="small-note" style="margin-top:10px;" id="adminEventStatus">สถานะ: 🔴 ปิดอยู่</div>
+      </div>
+    </details>
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>➕ เพิ่มทรัพยากร (Admin Only)</b></div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <select id="adminResourceSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-        <option value="gold">🪙 ทอง</option>
-        <option value="iron">⛓️ เหล็ก</option>
-        <option value="souls">💎 หินวิญญาณ</option>
-        <option value="stardust">🌟 Stardust</option>
-        <option value="vaCoin">✨ Va Coin</option>
-      </select>
-      <input type="number" id="adminResourceAmount" value="1000" style="width:110px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-      <button class="btn gold" id="adminAddResourceBtn">➕ เพิ่ม</button>
-    </div>
+    <details class="admin-section">
+      <summary style="color:var(--gold);">📢 ประกาศแจ้งข่าว (Patch 3.8)</summary>
+      <div class="admin-body">
+        <div class="small-note" style="margin-bottom:8px;">
+          พิมพ์ข้อความแล้วกดส่ง — ผู้เล่นที่ออนไลน์อยู่ตอนนั้นทุกคนจะเห็น popup เด้งขึ้นทันทีค้างไว้ 5 วินาทีแล้วหายไปเอง
+          (ผู้เล่นที่เพิ่งเข้าเกม/รีเฟรชหน้าจะไม่เห็นประกาศเก่าเด้งซ้ำ)
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
+          <textarea id="adminAnnounceInput" placeholder="พิมพ์ข้อความประกาศที่นี่..." rows="2"
+            style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
+          <button class="btn gold" id="adminAnnounceSendBtn">📢 ส่งประกาศ</button>
+        </div>
+      </div>
+    </details>
 
-    <hr style="border-color:var(--border); margin:14px 0;">
-    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>🗡️ เพิ่มอุปกรณ์ / อาวุธ (Admin Only)</b></div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <select id="adminItemSlotSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
-      <select id="adminItemRaritySelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
-      <select id="adminItemNameSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); min-width:160px;"></select>
-      <input type="number" id="adminItemQty" value="1" min="1" max="99" style="width:70px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
-      <button class="btn gold" id="adminAddItemBtn">➕ เพิ่มไอเทม</button>
-    </div>
-    <div class="small-note" style="margin-top:6px;">เพิ่มไอเทมเข้ากระเป๋าโดยตรง ไม่ผ่านระบบสุ่มดรอป (ไม่รับ Auto-Sell)</div>
+    <details class="admin-section">
+      <summary style="color:var(--gold);">➕ เพิ่มทรัพยากร (Admin Only)</summary>
+      <div class="admin-body">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select id="adminResourceSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+            <option value="gold">🪙 ทอง</option>
+            <option value="iron">⛓️ เหล็ก</option>
+            <option value="souls">💎 หินวิญญาณ</option>
+            <option value="stardust">🌟 Stardust</option>
+            <option value="vaCoin">✨ Va Coin</option>
+          </select>
+          <input type="number" id="adminResourceAmount" value="1000" style="width:110px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+          <button class="btn gold" id="adminAddResourceBtn">➕ เพิ่ม</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="admin-section">
+      <summary style="color:var(--gold);">🗡️ เพิ่มอุปกรณ์ / อาวุธ (Admin Only)</summary>
+      <div class="admin-body">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select id="adminItemSlotSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
+          <select id="adminItemRaritySelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
+          <select id="adminItemNameSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); min-width:160px;"></select>
+          <input type="number" id="adminItemQty" value="1" min="1" max="99" style="width:70px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+          <button class="btn gold" id="adminAddItemBtn">➕ เพิ่มไอเทม</button>
+        </div>
+        <div class="small-note" style="margin-top:6px;">เพิ่มไอเทมเข้ากระเป๋าโดยตรง ไม่ผ่านระบบสุ่มดรอป (ไม่รับ Auto-Sell)</div>
+      </div>
+    </details>
   </div>
 </div>
 
