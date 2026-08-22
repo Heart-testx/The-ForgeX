@@ -38,6 +38,18 @@
   .event-banner.active{display:flex;}
   .event-banner .ev-timer{background:#000a; color:#fff; padding:2px 12px; border-radius:20px; font-variant-numeric:tabular-nums;}
 
+  /* Patch 3.8: popup ประกาศแอดมิน — ลอยอยู่กลางบนสุดของจอ ไม่บังการเล่น (pointer-events ปิดตอนซ่อน) */
+  .announce-popup{position:fixed; top:16px; left:50%; z-index:999; max-width:520px; width:92%;
+    background:linear-gradient(135deg,#2a1b00,#3a2600,#2a1b00); border:2px solid var(--gold); border-radius:16px;
+    padding:14px 20px; text-align:center; box-shadow:0 0 34px #ffd24a99, 0 10px 30px #000c;
+    opacity:0; pointer-events:none; cursor:pointer;
+    transform:translate(-50%,-24px); transition:opacity .35s ease, transform .35s ease;}
+  .announce-popup.show{opacity:1; pointer-events:auto; transform:translate(-50%,0);}
+  .announce-popup .ap-title{font-weight:900; color:var(--gold); font-size:.92rem; letter-spacing:.5px; margin-bottom:6px;
+    text-shadow:0 0 10px #ffd24a88;}
+  .announce-popup .ap-msg{color:var(--text); font-size:.9rem; line-height:1.5; white-space:pre-wrap; word-break:break-word;}
+  @media (max-width:640px){ .announce-popup{top:10px; padding:12px 16px;} }
+
   /* HEADER */
   .header{position:relative;display:flex;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;overflow:hidden;transition:box-shadow .6s ease,border-color .6s ease;}
   .header-fx-layer{position:absolute;inset:0;border-radius:16px;pointer-events:none;overflow:hidden;z-index:0;}
@@ -413,6 +425,13 @@
     🎉 <span>LUCKY EVENT!</span> โอกาสดรอปของหายาก +1000% &amp; รางวัลบอส x10! <span class="ev-timer" id="eventTimer"></span>
   </div>
 
+  <!-- Patch 3.8: popup ประกาศจากแอดมิน — ซ่อนอยู่ปกติ (opacity 0, pointer-events none), เด้งขึ้นตอนมีประกาศใหม่
+       แล้วหายเองหลัง 5 วินาที (ดู showAnnouncementPopup ใน JS) กดที่ตัว popup เพื่อปิดก่อนเวลาได้ -->
+  <div class="announce-popup" id="announcePopup" onclick="this.classList.remove('show'); clearTimeout(announcePopupTimer);">
+    <div class="ap-title">📢 ประกาศจากแอดมิน</div>
+    <div class="ap-msg" id="announcePopupMsg"></div>
+  </div>
+
   <div class="header fx-card" id="headerCard">
     <div class="header-fx-layer" id="headerFxLayer"></div>
     <div class="profile-card-wrap" id="profileCardWrap">
@@ -716,6 +735,18 @@
       <button class="btn primary" id="adminEventStartBtn">▶️ เริ่ม Event ตามเวลา</button>
     </div>
     <div class="small-note" style="margin-top:10px;" id="adminEventStatus">สถานะ: 🔴 ปิดอยู่</div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>📢 ประกาศแจ้งข่าว (Patch 3.8)</b></div>
+    <div class="small-note" style="margin-bottom:8px;">
+      พิมพ์ข้อความแล้วกดส่ง — ผู้เล่นที่ออนไลน์อยู่ตอนนั้นทุกคนจะเห็น popup เด้งขึ้นทันทีค้างไว้ 5 วินาทีแล้วหายไปเอง
+      (ผู้เล่นที่เพิ่งเข้าเกม/รีเฟรชหน้าจะไม่เห็นประกาศเก่าเด้งซ้ำ)
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-start;">
+      <textarea id="adminAnnounceInput" placeholder="พิมพ์ข้อความประกาศที่นี่..." rows="2"
+        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-family:inherit; resize:vertical;"></textarea>
+      <button class="btn gold" id="adminAnnounceSendBtn">📢 ส่งประกาศ</button>
+    </div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small-note" style="margin-bottom:8px; color:var(--gold);"><b>➕ เพิ่มทรัพยากร (Admin Only)</b></div>
@@ -1274,7 +1305,9 @@ function createDefaultState(){
     settings: { sfxOn: true, musicOn: true, sfxVol: 0.7, musicVol: 0.3 },
     // Patch 3.1: ระบบ VIP (NORMAL/GOLD) + Daily Login (ฟรี + VIP แยกช่องกัน)
     vip: { tier: "none", expiresAt: 0, goldBulkAvailable: false, goldBulkMonthKey: "", previousFrameId: "" },
-    dailyLogin: { freeClaimed: {}, vipClaimed: {} }
+    dailyLogin: { freeClaimed: {}, vipClaimed: {} },
+    // Patch 3.8: จำ id ของประกาศแอดมินล่าสุดที่ผู้เล่นเคย "เห็น" แล้ว กันประกาศเก่าเด้งซ้ำทุกครั้งที่รีเฟรชหน้า
+    lastSeenAnnouncementId: null
   };
 }
 let state = createDefaultState();
@@ -1334,6 +1367,8 @@ function hydrateStateDefaults(){
   if(!state.dailyLogin) state.dailyLogin = { freeClaimed:{}, vipClaimed:{} };
   if(!state.dailyLogin.freeClaimed) state.dailyLogin.freeClaimed = {};
   if(!state.dailyLogin.vipClaimed) state.dailyLogin.vipClaimed = {};
+  // Patch 3.8: ประกาศแอดมิน
+  if(state.lastSeenAnnouncementId===undefined) state.lastSeenAnnouncementId = null;
 }
 function loadGame(){
   try{
@@ -1448,6 +1483,52 @@ function watchGlobalEvent(){
     if(state.event.active && !wasActive) toast("🎉 Admin เปิด Lucky Event แล้ว!");
     if(!state.event.active && wasActive) toast("⏰ Lucky Event สิ้นสุดแล้ว");
   });
+}
+
+/* Patch 3.8: ประกาศจากแอดมิน (Global Announcement) — ใช้โครงเดียวกับ Lucky Event ด้านบน (เอกสารกลาง
+   meta/announcement ที่ทุกคนฟังแบบเรียลไทม์ผ่าน onSnapshot) เพื่อให้แอดมินพิมพ์ข่าวสั้นๆ แล้วทุกคนที่ออนไลน์
+   อยู่ตอนนั้นเห็น popup เด้งขึ้นทันทีค้างไว้ 5 วินาทีแล้วหายไปเอง ผู้เล่นที่เพิ่งเข้าเกม/รีเฟรชหน้าจะไม่เห็น
+   ประกาศเก่าเด้งซ้ำ เพราะเทียบกับ state.lastSeenAnnouncementId ที่บันทึกไว้ต่อผู้เล่น (ดู hydrateStateDefaults) */
+let globalAnnouncementUnsub = null;
+function sendGlobalAnnouncement(){
+  const input = document.getElementById("adminAnnounceInput");
+  const msg = input ? input.value.trim() : "";
+  if(!msg){ toast("⚠️ กรุณาพิมพ์ข้อความประกาศก่อน"); return; }
+  db.collection("meta").doc("announcement").set({
+    id: Date.now(), message: msg, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedBy: myPlayer ? myPlayer.username : "unknown"
+  }).then(()=>{
+    toast("📢 ส่งประกาศสำเร็จ! ผู้เล่นที่ออนไลน์อยู่จะเห็น popup ทันที");
+    if(input) input.value = "";
+  }).catch(()=>{ toast("⚠️ ส่งประกาศไม่สำเร็จ (ออฟไลน์?)"); SFX.error(); });
+}
+function watchGlobalAnnouncement(){
+  if(globalAnnouncementUnsub) globalAnnouncementUnsub();
+  globalAnnouncementUnsub = db.collection("meta").doc("announcement").onSnapshot((snap)=>{
+    if(snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง (เหมือน watchGlobalEvent)
+    const data = snap.exists ? snap.data() : null;
+    if(!data || !data.id) return;
+    if(state.lastSeenAnnouncementId == null){
+      // ครั้งแรกที่ client นี้ได้ยิน (เพิ่งโหลดหน้า/ผู้เล่นใหม่) — บันทึก baseline ไว้เฉยๆ ไม่เด้ง popup
+      // ย้อนหลัง กันประกาศเก่าที่แอดมินเคยส่งไปแล้วเด้งซ้ำทุกครั้งที่มีคนรีเฟรชหน้า
+      state.lastSeenAnnouncementId = data.id; saveGame(); return;
+    }
+    if(data.id !== state.lastSeenAnnouncementId){
+      state.lastSeenAnnouncementId = data.id;
+      showAnnouncementPopup(data.message);
+      saveGame();
+    }
+  });
+}
+let announcePopupTimer = null;
+function showAnnouncementPopup(message){
+  const box = document.getElementById("announcePopup"); const msgEl = document.getElementById("announcePopupMsg");
+  if(!box || !msgEl) return;
+  msgEl.textContent = message;
+  box.classList.add("show");
+  SFX.eventStart();
+  if(announcePopupTimer) clearTimeout(announcePopupTimer);
+  announcePopupTimer = setTimeout(()=>{ box.classList.remove("show"); }, 5000);
 }
 
 function isEventActive(){
@@ -3011,6 +3092,8 @@ document.getElementById("adminEventStartBtn").addEventListener("click", ()=>{
   document.getElementById("adminEventMinutes").value = mins;
   startEvent(mins);
 });
+// Patch 3.8: ปุ่มส่งประกาศแอดมิน
+document.getElementById("adminAnnounceSendBtn").addEventListener("click", sendGlobalAnnouncement);
 // Patch 1.7: ปุ่ม Reset Save เปลี่ยนมาใช้ showConfirm() แทน window.confirm() ด้วยเหตุผลเดียวกับปุ่มจุติ
 // Patch 2.8 BUGFIX: เดิมแค่ localStorage.removeItem() แล้ว reload() มีปัญหา 2 อย่าง —
 // 1) ของที่ผู้เล่นจ่ายเงินจริงซื้อด้วย Va Coin (กรอบโปรไฟล์) หายไปด้วย ทั้งที่ไม่ควรรีเซ็ต
@@ -3065,6 +3148,7 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   // (ล้างเซฟ + ตั้งเวลารีโหลดหน้า) แล้ว return false ไว้ ตรงนี้เลยต้องหยุดไม่ init ต่อด้วย state ที่ไม่สมบูรณ์
   if(cloudOk === false) return;
   watchGlobalEvent(); // Patch 2.4: ฟัง Lucky Event แบบเรียลไทม์ ให้ทุกคนเห็นพร้อมกันไม่ใช่แค่แอดมิน
+  watchGlobalAnnouncement(); // Patch 3.8: ฟังประกาศแอดมินแบบเรียลไทม์
   // ซิงก์ checkbox auto-sell กับ state ล่าสุดหลังจากคลาวด์ทับแล้ว
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
