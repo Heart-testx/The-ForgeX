@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>AFK Relic Master - End Game Edition (Patch 3.17)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -596,6 +596,56 @@
 /* PATCH 3.18.1 — ADMIN ULTIMATE label intentionally breaks the row border for premium look. */
 .online-player-row.fx-online.admin-ultimate .admin-ultimate-frame{z-index:25;overflow:visible;}
 .online-player-row.fx-online.admin-ultimate .admin-ultimate-frame .admin-label{z-index:80;bottom:-13px;transform:translateX(-50%) scale(1.08);filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ff00e5);}
+
+/* PATCH 3.19 — MOBILE PROFILE FRAME / ZOOM FIX
+   Cosmetic frame layers extend beyond their avatar for the premium look. On some mobile
+   browsers those oversized visual bounds can trigger horizontal overflow / viewport
+   re-layout that feels like the page is randomly zooming in/out. Keep the visual layers
+   absolute while locking the document's horizontal layout width. */
+html,body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overscroll-behavior-x:none;
+}
+body{
+  min-width:0;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{
+  width:100%;
+  max-width:1150px;
+  min-width:0;
+}
+.profile-card-wrap,
+.online-profile-frame,
+.admin-ultimate-frame{
+  max-width:100%;
+}
+.profile-card-wrap > .admin-ultimate-frame{
+  left:-14px; right:-14px; width:auto;
+  max-width:none;
+}
+@media (max-width:640px){
+  /* Do not let the premium frame's glow/sparkles participate in page sizing. */
+  .header,.online-player-row,.profile-card-wrap,.online-profile-frame{
+    contain:layout style;
+  }
+  .profile-card-wrap{
+    flex:0 0 120px;
+  }
+  .profile-info{
+    min-width:0;
+    flex:1 1 calc(100% - 136px);
+  }
+  .stats-grid{
+    min-width:0;
+    width:100%;
+  }
+  .admin-ultimate-frame .admin-label{
+    max-width:calc(100vw - 28px);
+  }
+}
 </style>
 <script>
 /* PATCH 3.17 — shared admin frame renderer */
