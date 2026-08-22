@@ -1080,15 +1080,36 @@ function initPlayer(){
 
 // โหลด state ล่าสุดจากคลาวด์ (ถ้ามี) มาทับ state ในเครื่อง แล้วเปิด listener แบบเรียลไทม์
 // เพื่อให้แอดมินเพิ่มของ/เสกให้ผู้เล่นได้แม้ผู้เล่นจะเปิดเกมอยู่คนละเครื่อง
+// Patch 3.2 BUGFIX (item หายตอนรีเฟรช): เดิมโค้ดตรงนี้ทับ state ในเครื่องด้วยข้อมูลจากคลาวด์เสมอ
+// แบบไม่มีเงื่อนไข แต่ตั้งแต่ Patch 2.8 คลาวด์ sync ห่างสุด 5 นาที/ครั้ง (localStorage ยังเซฟทุก 15 วิ
+// เหมือนเดิม) ผลคือถ้าผู้เล่นได้ไอเทมมาแล้วรีเฟรชหน้าภายใน 5 นาทีนั้น จะโดนข้อมูลคลาวด์ที่เก่ากว่าทับ
+// ไอเทมที่เพิ่งได้จึง "หาย" ทั้งที่จริงๆ ยังอยู่ใน localStorage แค่ยังไม่ทันขึ้นคลาวด์
+// วิธีแก้: เทียบเวลา - ถ้าของในเครื่องใหม่กว่าที่อยู่บนคลาวด์ ให้ดันของในเครื่องขึ้นคลาวด์ก่อน
+// (แทนที่จะปล่อยให้คลาวด์เก่าทับ) แล้วค่อยเปิด listener ต่อตามปกติ
 async function pullCloudStateThenWatch(){
   const ref = db.collection("players").doc(myPlayer.id);
   try{
     const doc = await ref.get();
     if(doc.exists && doc.data().state){
-      applyingRemote = true;
-      state = Object.assign(state, doc.data().state);
-      hydrateStateDefaults();
-      applyingRemote = false;
+      const cloudData = doc.data();
+      const localTs = parseInt(localStorage.getItem(SAVE_KEY + "_ts") || "0", 10);
+      const cloudTs = (cloudData.updatedAt && typeof cloudData.updatedAt.toMillis === "function") ? cloudData.updatedAt.toMillis() : 0;
+      if(localTs > cloudTs){
+        // เครื่องนี้มีความคืบหน้าใหม่กว่าที่คลาวด์ (เช่น เพิ่งเก็บไอเทมแล้วรีเฟรชก่อนถึงรอบ sync)
+        // ห้ามทับ state สดด้วยของคลาวด์ที่เก่ากว่า -> ดันของในเครื่อง (ของจริงล่าสุด) ขึ้นคลาวด์ก่อน
+        try{
+          await ref.set(
+            { username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+            { merge: true }
+          );
+          lastCloudSaveAt = Date.now();
+        }catch(e){ /* ออฟไลน์ - ไม่เป็นไร ของในเครื่องยังปลอดภัยอยู่ดี จะ sync รอบถัดไปที่ต่อเน็ตได้ */ }
+      }else{
+        applyingRemote = true;
+        state = Object.assign(state, cloudData.state);
+        hydrateStateDefaults();
+        applyingRemote = false;
+      }
     }else if(!doc.exists){
       // Patch 3.0: .get() สำเร็จ (ไม่ใช่ error จากออฟไลน์) แต่ไม่พบเอกสารผู้เล่นเลย = ถูกแอดมินลบถาวรไปแล้ว
       // ล้างข้อมูลในเครื่องนี้ทิ้งแล้วเริ่มเกมใหม่ทั้งหมด (เด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ)
@@ -1182,7 +1203,23 @@ let state = createDefaultState();
 let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
-function saveGame(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); cloudSaveState(); }
+function saveGame(){
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  // Patch 3.2: บันทึกเวลาที่เซฟในเครื่องล่าสุด ใช้เทียบกับเวลาบนคลาวด์ตอนโหลดเกมใหม่ (ดู pullCloudStateThenWatch)
+  localStorage.setItem(SAVE_KEY + "_ts", String(Date.now()));
+  cloudSaveState();
+}
+// Patch 3.3: บังคับ sync ขึ้นคลาวด์ทันที (ข้าม throttle 5 นาที) ใช้ทั้งตอนออกจากหน้า (กันของหายตอน
+// รีเฟรช - ดู Patch 3.2) และตอนเปลี่ยน/ซื้อกรอบโปรไฟล์ เพื่อให้หน้า Rank ของคนอื่นเห็นกรอบใหม่ไวขึ้น
+// แทนที่จะต้องรอรอบ sync ปกติสูงสุด 5 นาที ใช้แค่ตอนมี "การกระทำของผู้เล่นจริงๆ" เท่านั้น (ไม่ใช่ heartbeat
+// รัวๆ) จึงไม่กระทบโควตา Firestore เหมือนปัญหาที่ Patch 2.7/2.8 เคยแก้ไปแล้ว
+function forceCloudSaveNow(){
+  if(!myPlayer || applyingRemote) return;
+  clearTimeout(cloudSaveTimer);
+  doCloudSaveNow();
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "hidden") forceCloudSaveNow(); });
+window.addEventListener("pagehide", forceCloudSaveNow);
 // BUGFIX: เดิม defaulting logic นี้อยู่ใน loadGame() เท่านั้น แต่ pullCloudStateThenWatch() ก็ทับ state
 // ด้วยข้อมูลจากคลาวด์เหมือนกัน (ทั้งตอนดึงครั้งแรกและทุกครั้งที่มี realtime update) โดยไม่เคย backfill ฟิลด์ใหม่ๆ
 // เลย ถ้าเซฟบนคลาวด์เก่ากว่า field ใหม่ (เช่น settings/frames/shop ที่เพิ่มมาทีหลัง) ค่าพวกนี้จะถูกลบทิ้งเงียบๆ
@@ -1925,7 +1962,7 @@ function checkVipExpiry(){
   if(state.vip.tier!=="none" && Date.now() >= state.vip.expiresAt){
     state.vip.tier = "none"; state.vip.goldBulkAvailable = false;
     revokeVipFrame();
-    renderFrameShop(); renderUI(); saveGame();
+    renderFrameShop(); renderUI(); saveGame(); forceCloudSaveNow();
     toast("⌛ สถานะ VIP หมดอายุแล้ว — กรอบ VIP ถูกถอดออกอัตโนมัติ");
   }
 }
@@ -1935,7 +1972,7 @@ document.getElementById("buyVipNormalBtn").addEventListener("click", ()=>{
   state.vaCoin -= 399; state.vip.tier = "normal"; state.vip.expiresAt = endOfMonthTs(new Date());
   grantVipFrame("normal");
   toast("👤 เปิดใช้งาน VIP NORMAL! ได้กรอบโปรไฟล์ VIP มาใช้ด้วย"); logMsg("👤 ซื้อ VIP NORMAL (399 ✨) — อยู่ถึงสิ้นเดือนปฏิทินนี้ (พร้อมกรอบโปรไฟล์ VIP)"); SFX.coin();
-  renderUI(); renderDailyLoginPanel(); renderFrameShop(); saveGame();
+  renderUI(); renderDailyLoginPanel(); renderFrameShop(); saveGame(); forceCloudSaveNow();
 });
 document.getElementById("buyVipGoldBtn").addEventListener("click", ()=>{
   if(state.vaCoin < 999){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
@@ -1943,7 +1980,7 @@ document.getElementById("buyVipGoldBtn").addEventListener("click", ()=>{
   state.vip.goldBulkAvailable = true; state.vip.goldBulkMonthKey = monthKeyOf(new Date());
   grantVipFrame("gold");
   toast("👑 เปิดใช้งาน VIP GOLD! ได้กรอบโปรไฟล์ VIP GOLD มาใช้ด้วย"); logMsg("👑 ซื้อ VIP GOLD (999 ✨) — อยู่ถึงสิ้นเดือนปฏิทินนี้ (รับรางวัลทั้งเดือนได้ทันที + กรอบโปรไฟล์ VIP GOLD)"); SFX.coin();
-  renderUI(); renderDailyLoginPanel(); renderFrameShop(); saveGame();
+  renderUI(); renderDailyLoginPanel(); renderFrameShop(); saveGame(); forceCloudSaveNow();
 });
 document.getElementById("claimVipBulkBtn").addEventListener("click", ()=>{
   const now = new Date();
@@ -2160,16 +2197,16 @@ function buyFrame(id){
   if(state.vaCoin < f.price){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
   state.vaCoin -= f.price; state.frames.owned.push(id); state.frames.equipped = id;
   toast(`🖼️ ปลดล็อกกรอบ "${f.name}" สำเร็จ!`); logMsg(`🖼️ ซื้อกรอบโปรไฟล์ "${f.name}" (${fmt(f.price)} ✨) จากร้านค้า`); SFX.coin();
-  applyFrameVisual(); renderUI(); renderShopPanel(); renderFrameShop(); saveGame();
+  applyFrameVisual(); renderUI(); renderShopPanel(); renderFrameShop(); saveGame(); forceCloudSaveNow();
 }
 function equipFrame(id){
   if(!isFrameOwned(id)) return;
   state.frames.equipped = id; SFX.equip();
-  applyFrameVisual(); renderFrameShop(); saveGame();
+  applyFrameVisual(); renderFrameShop(); saveGame(); forceCloudSaveNow();
 }
 function unequipFrame(){
   state.frames.equipped = null; SFX.equip();
-  applyFrameVisual(); renderFrameShop(); saveGame();
+  applyFrameVisual(); renderFrameShop(); saveGame(); forceCloudSaveNow();
 }
 let frameParticleTimers = [];
 function stopFrameParticles(){
