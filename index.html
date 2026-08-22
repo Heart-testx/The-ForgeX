@@ -1170,7 +1170,7 @@ function initPlayer(){
         const localRaw = localStorage.getItem(SAVE_KEY);
         const initialState = localRaw ? JSON.parse(localRaw) : state;
         await db.collection("players").doc(id).set({
-          username: name, state: initialState, power: 0, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          username: name, state: initialState, power: 0, isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         // แสดง Player ID ให้ผู้เล่นเห็น + จดไว้ ก่อนเข้าเกมจริง
         created = true;
@@ -1208,7 +1208,7 @@ async function pullCloudStateThenWatch(){
         // ห้ามทับ state สดด้วยของคลาวด์ที่เก่ากว่า -> ดันของในเครื่อง (ของจริงล่าสุด) ขึ้นคลาวด์ก่อน
         try{
           await ref.set(
-            { username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+            { username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
             { merge: true }
           );
           lastCloudSaveAt = Date.now();
@@ -1265,7 +1265,7 @@ const CLOUD_SAVE_MIN_GAP_MS = 300000; // เขียนขึ้น Firestore �
 function doCloudSaveNow(){
   lastCloudSaveAt = Date.now();
   db.collection("players").doc(myPlayer.id).set(
-    { username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+    { username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
     { merge: true }
   ).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
 }
@@ -1664,12 +1664,16 @@ function renderRankTop3(){
   const listEl = document.getElementById("rankList");
   listEl.innerHTML = `<div class="small-note" style="text-align:center;">⏳ กำลังโหลด...</div>`;
   if(rankUnsub) rankUnsub(); // เผื่อมีการเรียกซ้ำ (เช่นกดปุ่มรีเฟรช) กันสมัครซ้อนหลายตัว
-  rankUnsub = db.collection("players").orderBy("power","desc").limit(3).onSnapshot((snap)=>{
+  // Patch 3.9: ดึงมา 10 อันดับแรกแทนที่จะดึงแค่ 3 (Firestore query ระดับนี้กรอง isAdminAccount ใน query
+  // ตรงๆ ไม่ได้ ต้อง index เพิ่ม) แล้วกรองบัญชีแอดมินออกฝั่ง client ก่อนค่อยตัดเหลือ Top 3 จริง — บัญชีแอดมิน
+  // จึงไม่โผล่ในอันดับเลย ไม่ว่าพลังจะสูงแค่ไหนก็ตาม
+  rankUnsub = db.collection("players").orderBy("power","desc").limit(10).onSnapshot((snap)=>{
     stopRankParticles(); // เคลียร์ particle timer ของรอบเก่าก่อน re-render ทุกครั้ง กันไทม์เมอร์ค้าง
-    if(snap.empty){ listEl.innerHTML = `<div class="small-note" style="text-align:center;">ยังไม่มีข้อมูลผู้เล่น</div>`; return; }
+    const docs = snap.docs.filter(doc=>!doc.data().isAdminAccount).slice(0,3);
+    if(docs.length===0){ listEl.innerHTML = `<div class="small-note" style="text-align:center;">ยังไม่มีข้อมูลผู้เล่น</div>`; return; }
     listEl.innerHTML = "";
     let rank = 0;
-    snap.forEach(doc=>{
+    docs.forEach(doc=>{
       const d = doc.data();
       const isMe = myPlayer && doc.id === myPlayer.id;
       // ดึงกรอบโปรไฟล์ที่ผู้เล่นคนนั้นสวมอยู่ (เก็บอยู่ใน state.frames.equipped ที่ sync ขึ้นคลาวด์อยู่แล้ว
@@ -3118,7 +3122,7 @@ async function resetSaveKeepVaCoinItems(){
       // ไม่ใช้ {merge:true} เพราะต้องการให้ state บนคลาวด์ถูกแทนที่ทั้งก้อนด้วยของที่รีเซ็ตแล้ว
       // ถ้า merge จะมีความเสี่ยงที่ field เก่าที่ merge แบบ deep ไม่ครบจะหลงเหลืออยู่
       await db.collection("players").doc(myPlayer.id).set({
-        username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ /* ออฟไลน์ - รีเซ็ตในเครื่องสำเร็จอยู่ดี พอกลับมาออนไลน์ค่อย sync ขึ้นคลาวด์รอบถัดไป */ }
   }
