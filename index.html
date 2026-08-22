@@ -7,6 +7,8 @@
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<!-- Patch 2.9: Firebase Authentication สำหรับระบบ Admin Login (บัญชีเดียว ป้องกันคนอื่นสวมรอยเป็น "admin") -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <style>
   :root{
     --bg:#0a0a12; --panel:#12121e; --panel2:#181826; --border:#2a2a3d;
@@ -517,12 +519,31 @@
   </div>
 </div>
 
+<!-- ADMIN LOGIN POPUP (Patch 2.9): กด F8 เพื่อเปิด ถ้ายังไม่ได้ login เป็นแอดมิน — เข้าได้เฉพาะบัญชีที่สร้าง
+     ไว้ใน Firebase Authentication (Console > Authentication > Users) เท่านั้น ไม่ใช่แค่ตั้งชื่อ "admin" เฉยๆ -->
+<div class="modal-bg" id="adminLoginModalBg">
+  <div class="modal-box">
+    <span class="modal-close" onclick="closeAdminLoginModal()">✕</span>
+    <h3 style="margin-bottom:8px; color:var(--gold);">🔐 Admin Login</h3>
+    <div class="small-note" style="margin-bottom:12px;">เข้าสู่ระบบด้วยบัญชีแอดมิน (ตั้งไว้ล่วงหน้าใน Firebase Authentication)</div>
+    <input type="email" id="adminLoginEmail" placeholder="อีเมลแอดมิน" autocomplete="username"
+      style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); margin-bottom:8px;">
+    <input type="password" id="adminLoginPassword" placeholder="รหัสผ่าน" autocomplete="current-password"
+      style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); margin-bottom:8px;">
+    <div class="small-note" id="adminLoginStatus" style="min-height:16px; margin-bottom:8px;"></div>
+    <button class="btn gold" id="adminLoginBtn" style="width:100%;">🚀 เข้าสู่ระบบ</button>
+  </div>
+</div>
+
 <!-- ADMIN PANEL POPUP: ซ่อนอยู่ตามค่าเริ่มต้น กด F8 เพื่อเปิด/ปิด (Patch 2.0) -->
 <div class="modal-bg" id="adminModalBg">
   <div class="modal-box wide">
     <span class="modal-close" onclick="closeAdminPanel()">✕</span>
     <h3 style="margin-bottom:8px; color:var(--gold);">🛠️ Admin Panel <span class="small-note">(กด F8 เพื่อปิด)</span></h3>
-    <div class="small-note" style="margin-bottom:10px;">🆔 ID ของคุณ: <b id="adminOwnId" style="color:var(--gold); user-select:all;">-</b> (<span id="adminOwnName">-</span>)</div>
+    <div class="small-note" style="margin-bottom:4px;">🆔 ID ของคุณ: <b id="adminOwnId" style="color:var(--gold); user-select:all;">-</b> (<span id="adminOwnName">-</span>)</div>
+    <div class="small-note" style="margin-bottom:10px;">🔐 ล็อกอินแอดมินด้วย: <b id="adminAuthEmail" style="color:var(--soul);">-</b>
+      <button class="btn" id="adminLogoutBtn" style="padding:3px 10px; font-size:.72rem; margin-left:8px;">ออกจากระบบ</button>
+    </div>
 
     <hr style="border-color:var(--border); margin:10px 0;">
     <div class="small-note" style="margin-bottom:8px; color:var(--soul);"><b>🎯 เป้าหมาย (Patch 2.3)</b></div>
@@ -531,6 +552,16 @@
         style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
     </div>
     <div class="small-note" id="adminTargetStatus" style="margin-top:6px; min-height:14px;"></div>
+
+    <hr style="border-color:var(--border); margin:14px 0;">
+    <div class="small-note" style="margin-bottom:8px; color:var(--mythic);"><b>🗑️ ลบ Player ID ถาวร (Admin Only)</b></div>
+    <div class="small-note" style="margin-bottom:8px;">ลบข้อมูลผู้เล่นออกจากคลาวด์แบบถาวร กู้คืนไม่ได้ — ใช้สำหรับล้าง ID ที่ทดลองเล่นทิ้ง</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <input type="text" id="adminDeleteTargetId" placeholder="ใส่ Player ID ที่จะลบถาวร"
+        style="flex:1; min-width:220px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+      <button class="btn" id="adminDeleteBtn" style="background:var(--mythic); color:#fff;">🗑️ ลบถาวร</button>
+    </div>
+    <div class="small-note" id="adminDeleteStatus" style="margin-top:6px; min-height:14px;"></div>
 
     <hr style="border-color:var(--border); margin:14px 0;">
     <div class="small-note" style="margin-bottom:10px;">
@@ -870,6 +901,14 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Patch 2.9: อีเมลของบัญชีแอดมิน "คนเดียว" ที่อนุญาตให้เข้า Admin Panel ได้
+// ⚠️ ต้องแก้ตรงนี้เป็นอีเมลจริงของคุณ (บัญชีที่คุณสร้างไว้ใน Firebase Console > Authentication > Users)
+// ค่านี้ใช้เช็คฝั่ง client เพื่อเปิด/ปิดปุ่มใน UI เท่านั้น — ตัวที่บังคับสิทธิ์จริง ๆ (กันคนอื่นลบ/แก้ข้อมูล
+// จาก DevTools ได้ตรง ๆ) คือ Firestore Security Rules ที่ต้องไปตั้งใน Firebase Console เพิ่มเติม (ดูคำแนะนำ
+// ที่ส่งแยกไว้ให้พร้อมโค้ด rule สำเร็จรูป)
+const ADMIN_EMAIL = "admin_heart@gmail.com";
 
 const PLAYER_KEY = "afk_relic_player_v1";
 const ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ตัดตัวอักษร/ตัวเลขที่สับสนง่ายออก (I,O,0,1,L)
@@ -1872,21 +1911,87 @@ function applyFrameVisual(){
 
 /* ================= ADMIN: F8 HIDDEN PANEL (Patch 1.8) ================= */
 /* ================= ADMIN: F8 POPUP PANEL (Patch 2.0) ================= */
+// Patch 2.9 BUGFIX: เดิม isAdminUser() เช็คแค่ myPlayer.username === "admin" ซึ่งเป็นช่องโหว่ร้ายแรง —
+// ใครก็ตั้งชื่อผู้เล่นตอนเข้าเกมครั้งแรกว่า "admin" ก็เข้า Admin Panel ได้ทันทีโดยไม่ต้องมีรหัสผ่านอะไรเลย
+// ตอนนี้เปลี่ยนมาเช็คจากการ login ด้วย Firebase Authentication (อีเมล+รหัสผ่าน) แทน มีแค่บัญชีเดียวที่คุณ
+// สร้างไว้ใน Firebase Console เท่านั้นที่ login ผ่านได้ และต้องอีเมลตรงกับ ADMIN_EMAIL ด้วย
+function isAdminUser(){
+  return !!(auth.currentUser && auth.currentUser.email && auth.currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+}
 function openAdminPanel(){
   document.getElementById("adminModalBg").classList.add("active");
   if(myPlayer){ document.getElementById("adminOwnId").textContent = myPlayer.id; document.getElementById("adminOwnName").textContent = myPlayer.username; }
+  document.getElementById("adminAuthEmail").textContent = (auth.currentUser && auth.currentUser.email) || "-";
 }
 function closeAdminPanel(){ document.getElementById("adminModalBg").classList.remove("active"); }
-function isAdminUser(){ return !!(myPlayer && myPlayer.username && myPlayer.username.trim().toLowerCase() === "admin"); }
+function openAdminLoginModal(){ document.getElementById("adminLoginModalBg").classList.add("active"); document.getElementById("adminLoginPassword").value=""; document.getElementById("adminLoginStatus").textContent=""; }
+function closeAdminLoginModal(){ document.getElementById("adminLoginModalBg").classList.remove("active"); }
 document.addEventListener("keydown", (e)=>{
   if(e.key === "F8"){
     e.preventDefault();
-    if(!isAdminUser()){ toast("🚫 คุณไม่มีสิทธิ์เข้าถึง Admin Panel"); return; }
+    if(!isAdminUser()){ openAdminLoginModal(); return; }
     const bg = document.getElementById("adminModalBg");
     if(bg.classList.contains("active")) closeAdminPanel(); else openAdminPanel();
   }
 });
+document.getElementById("adminLoginBtn").addEventListener("click", async ()=>{
+  const email = document.getElementById("adminLoginEmail").value.trim();
+  const pass = document.getElementById("adminLoginPassword").value;
+  const status = document.getElementById("adminLoginStatus");
+  if(!email || !pass){ status.textContent = "⚠️ กรอกอีเมลและรหัสผ่านให้ครบ"; return; }
+  status.textContent = "⏳ กำลังเข้าสู่ระบบ...";
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+    if(!isAdminUser()){
+      status.textContent = "🚫 บัญชีนี้ไม่ใช่แอดมิน";
+      await auth.signOut();
+      return;
+    }
+    closeAdminLoginModal();
+    openAdminPanel();
+    toast("✅ เข้าสู่ระบบแอดมินสำเร็จ");
+  }catch(e){
+    status.textContent = "⚠️ อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+  }
+});
+document.getElementById("adminLoginPassword").addEventListener("keydown", (e)=>{ if(e.key==="Enter") document.getElementById("adminLoginBtn").click(); });
+document.getElementById("adminLogoutBtn").addEventListener("click", async ()=>{
+  await auth.signOut();
+  closeAdminPanel();
+  toast("👋 ออกจากระบบแอดมินแล้ว");
+});
 function getAdminTargetId(){ return document.getElementById("adminTargetId").value.trim().toUpperCase(); }
+
+/* ================= ADMIN: ลบ Player ID ถาวร (Patch 2.9) ================= */
+// ใช้สำหรับลบ ID ที่ทดลองเล่นทิ้งแบบถาวร — ลบเอกสารผู้เล่นออกจาก Firestore ไปเลย กู้คืนไม่ได้
+document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
+  const targetId = document.getElementById("adminDeleteTargetId").value.trim().toUpperCase();
+  const statusEl = document.getElementById("adminDeleteStatus");
+  if(!targetId){ statusEl.textContent = "⚠️ กรุณาใส่ Player ID ที่จะลบ"; return; }
+  showConfirm(`ลบ Player ID "${targetId}" ถาวร? ข้อมูลผู้เล่นนี้ทั้งหมดจะหายไปจากคลาวด์และกู้คืนไม่ได้`, async ()=>{
+    statusEl.textContent = "⏳ กำลังลบ...";
+    try{
+      const ref = db.collection("players").doc(targetId);
+      const doc = await ref.get();
+      if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+      await ref.delete();
+      statusEl.textContent = `✅ ลบ Player ID "${targetId}" ถาวรแล้ว`;
+      toast(`🗑️ ลบ ${targetId} แล้ว`); SFX.sell();
+      document.getElementById("adminDeleteTargetId").value = "";
+      // ถ้าดันลบ ID ที่กำลังใช้อยู่ในเครื่องนี้เข้า ต้องล้างข้อมูล player ในเครื่องด้วย ไม่งั้นเกมจะพยายาม
+      // อ่าน/ฟังเอกสารที่ไม่มีอยู่แล้วไปเรื่อย ๆ ตอนโหลดหน้าครั้งถัดไป
+      if(myPlayer && targetId === myPlayer.id){
+        localStorage.removeItem(PLAYER_KEY);
+        localStorage.removeItem(SAVE_KEY);
+        toast("🔄 ลบ ID ของตัวเองที่ใช้อยู่ กำลังรีโหลดหน้า...");
+        setTimeout(()=>location.reload(), 1200);
+      }
+    }catch(e){
+      statusEl.textContent = "⚠️ เกิดข้อผิดพลาด (ตรวจสอบ Firestore Security Rules ว่าอนุญาตให้แอดมินลบได้)";
+      SFX.error();
+    }
+  });
+});
 
 document.getElementById("adminAddResourceBtn").addEventListener("click", async ()=>{
   const key = document.getElementById("adminResourceSelect").value;
