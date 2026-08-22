@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>AFK Relic Master - End Game Edition (Patch 3.18)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.19)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -896,6 +896,12 @@ function makeAdminLabel(){
         <div class="small-note" id="shopZoneStatus" style="margin:6px 0;">🔴 ไม่ได้ใช้งาน</div>
         <button class="btn gold" id="buyZone">ซื้อ (570 ✨)</button>
       </div>
+      <div class="buff-card">
+        <h4>🎲 Rerole Pack (แพ็ค 10 ครั้ง)</h4>
+        <div class="desc">สุ่มสกิลใหม่ให้ไอเทมที่มีอยู่แล้ว (คงระดับ/rarity เดิม) — ใช้ได้กับไอเทมตั้งแต่ระดับ Rare ขึ้นไปเท่านั้น (Common/Uncommon ไม่มีสกิล) กดใช้ได้จากหน้ารายละเอียดไอเทมในคลัง</div>
+        <div class="small-note" style="margin:6px 0;">มี Rerole อยู่: <b style="color:var(--gold);" id="shopRerollCount">0</b> ครั้ง</div>
+        <button class="btn gold" id="buyRerollPack">ซื้อ (300 ✨)</button>
+      </div>
     </div>
 
     <hr style="border-color:var(--border); margin:24px 0;">
@@ -1135,6 +1141,7 @@ function makeAdminLabel(){
             <option value="souls">💎 หินวิญญาณ</option>
             <option value="stardust">🌟 Stardust</option>
             <option value="vaCoin">✨ Va Coin</option>
+            <option value="rerollCharges">🎲 Rerole (จำนวนครั้ง)</option>
           </select>
           <input type="number" id="adminResourceAmount" value="1000" style="width:110px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
           <button class="btn gold" id="adminAddResourceBtn">➕ เพิ่ม</button>
@@ -1174,9 +1181,11 @@ function makeAdminLabel(){
     <div style="display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
       <button class="btn primary" id="modalEquipBtn">สวมใส่</button>
       <button class="btn" id="modalUpgradeBtn">อัพเกรด</button>
+      <button class="btn gold" id="modalRerollBtn">🎲 Rerole สกิล</button>
       <button class="btn gold" id="modalSellBtn">ขาย</button>
     </div>
     <div class="small-note" id="modalUpgradeCost" style="margin-top:8px;"></div>
+    <div class="small-note" id="modalRerollNote" style="margin-top:4px;"></div>
   </div>
 </div>
 
@@ -1726,6 +1735,8 @@ function createDefaultState(){
     event: { active: false, endTime: 0, durationMin: 10 },
     // Patch 1.8: ร้านค้า Va Coin
     vaCoin: 0,
+    // Patch 3.19: Rerole Pack — สุ่มสกิลใหม่ให้ไอเทมที่มีอยู่ (คงระดับ/rarity เดิม) ใช้ VaCoin ซื้อเป็นแพ็ค
+    rerollCharges: 0,
     shop: { autoForgeEndTime: 0, luckyEndTime: 0, zoneBoostEndTime: 0 },
     // Patch 2.2: ร้านค้ากรอบโปรไฟล์ (Cosmetic เท่านั้น ไม่มีผลต่อสถานะ)
     frames: { owned: [], equipped: null },
@@ -1770,6 +1781,7 @@ function hydrateStateDefaults(){
   if(state.autoSellUncommon===undefined) state.autoSellUncommon=false;
   if(!state.event) state.event = { active:false, endTime:0, durationMin:10 };
   if(state.vaCoin===undefined) state.vaCoin=0;
+  if(state.rerollCharges===undefined) state.rerollCharges=0;
   if(!state.shop) state.shop = { autoForgeEndTime:0, luckyEndTime:0, zoneBoostEndTime:0 };
   if(state.shop.autoForgeEndTime===undefined) state.shop.autoForgeEndTime=0;
   if(state.shop.luckyEndTime===undefined) state.shop.luckyEndTime=0;
@@ -2464,6 +2476,7 @@ function renderShopPanel(){
     ? `🟢 ใช้งานอยู่ (เหลือ ~${Math.max(0,Math.ceil((lkEnd-Date.now())/60000))} นาที)` : "🔴 ไม่ได้ใช้งาน";
   document.getElementById("shopZoneStatus").textContent = isZoneBoostActive()
     ? `🟢 ใช้งานอยู่ (เหลือ ~${Math.max(0,Math.ceil((state.shop.zoneBoostEndTime-Date.now())/(60000*60*24)))} วัน)` : "🔴 ไม่ได้ใช้งาน";
+  const rc = document.getElementById("shopRerollCount"); if(rc) rc.textContent = fmt(state.rerollCharges||0);
 }
 document.getElementById("buyAutoForge").addEventListener("click", ()=>{
   if(state.vaCoin < 140){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
@@ -2482,6 +2495,13 @@ document.getElementById("buyZone").addEventListener("click", ()=>{
   state.vaCoin -= 570; state.shop.zoneBoostEndTime = Date.now() + 7*24*60*60*1000;
   toast("🎯 ขยายโซน Perfect +35% เป็นเวลา 1 สัปดาห์!"); logMsg("🎯 ซื้อขยายโซน Perfect +35% (1 สัปดาห์) จากร้านค้า"); SFX.coin();
   renderUI(); setupForge(); renderShopPanel(); saveGame();
+});
+// Patch 3.19: Rerole Pack — ซื้อแพ็ค 10 ครั้ง ใช้สุ่มสกิลใหม่ให้ไอเทมที่มีอยู่ (คงระดับ/rarity เดิม)
+document.getElementById("buyRerollPack").addEventListener("click", ()=>{
+  if(state.vaCoin < 300){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
+  state.vaCoin -= 300; state.rerollCharges = (state.rerollCharges||0) + 10;
+  toast("🎲 ได้รับ Rerole Pack 10 ครั้ง!"); logMsg("🎲 ซื้อ Rerole Pack (10 ครั้ง) จากร้านค้า"); SFX.coin();
+  renderUI(); renderShopPanel(); saveGame();
 });
 
 /* ================= DAILY LOGIN & VIP SYSTEM (Patch 3.1) =================
@@ -3824,6 +3844,16 @@ function openModal(it){
   document.getElementById("modalUpgradeCost").textContent = `อัพเกรดใช้: 🪙${costG} ⛓️${costI}`;
   document.getElementById("modalUpgradeBtn").disabled = state.gold<costG || state.iron<costI;
   document.getElementById("modalSellBtn").disabled = isEquipped(it);
+  // Patch 3.19: ปุ่ม Rerole — แสดงเฉพาะไอเทมระดับที่มีสกิล (Rare ขึ้นไป) และต้องมี Rerole Charge เหลืออยู่
+  const rerollBtn = document.getElementById("modalRerollBtn"); const rerollNote = document.getElementById("modalRerollNote");
+  const hasSkillPool = (ITEM_POOL[it.type][it.rarity]||[]).some(d=>d.skillId);
+  if(hasSkillPool){
+    rerollBtn.style.display = "inline-block";
+    rerollBtn.disabled = (state.rerollCharges||0) < 1;
+    rerollNote.textContent = `🎲 Rerole คงเหลือ: ${fmt(state.rerollCharges||0)} ครั้ง`;
+  } else {
+    rerollBtn.style.display = "none"; rerollNote.textContent = "";
+  }
   document.getElementById("modalBg").classList.add("active");
 }
 function closeModal(){ document.getElementById("modalBg").classList.remove("active"); }
@@ -3838,6 +3868,19 @@ document.getElementById("modalUpgradeBtn").onclick = ()=>{
   if(state.gold>=cG && state.iron>=cI){
     state.gold-=cG; state.iron-=cI; modalItem.level++; toast(`อัพเกรดสำเร็จ!`); SFX.upgrade(); openModal(modalItem); renderUI(); renderInventory(); saveGame();
   } else SFX.error();
+};
+// Patch 3.19: Rerole สกิล — สุ่มไอเทม/สกิลใหม่ภายในช่อง+ระดับเดิม (คงเลเวลและ rarity เดิมไว้) ใช้ 1 charge/ครั้ง
+document.getElementById("modalRerollBtn").onclick = ()=>{
+  if((state.rerollCharges||0) < 1){ toast("🎲 Rerole ไม่พอ! ซื้อเพิ่มได้ที่ร้านค้า"); SFX.error(); return; }
+  const pool = (ITEM_POOL[modalItem.type][modalItem.rarity]||[]).filter(d=>d.skillId);
+  if(!pool.length){ toast("ไอเทมระดับนี้ไม่มีสกิลให้สุ่มใหม่"); return; }
+  const d = pick(pool);
+  state.rerollCharges -= 1;
+  modalItem.name = d.name; modalItem.emoji = d.emoji; modalItem.skillId = d.skillId;
+  toast(`🎲 Rerole สำเร็จ! ได้สกิลใหม่: ${d.emoji} ${d.name}`);
+  logMsg(`🎲 Rerole ไอเทม ได้สกิลใหม่: <span style="color:${RARITY_META[modalItem.rarity].color}">${d.emoji} ${d.name}</span>`);
+  SFX.upgrade();
+  openModal(modalItem); renderUI(); renderInventory(); renderShopPanel(); saveGame();
 };
 document.getElementById("modalSellBtn").onclick = ()=>{
   if(isEquipped(modalItem)) return;
@@ -3915,9 +3958,11 @@ async function resetSaveKeepVaCoinItems(){
   // Patch 3.1: สถานะ VIP + ประวัติการรับ Daily Login ก็ซื้อ/จ่ายด้วย Va Coin เหมือนกรอบโปรไฟล์ จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
   const keptVip = state.vip ? JSON.parse(JSON.stringify(state.vip)) : { tier:"none", expiresAt:0, goldBulkAvailable:false, goldBulkMonthKey:"" };
   const keptDailyLogin = state.dailyLogin ? JSON.parse(JSON.stringify(state.dailyLogin)) : { freeClaimed:{}, vipClaimed:{} };
+  // Patch 3.19: Rerole Pack ก็ซื้อด้วย Va Coin เหมือนกัน จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
+  const keptRerollCharges = state.rerollCharges || 0;
   state = createDefaultState();
   state.frames = keptFrames; // ยกเว้นของที่ใช้ Va Coin ซื้อ ไม่ต้องรีเซ็ต
-  state.vip = keptVip; state.dailyLogin = keptDailyLogin;
+  state.vip = keptVip; state.dailyLogin = keptDailyLogin; state.rerollCharges = keptRerollCharges;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if(myPlayer){
     try{
