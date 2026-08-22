@@ -60,7 +60,8 @@
     mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
     mask-composite:exclude;
   }
-  .frame-particle{position:absolute;font-size:14px;pointer-events:none;z-index:3;will-change:transform,opacity;}
+  .frame-particle{position:absolute;font-size:14px;pointer-events:none;z-index:3;will-change:transform,opacity;
+    filter:drop-shadow(0 0 3px currentColor);}
   .frame-particle.fp-rise{animation-name:fp-rise;animation-timing-function:ease-out;animation-fill-mode:forwards;}
   .frame-particle.fp-fall{animation-name:fp-fall;animation-timing-function:ease-in;animation-fill-mode:forwards;}
   @keyframes fp-rise{0%{transform:translate(0,0) scale(.6);opacity:0;}15%{opacity:1;}100%{transform:translate(var(--drift,0px),-72px) scale(1);opacity:0;}}
@@ -69,6 +70,16 @@
   @keyframes fr-spin-rev{from{transform:rotate(360deg);}to{transform:rotate(0deg);}}
   @keyframes fr-flicker{0%,100%{opacity:1;}50%{opacity:.6;}}
   @keyframes fr-glowpulse{0%,100%{box-shadow:var(--glow-a);}50%{box-shadow:var(--glow-b);}}
+
+  /* Patch 3.5: กรอบระดับ Tier 4-5 (2999v ขึ้นไป) เพิ่ม "แสงไล่กวาด" (sheen sweep) จำลองแสงสะท้อนบน
+     พื้นผิวโลหะ/อัญมณีจริง — เป็นเทคนิคที่นักออกแบบมืออาชีพใช้บอกความพรีเมียมแบบเนียนๆ แทนที่จะยัด
+     particle หลายแบบพร้อมกันจนดูรก (ตามคอนเซปต์ "ยิ่งแพงยิ่งประณีต ไม่ใช่ยิ่งอลังการแบบสุ่ม") อาศัยการที่
+     mask ของ .frame-ring ครอบทั้งกล่อง (รวม pseudo-element ลูก) ให้เป็นรูปโดนัทอยู่แล้ว จึงวาง ::before
+     เป็นแสงเฉียงพาดผ่านแล้วเคลื่อนที่ได้เลยโดยไม่หลุดกรอบวงแหวน */
+  .frame-ring.fr-shine::before{content:"";position:absolute;inset:-60%;pointer-events:none;
+    background:linear-gradient(115deg, transparent 42%, rgba(255,255,255,.75) 50%, transparent 58%);
+    mix-blend-mode:overlay; animation:fr-shine-sweep 3.2s ease-in-out infinite;}
+  @keyframes fr-shine-sweep{0%{transform:translate(-55%,-55%);}100%{transform:translate(55%,55%);}}
 
   /* Patch 2.2.2: full-card ambient FX (fire/dust/wind/leaves etc.) spanning the whole header box,
      intensity + variety scaled to the equipped frame's price tier so pricier frames genuinely feel
@@ -1528,7 +1539,7 @@ function renderRankTop3(){
       const frameMeta = eqFrameId ? FRAME_LIST.find(f=>f.id===eqFrameId) : null;
       const tier = frameMeta ? (FRAME_TIER[frameMeta.id] || 1) : 0;
       const frameRingHtml = frameMeta
-        ? `<div class="frame-ring fr-${frameMeta.id}${tier===5?" fr-tier5":""}"></div>`
+        ? `<div class="frame-ring fr-${frameMeta.id}${frameRingExtraClasses(frameMeta.id)}"></div>`
         : "";
       const fxClass = frameMeta ? ` fx-card hfx-${frameMeta.id}${tier===5?" hfx-anim":""}` : "";
       const row = document.createElement("div");
@@ -1551,11 +1562,11 @@ function renderRankTop3(){
       // สปอว์น particle effect ตามธีมกรอบ (ใช้ config ชุดเดียวกับ header) กระจายอยู่ทั่วทั้งแถว
       if(frameMeta){
         const fxLayer = row.querySelector(".rank-fx-layer");
+        const dustCfg = FRAME_DUST[frameMeta.id];
         const sets = FRAME_PARTICLE_SETS[frameMeta.id];
         if(sets) sets.forEach(cfg=>{
-          rankParticleTimers.push(setInterval(()=>spawnFrameParticle(cfg, fxLayer), cfg.rate||550));
+          rankParticleTimers.push(setInterval(()=>spawnFrameParticle({...cfg, glow: dustCfg?dustCfg.color:"#ffffff"}, fxLayer), cfg.rate||550));
         });
-        const dustCfg = FRAME_DUST[frameMeta.id];
         if(dustCfg){
           const rate = TIER_DUST_RATE[tier] || 2200;
           rankParticleTimers.push(setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), rate));
@@ -2073,7 +2084,7 @@ function renderVipFrameCard(){
   wrap.style.display = "block";
   wrap.innerHTML = `
     <div class="frame-shop-card${equipped?" equipped":""}">
-      <div class="frame-preview"><div class="frame-ring fr-${f.id}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>
+      <div class="frame-preview"><div class="frame-ring fr-${f.id}${frameRingExtraClasses(f.id)}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>
       <div class="fname">${f.emoji} ${f.name}</div>
       <div class="fprice">${equipped?"✅ สวมอยู่":"กรอบพิเศษประจำเดือนนี้"}</div>
       <div class="fdesc">${f.desc}</div>
@@ -2131,6 +2142,10 @@ const FRAME_LIST = [
 // the frame's price tier so a 2999✨ frame visibly outclasses a 299✨ one.
 const FRAME_TIER = { lightning:1, wave:1, wind:1, fire:2, frost:2, sakura:2, galaxy:3, rainbow:3, shadow:3, gold:4,
   thunder_god:5, hell_dragon:5, cosmic_infinity:5, demon_king:5, divine_phoenix:5, vip_normal:3, vip_gold:4 };
+// Patch 3.5: จำกัดจำนวน "ชนิด" particle ต่อกรอบไว้ไม่เกิน 2 แบบเสมอ (แม้ Tier 5) แล้วให้ความอลังการ
+// ของกรอบแพงมาจากความถี่/ขนาด/แสง (ผ่าน dust-mote + glow ที่ scale ตาม tier อยู่แล้ว) แทนการโปะ emoji
+// หลายแบบพร้อมกันจนดูรก — เปลี่ยนของเดิมบางตัวที่เลือกมาแบบขอไปที (⚫ วงกลมดำเฉยๆ, 👁️ ตาที่ไม่เข้าธีม)
+// ให้เข้ากับคอนเซ็ปต์ของกรอบนั้นๆ มากขึ้น
 const FRAME_PARTICLE_SETS = {
   lightning: [ {emoji:"⚡",mode:"rise",rate:750,size:14} ],
   wave:      [ {emoji:"💧",mode:"fall",rate:750,size:14} ],
@@ -2140,16 +2155,22 @@ const FRAME_PARTICLE_SETS = {
   sakura:    [ {emoji:"🌸",mode:"fall",rate:520,size:15}, {emoji:"🍃",mode:"fall",rate:1250,size:12} ],
   galaxy:    [ {emoji:"✨",mode:"rise",rate:430,size:16}, {emoji:"💫",mode:"drift",rate:850,size:14} ],
   rainbow:   [ {emoji:"✨",mode:"rise",rate:400,size:16}, {emoji:"🌈",mode:"drift",rate:1700,size:17} ],
-  shadow:    [ {emoji:"💨",mode:"rise",rate:430,size:17}, {emoji:"⚫",mode:"fall",rate:950,size:8} ],
-  gold:      [ {emoji:"✨",mode:"rise",rate:300,size:18}, {emoji:"👑",mode:"drift",rate:2300,size:16}, {emoji:"💫",mode:"fall",rate:650,size:12} ],
-  // Tier 5: 3 particle layers each so they read as noticeably busier/richer than gold
-  thunder_god:    [ {emoji:"⚡",mode:"rise",rate:260,size:18}, {emoji:"✨",mode:"drift",rate:600,size:12}, {emoji:"🌩️",mode:"fall",rate:2600,size:20} ],
-  hell_dragon:    [ {emoji:"🔥",mode:"rise",rate:260,size:19}, {emoji:"💥",mode:"drift",rate:900,size:14}, {emoji:"✨",mode:"rise",rate:700,size:10} ],
-  cosmic_infinity:[ {emoji:"✨",mode:"rise",rate:280,size:17}, {emoji:"🌌",mode:"drift",rate:1100,size:20}, {emoji:"💫",mode:"fall",rate:700,size:12} ],
-  demon_king:     [ {emoji:"💜",mode:"rise",rate:300,size:14}, {emoji:"💨",mode:"rise",rate:400,size:18}, {emoji:"👁️",mode:"drift",rate:2600,size:16} ],
-  divine_phoenix: [ {emoji:"🔥",mode:"rise",rate:260,size:18}, {emoji:"✨",mode:"drift",rate:520,size:13}, {emoji:"🪶",mode:"fall",rate:850,size:15} ],
+  // เดิมมี ⚫ วงกลมดำลอยขึ้นด้วย ดูเป็น placeholder ไม่เข้าธีม — ตัดออก เหลือแค่หมอกควันลอยขึ้นแบบเดียว
+  // ให้ความรู้สึก "น้อยแต่ขลัง" สมชื่อเงามรณะ ความอลังการมาจาก dust สีม่วงที่หนาแน่นขึ้นแทน
+  shadow:    [ {emoji:"💨",mode:"rise",rate:430,size:17} ],
+  gold:      [ {emoji:"✨",mode:"rise",rate:300,size:18}, {emoji:"👑",mode:"drift",rate:2300,size:16} ],
+  // Tier 5: ตัดเหลือ 2 ชนิดต่อกรอบเสมอ (จากเดิม 3) — เลือกคู่ที่สื่อธีมชัดที่สุด ความ "โคตรอลังการ"
+  // มาจากอัตราการเกิดที่ถี่ + dust หนาแน่น + double ring + shockwave (ของเดิมที่มีอยู่แล้ว) ไม่ต้องพึ่ง
+  // จำนวนชนิด emoji ที่เยอะขึ้น
+  thunder_god:    [ {emoji:"⚡",mode:"rise",rate:240,size:18}, {emoji:"🌩️",mode:"fall",rate:2400,size:20} ],
+  hell_dragon:    [ {emoji:"🔥",mode:"rise",rate:240,size:19}, {emoji:"💥",mode:"drift",rate:900,size:14} ],
+  cosmic_infinity:[ {emoji:"✨",mode:"rise",rate:260,size:17}, {emoji:"🌌",mode:"drift",rate:1100,size:20} ],
+  // เดิมมี 👁️ ตาลอยด้วย ไม่เข้ากับคอนเซ็ปต์ "ราชันปีศาจ" เท่า 💜/💨 เลยตัดออก ให้ 💨 เป็นโหมด drift
+  // (หมอกวิญญาณล่องลอยแทนที่จะพุ่งขึ้นตรงๆ) ให้ความรู้สึกหลอนกว่าเดิม
+  demon_king:     [ {emoji:"💜",mode:"rise",rate:280,size:14}, {emoji:"💨",mode:"drift",rate:1300,size:18} ],
+  divine_phoenix: [ {emoji:"🔥",mode:"rise",rate:240,size:18}, {emoji:"🪶",mode:"fall",rate:850,size:15} ],
   vip_normal: [ {emoji:"👤",mode:"drift",rate:1400,size:14}, {emoji:"✨",mode:"rise",rate:700,size:11} ],
-  vip_gold:   [ {emoji:"👑",mode:"drift",rate:1300,size:16}, {emoji:"✨",mode:"rise",rate:400,size:14}, {emoji:"💠",mode:"fall",rate:900,size:12} ],
+  vip_gold:   [ {emoji:"👑",mode:"drift",rate:1300,size:16}, {emoji:"✨",mode:"rise",rate:400,size:14} ],
 };
 // Ambient "dust in the air" motes — every frame gets some, more/bigger the higher the tier,
 // tinted to match that frame so cheap frames feel like a light breeze and gold feels thick with magic.
@@ -2167,6 +2188,16 @@ const TIER_DUST_SIZE = {1:4, 2:5, 3:6, 4:7, 5:8};
 // Tier 5 only: a slow expanding shockwave ring sweeps across the whole card every few seconds.
 const TIER5_IDS = ["thunder_god","hell_dragon","cosmic_infinity","demon_king","divine_phoenix"];
 const TIER5_SHOCKWAVE_RATE = 4200;
+// Patch 3.5: คลาส CSS เสริมของวงแหวนตาม tier — ใช้ร่วมกันทุกจุดที่ render frame-ring (header, ร้านค้า,
+// การ์ด VIP, อันดับ) กันลืมใส่ไม่ครบบางจุด: tier 5 ได้วงแหวนคู่ (fr-tier5), tier 4 ขึ้นไปได้แสงไล่กวาด
+// พรีเมียม (fr-shine) สมกับราคา
+function frameRingExtraClasses(id){
+  const tier = FRAME_TIER[id] || 1;
+  let cls = "";
+  if(tier === 5) cls += " fr-tier5";
+  if(tier >= 4) cls += " fr-shine";
+  return cls;
+}
 function isFrameOwned(id){ return state.frames.owned.includes(id); }
 function renderFrameShop(){
   const grid = document.getElementById("frameShopGrid"); if(!grid) return;
@@ -2177,7 +2208,7 @@ function renderFrameShop(){
     const card = document.createElement("div");
     card.className = "frame-shop-card" + (owned?" owned":"") + (equipped?" equipped":"");
     card.innerHTML = `
-      <div class="frame-preview"><div class="frame-ring fr-${f.id}${FRAME_TIER[f.id]===5?" fr-tier5":""}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>
+      <div class="frame-preview"><div class="frame-ring fr-${f.id}${frameRingExtraClasses(f.id)}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>
       <div class="fname">${f.emoji} ${f.name}</div>
       <div class="fprice">${owned ? (equipped?"✅ สวมอยู่":"เป็นเจ้าของแล้ว") : fmt(f.price)+" ✨"}</div>
       <div class="fdesc">${f.desc}</div>
@@ -2227,12 +2258,14 @@ function startFrameParticles(id){
   const layer = document.getElementById("headerFxLayer"); if(!layer) return;
   const sets = FRAME_PARTICLE_SETS[id]; if(!sets) return;
   const tier = FRAME_TIER[id] || 1;
+  const dustCfg = FRAME_DUST[id];
   // themed particle layers (fire / wind+leaves / frost / petals / etc.), scaled to tier
+  // Patch 3.5: ผูกสี glow ของ particle เข้ากับโทนสีหลักของกรอบ (dustCfg.color) ให้ particle ดูเหมือน
+  // "แสงจากกรอบ" ชิ้นเดียวกัน แทนที่จะเป็น emoji ลอยแบนๆ แยกจากธีมสี
   sets.forEach(cfg=>{
-    frameParticleTimers.push(setInterval(()=>spawnFrameParticle(cfg), cfg.rate||550));
+    frameParticleTimers.push(setInterval(()=>spawnFrameParticle({...cfg, glow: dustCfg?dustCfg.color:"#ffffff"}), cfg.rate||550));
   });
   // ambient dust motes shared by every frame, denser + bigger the higher the price tier
-  const dustCfg = FRAME_DUST[id];
   if(dustCfg){
     const rate = TIER_DUST_RATE[tier] || 2200;
     frameParticleTimers.push(setInterval(()=>spawnDustMote(dustCfg, tier), rate));
@@ -2249,6 +2282,7 @@ function spawnFrameParticle(cfg, targetLayer){
   span.textContent = cfg.emoji;
   span.className = "frame-particle fp-"+cfg.mode;
   span.style.fontSize = (cfg.size||14)+"px";
+  span.style.color = cfg.glow || "#ffffff"; // ใช้กับ filter:drop-shadow(currentColor) ใน CSS
   span.style.left = (Math.random()*Math.max(0,w-18)) + "px";
   if(cfg.mode==="rise"){
     span.style.top = (h - 6 + Math.random()*16) + "px";
@@ -2297,12 +2331,13 @@ function applyFrameVisual(){
   const ring = document.getElementById("frameRing"); const header = document.getElementById("headerCard");
   if(!ring || !header) return;
   FRAME_LIST.forEach(f=>{ ring.classList.remove("fr-"+f.id); header.classList.remove("hfx-"+f.id); });
-  ring.classList.remove("fr-tier5"); header.classList.remove("hfx-anim");
+  ring.classList.remove("fr-tier5", "fr-shine"); header.classList.remove("hfx-anim");
   const eq = state.frames.equipped;
   const layer = document.getElementById("headerFxLayer"); if(layer) layer.innerHTML = "";
   if(eq){
     ring.classList.add("fr-"+eq); header.classList.add("hfx-"+eq);
-    if((FRAME_TIER[eq]||1) === 5){ ring.classList.add("fr-tier5"); header.classList.add("hfx-anim"); }
+    if((FRAME_TIER[eq]||1) === 5){ header.classList.add("hfx-anim"); }
+    frameRingExtraClasses(eq).trim().split(" ").filter(Boolean).forEach(c=>ring.classList.add(c));
     startFrameParticles(eq);
   } else stopFrameParticles();
 }
