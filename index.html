@@ -1088,6 +1088,34 @@ const EVENT_CURRENCY_MULT = 10; // x10 รางวัลทอง/เหล็�
 const EVENT_LUCK_BONUS_PCT = 1000; // Patch 2.0: เพิ่มโอกาสดรอปของหายาก +1000% แทนการเพิ่มจำนวนไอเทม (กันไอเทมเฟ้อ)
 const EVENT_LUCK_MULT = 1 + (EVENT_LUCK_BONUS_PCT / 100); // = 11 เท่า
 
+/* Patch 2.4: Event เดิมเก็บอยู่ใน state.event ซึ่งเป็นข้อมูล "ต่อผู้เล่นคนเดียว" (sync ขึ้น players/{id} ของแต่ละคน)
+   ทำให้แอดมินกดเปิด Event แล้วเห็นแค่ในเครื่องตัวเอง คนอื่นไม่เห็น — แก้โดยย้าย Event ไปเป็นเอกสารกลาง
+   meta/event ที่ทุกคน (รวมแอดมิน) ฟังแบบเรียลไทม์ แล้ว mirror ค่าลงใน state.event เหมือนเดิม
+   เพื่อให้โค้ดคำนวณ drop rate ต่างๆ ที่อ้าง state.event อยู่แล้วทำงานเหมือนเดิมโดยไม่ต้องแก้จุดอื่น */
+let globalEventUnsub = null;
+function pushGlobalEvent(){
+  db.collection("meta").doc("event").set({
+    active: state.event.active, endTime: state.event.endTime, durationMin: state.event.durationMin,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedBy: myPlayer ? myPlayer.username : "unknown"
+  }).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
+}
+function watchGlobalEvent(){
+  if(globalEventUnsub) globalEventUnsub();
+  globalEventUnsub = db.collection("meta").doc("event").onSnapshot((snap)=>{
+    if(snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง
+    const data = snap.exists ? snap.data() : null;
+    const wasActive = state.event.active;
+    state.event.active = !!(data && data.active);
+    state.event.endTime = data ? (data.endTime || 0) : 0;
+    state.event.durationMin = data ? (data.durationMin || 10) : 10;
+    renderEventBanner();
+    // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ และไม่ใช่ผลจากการกระทำของเครื่องตัวเอง (กันซ้ำกับ toast ใน startEvent/endEvent)
+    if(state.event.active && !wasActive) toast("🎉 Admin เปิด Lucky Event แล้ว!");
+    if(!state.event.active && wasActive) toast("⏰ Lucky Event สิ้นสุดแล้ว");
+  });
+}
+
 function isEventActive(){
   if(!state.event.active) return false;
   if(state.event.endTime && Date.now() >= state.event.endTime){ endEvent(false); return false; }
@@ -1149,6 +1177,7 @@ function startEvent(minutes){
   state.event.active = true;
   state.event.endTime = minutes > 0 ? Date.now() + minutes*60000 : 0;
   if(minutes > 0) state.event.durationMin = minutes;
+  pushGlobalEvent();
   const durText = minutes > 0 ? `${minutes} นาที` : "ไม่จำกัดเวลา (จนกว่าแอดมินจะปิด)";
   toast(`🎉 EVENT LUCKY TIME เริ่มแล้ว! (${durText})`);
   logMsg(`<div style="background:linear-gradient(90deg,#ffd24a33,#ff2e6d33); padding:8px; border-radius:8px; border:1px solid var(--gold); text-align:center;">
@@ -1162,6 +1191,7 @@ function startEvent(minutes){
 function endEvent(manual){
   if(!state.event.active) return;
   state.event.active = false; state.event.endTime = 0;
+  pushGlobalEvent();
   toast(manual ? "⏹️ Event ถูกปิดโดยแอดมิน" : "⏰ Event หมดเวลาแล้ว!");
   logMsg(`<div style="text-align:center; color:var(--muted);">🌙 Event Lucky Time สิ้นสุดลงแล้ว</div>`);
   renderEventBanner(); saveGame(); SFX.eventEnd();
@@ -2222,6 +2252,7 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   await initPlayer();  // ให้ผู้เล่นใหม่ตั้งชื่อ + สร้าง Player ID ก่อน (ผู้เล่นเก่าข้ามขั้นตอนนี้อัตโนมัติ)
   loadGame();           // โหลดเซฟในเครื่องก่อน (ใช้เป็นค่าตั้งต้น/สำรองตอนออฟไลน์)
   await pullCloudStateThenWatch(); // คลาวด์คือค่าจริงล่าสุด: ทับ state ในเครื่อง + เปิด listener รับการอัปเดตจากแอดมินแบบเรียลไทม์
+  watchGlobalEvent(); // Patch 2.4: ฟัง Lucky Event แบบเรียลไทม์ ให้ทุกคนเห็นพร้อมกันไม่ใช่แค่แอดมิน
   // ซิงก์ checkbox auto-sell กับ state ล่าสุดหลังจากคลาวด์ทับแล้ว
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
