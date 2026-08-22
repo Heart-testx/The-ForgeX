@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AFK Relic Master - End Game Edition (Patch 3.17)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.18)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -315,6 +315,34 @@
   .online-profile-frame .frame-ring{inset:-5px;border-radius:15px;}
   .online-profile-avatar{position:relative;z-index:2;width:46px;height:46px;margin:6px;border-radius:12px;background:#1a1a28;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:23px;}
   .online-player-row{overflow:visible;}
+  /* PATCH 3.18 — ออร่ากรอบโปรไฟล์ในผู้เล่นออนไลน์ */
+  .online-frame-fx-layer{
+    position:absolute;left:-18px;top:-18px;width:94px;height:94px;
+    border-radius:28px;pointer-events:none;overflow:visible;z-index:1;
+  }
+  .online-frame-fx-layer .frame-particle,
+  .online-frame-fx-layer .dust-mote,
+  .online-frame-fx-layer .shockwave-ring{pointer-events:none;}
+  .online-profile-frame > .online-frame-fx-layer{z-index:0;}
+  .online-profile-frame > .frame-ring,
+  .online-profile-frame > .online-profile-avatar{z-index:2;}
+  .online-player-row > .admin-ultimate-frame{z-index:2;overflow:visible;}
+.online-player-row > .admin-ultimate-frame{
+  position:relative;inset:auto;width:58px;height:58px;flex:0 0 58px;
+  display:block;
+}
+
+  .online-player-row > .admin-ultimate-frame > .online-frame-fx-layer{z-index:0;left:-18px;top:-18px;}
+  .online-player-row > .admin-ultimate-frame > .admin-core,
+  .online-player-row > .admin-ultimate-frame > .admin-ray,
+  .online-player-row > .admin-ultimate-frame > .admin-sweep,
+  .online-player-row > .admin-ultimate-frame > .admin-label{z-index:8;}
+  .online-player-row .online-player-main,
+  .online-player-row .online-dot{position:relative;z-index:5;}
+  .online-frame-fx-layer .frame-particle{position:absolute;z-index:3;}
+  .online-frame-fx-layer .dust-mote{position:absolute;z-index:2;}
+  .online-frame-fx-layer .shockwave-ring{position:absolute;z-index:1;}
+
   .online-profile-frame .frame-burst{inset:-24px;}
   .online-player-row{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
   .online-dot{width:9px;height:9px;border-radius:50%;background:#58f58a;box-shadow:0 0 10px #58f58a;flex:0 0 auto;}
@@ -438,7 +466,7 @@
   .day-cell.vip-locked{opacity:.5;}
   .day-cell.vip-locked .dc-btn{background:var(--panel); color:var(--mythic); cursor:not-allowed;}
 
-/* PATCH 3.17 — ADMIN ULTIMATE FRAME FIX */
+/* PATCH 3.18 — ADMIN ULTIMATE FRAME FIX */
 .admin-ultimate-frame{
   position:relative;width:58px;height:58px;flex:0 0 58px;
   display:block;isolation:isolate;overflow:visible;
@@ -525,7 +553,7 @@
 
 </style>
 <script>
-/* PATCH 3.17 — shared admin frame renderer */
+/* PATCH 3.18 — shared admin frame renderer */
 function makeAdminUltimateFrame(p, size="online"){
   if(!p || !p.isAdminAccount) return null;
   const wrap=document.createElement("div");
@@ -2906,7 +2934,43 @@ function subscribeAdminPlayers(){
   playerListUnsub=db.collection("players").limit(500).onSnapshot(snap=>renderAdminPlayerList(snap.docs),()=>{document.getElementById("adminTargetStatus").textContent="⚠️ โหลดรายชื่อผู้เล่นไม่สำเร็จ";});
 }
 function refreshAdminPlayers(){if(auth.currentUser&&isAdminUser()) subscribeAdminPlayers();}
+
+let onlineFrameParticleTimers = [];
+function stopOnlineFrameParticles(){
+  onlineFrameParticleTimers.forEach(t=>clearInterval(t));
+  onlineFrameParticleTimers = [];
+}
+function startOnlineFrameAura(frameId, fxLayer){
+  if(!frameId || !fxLayer) return;
+  const tier = FRAME_TIER[frameId] || 1;
+  const dustCfg = FRAME_DUST[frameId];
+  const sets = FRAME_PARTICLE_SETS[frameId];
+  if(sets) sets.forEach(cfg=>{
+    onlineFrameParticleTimers.push(
+      setInterval(
+        ()=>spawnFrameParticle({...cfg, glow:dustCfg?dustCfg.color:"#ffffff"}, fxLayer),
+        cfg.rate || 550
+      )
+    );
+  });
+  if(dustCfg){
+    const rate = TIER_DUST_RATE[tier] || 2200;
+    onlineFrameParticleTimers.push(
+      setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), rate)
+    );
+  }
+  if(tier===5){
+    onlineFrameParticleTimers.push(
+      setInterval(
+        ()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", fxLayer),
+        TIER5_SHOCKWAVE_RATE
+      )
+    );
+  }
+}
+
 function renderOnlinePlayersFromSnap(snap){
+  stopOnlineFrameParticles();
   const now=Date.now();
   // Patch 3.12.1: แอดมินต้องสามารถแสดงสถานะออนไลน์ได้ด้วย จึงไม่กรอง isAdminAccount ออกจากรายการ
   // แต่ติดป้าย 👑 ADMIN ให้เห็นชัดว่าเป็นบัญชีแอดมิน ไม่ใช่ผู้เล่นทั่วไป
@@ -2940,6 +3004,16 @@ function renderOnlinePlayersFromSnap(snap){
       avatar.className = "online-profile-avatar";
       avatar.textContent = frameMeta?.emoji || "🧙‍♂️";
       frameWrap.append(ring,avatar);
+    }
+
+    // Patch 3.18: ใช้ชุด particle/aura เดียวกับกรอบจริงของเกม
+    // ทำให้ออร่าใน Online Players วิ้ง/เรือง/กระจายตาม Tier และสีของกรอบ
+    if(frameMeta || eqFrameId === "admin_ultimate"){
+      const auraId = eqFrameId;
+      const fxLayer = document.createElement("div");
+      fxLayer.className = "online-frame-fx-layer";
+      frameWrap.appendChild(fxLayer);
+      startOnlineFrameAura(auraId, fxLayer);
     }
 
     const dot=document.createElement("span"); dot.className="online-dot";
