@@ -272,13 +272,55 @@
 
   /* Patch 2.5: กรอบโปรไฟล์ที่สวมใส่อยู่ (ซื้อจากร้านค้า) แสดงในหน้า Top 3 อันดับด้วย — ใช้โครง .frame-preview
      เดิม แต่ย่อขนาดให้พอดีกับแถวอันดับ */
-  .rank-frame-preview{position:relative;width:52px;height:52px;flex-shrink:0;}
+  .rank-frame-preview{position:relative;width:52px;height:52px;flex-shrink:0;isolation:isolate;overflow:visible;}
   .rank-frame-preview .frame-ring{inset:-6px;border-radius:16px;}
-  .rank-frame-preview .frame-preview-avatar{width:52px;height:52px;border-radius:14px;font-size:24px;}
-  /* Patch 2.6: แถวอันดับตอนนี้เป็น .fx-card ด้วย (ใช้ CSS โทนสี/แสงชุดเดียวกับ header) + มีเลเยอร์
-     particle ของตัวเอง (rank-fx-layer) กระจายอยู่ทั่วทั้งแถว ไม่ใช่แค่รอบอวาตาร์เท่านั้น */
-  .rank-row{position:relative;overflow:hidden;}
-  .rank-fx-layer{position:absolute;inset:0;border-radius:12px;pointer-events:none;overflow:hidden;z-index:0;}
+  .rank-frame-preview .frame-preview-avatar{width:52px;height:52px;border-radius:14px;font-size:24px;position:relative;z-index:3;}
+  /* Patch 3.22: Rank aura belongs to EACH player's profile frame.
+     The rank row stays visually clean; only the avatar/frame area gets the premium aura.
+     The row clips any outer glow so nothing can spill into another player's row. */
+  .rank-row{position:relative;overflow:hidden;isolation:isolate;}
+  .rank-row > *:not(.rank-fx-layer){position:relative;z-index:2;}
+  .rank-fx-layer{position:absolute;inset:-10px;border-radius:22px;pointer-events:none;overflow:hidden;z-index:0;opacity:1;}
+  .rank-frame-preview{position:relative;isolation:isolate;overflow:visible;}
+  .rank-frame-preview > .rank-fx-layer{position:absolute;inset:-10px;border-radius:22px;z-index:0;overflow:hidden;}
+  .rank-frame-preview.fx-aura::before{
+    content:"";position:absolute;inset:-10px;z-index:0;pointer-events:none;border-radius:22px;
+    background:
+      radial-gradient(circle at 50% 50%,var(--rank-aura,#fff) 0%,var(--rank-aura-soft,#fff4) 30%,transparent 70%),
+      conic-gradient(from 0deg,var(--rank-aura,#fff0),var(--rank-aura,#fff8),transparent 22%,var(--rank-aura,#fff6),transparent 48%,var(--rank-aura,#fff8),transparent 72%);
+    filter:blur(7px);opacity:.34;transform:scale(.98);
+    animation:rankAuraBreath 1.55s ease-in-out infinite;
+  }
+  .rank-frame-preview.fx-aura::after{
+    content:"";position:absolute;inset:-4px;z-index:6;pointer-events:none;border-radius:18px;
+    background:linear-gradient(115deg,transparent 25%,var(--rank-aura-soft,#fff0) 42%,#fff 49%,var(--rank-aura,#fff8) 52%,transparent 67%);
+    mix-blend-mode:screen;opacity:.72;filter:blur(.5px);
+    animation:rankAuraSweep 1.45s linear infinite;
+  }
+  .rank-frame-preview.fx-aura{
+    filter:
+      drop-shadow(0 0 4px var(--rank-aura,#fff8))
+      drop-shadow(0 0 10px var(--rank-aura,#fff6))
+      drop-shadow(0 0 20px var(--rank-aura,#fff3));
+  }
+  .rank-frame-preview.fx-aura.tier-4{
+    filter:
+      drop-shadow(0 0 5px var(--rank-aura,#fff9))
+      drop-shadow(0 0 14px var(--rank-aura,#fff7))
+      drop-shadow(0 0 28px var(--rank-aura,#fff4));
+  }
+  .rank-frame-preview.fx-aura.tier-5{
+    filter:
+      drop-shadow(0 0 6px var(--rank-aura,#fff))
+      drop-shadow(0 0 16px var(--rank-aura,#fff9))
+      drop-shadow(0 0 32px var(--rank-aura,#fff6))
+      drop-shadow(0 0 48px var(--rank-aura,#fff3));
+  }
+  .rank-frame-preview.fx-aura.tier-5::before{opacity:.48;filter:blur(10px);animation-duration:1.05s;}
+  .rank-row.fx-card{box-shadow:none !important;background:var(--panel2) !important;}
+  .rank-row.fx-card[class*="hfx-"]{border-color:var(--border) !important;background-image:none !important;}
+  @keyframes rankAuraBreath{0%,100%{opacity:.22;transform:scale(.96)}50%{opacity:.48;transform:scale(1.07)}}
+  @keyframes rankAuraSweep{0%{transform:translateX(-75%) skewX(-12deg);opacity:0}12%{opacity:.9}55%{opacity:.5}100%{transform:translateX(75%) skewX(-12deg);opacity:0}}
 
   .profile-info{display:flex;flex-direction:column;gap:6px;justify-content:center;min-width:150px;}
   .profile-info .pname{font-size:1.1rem;font-weight:bold;}
@@ -314,9 +356,8 @@
   .online-profile-frame{position:relative;width:58px;height:58px;flex:0 0 58px;overflow:visible;}
   .online-profile-frame .frame-ring{inset:-5px;border-radius:15px;}
   .online-profile-avatar{position:relative;z-index:2;width:46px;height:46px;margin:6px;border-radius:12px;background:#1a1a28;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:23px;}
-  /* Patch 3.18: Online rows now inherit the equipped frame aura across the WHOLE row.
-     The cropped area in the online list gets the same premium FX language as the frame:
-     ambient glow, particles, dust, and Tier-5 shockwaves. */
+  /* Patch 3.20: Online aura is intentionally scoped to the profile frame.
+     The row stays clean; premium FX are allowed to breathe only around the avatar/frame. */
   .online-player-row{
     position:relative;overflow:visible;isolation:isolate;
     display:flex;align-items:center;gap:10px;background:var(--panel2);
@@ -325,45 +366,56 @@
   }
   .online-player-row > *:not(.online-fx-layer){position:relative;z-index:2;}
    .online-fx-layer{
-    position:absolute;inset:-18px;border-radius:14px;pointer-events:none;
+    position:absolute;inset:0;border-radius:12px;pointer-events:none;
     overflow:hidden;z-index:0;opacity:.98;
+    background:radial-gradient(ellipse at 12% 50%,var(--online-aura-soft,#ffffff12) 0%,transparent 34%),radial-gradient(ellipse at 48% 50%,var(--online-aura-soft,#ffffff10) 0%,transparent 48%),radial-gradient(ellipse at 88% 50%,var(--online-aura-soft,#ffffff12) 0%,transparent 34%);
+    box-shadow:inset 0 0 28px var(--online-aura-soft,#ffffff0d),inset 0 0 70px var(--online-aura-soft,#ffffff08);
   }
-  .online-player-row.fx-online::before{
-    content:"";position:absolute;inset:-24px;z-index:0;pointer-events:none;
-    background:radial-gradient(circle at 16% 50%,var(--online-aura,#fff) 0%,transparent 34%),
-               radial-gradient(circle at 78% 50%,var(--online-aura,#fff) 0%,transparent 30%);
-    filter:blur(12px);opacity:.22;animation:onlineAuraBreath 1.8s ease-in-out infinite;
+  .online-profile-frame > .online-fx-layer,
+  .admin-ultimate-frame > .online-fx-layer{
+    position:absolute;inset:-6px;border-radius:20px;
   }
+  .online-player-row.fx-online::before,
   .online-player-row.fx-online::after{
-    content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;border-radius:13px;
-    background:linear-gradient(90deg,transparent 0%,var(--online-aura-soft,#fff0) 18%,transparent 34%,
-               transparent 66%,var(--online-aura-soft,#fff0) 82%,transparent 100%);
-    mix-blend-mode:screen;opacity:.55;animation:onlineAuraSweep 2.6s linear infinite;
+    content:none;
   }
-  .online-player-row.fx-online.tier-5{
-    box-shadow:0 0 0 1px var(--online-aura,#fff8),
-               0 0 22px var(--online-aura,#fff3),
-               0 0 55px var(--online-aura,#fff2) inset;
+  .online-profile-frame{
+    isolation:isolate;
   }
-  .online-player-row.fx-online.tier-5::before{opacity:.38;filter:blur(16px);animation-duration:1.35s;}
+  .online-profile-frame.fx-aura::before{
+    content:"";position:absolute;inset:-4px;z-index:0;pointer-events:none;border-radius:20px;
+    background:radial-gradient(circle at 50% 50%,var(--online-aura,#fff) 0%,transparent 68%);
+    filter:blur(7px);opacity:.28;animation:onlineAuraBreath 1.8s ease-in-out infinite;
+  }
+  .online-profile-frame.fx-aura::after{
+    content:"";position:absolute;inset:1px;z-index:7;pointer-events:none;border-radius:16px;
+    background:linear-gradient(115deg,transparent 34%,var(--online-aura-soft,#fff0) 48%,#fff 50%,var(--online-aura-soft,#fff0) 53%,transparent 68%);
+    mix-blend-mode:screen;opacity:.62;animation:onlineAuraSweep 2.1s linear infinite;
+  }
+  .online-profile-frame.fx-aura.tier-5,
+  .admin-ultimate-frame.fx-aura.tier-5{
+    filter:drop-shadow(0 0 5px var(--online-aura,#fff8))
+           drop-shadow(0 0 14px var(--online-aura,#fff4));
+  }
+  .online-profile-frame.fx-aura.tier-5::before{opacity:.38;filter:blur(9px);animation-duration:1.35s;}
+  .admin-ultimate-frame.fx-aura.tier-5 .online-fx-layer{opacity:1;}
   .online-player-row.fx-online.admin-ultimate{
-    --online-aura:#ffffff;--online-aura-soft:#ff00e5aa;
-    border-color:#fff;box-shadow:0 0 0 1px #fff,0 0 14px #ffd700,
-      0 0 30px #ff00e5,0 0 58px #00e5ff inset,0 0 80px #ff2e6d66;
+    border-color:#fff;
     animation:adminOnlineAura 1.15s ease-in-out infinite;
   }
-  .online-player-row.fx-online.admin-ultimate::before{
+  .admin-ultimate-frame.fx-aura .online-fx-layer{
     background:conic-gradient(from 0deg at 50% 50%,#ff0080,transparent 12%,#00e5ff,transparent 26%,
       #ffd700,transparent 42%,#b400ff,transparent 60%,#ff0080);
-    filter:blur(18px);opacity:.3;animation:adminOnlineSpin 4s linear infinite;
+    filter:blur(5px);opacity:.42;animation:adminOnlineSpin 4s linear infinite;
+    mix-blend-mode:screen;
   }
-  .online-player-row.fx-online.admin-ultimate::after{
-    background:linear-gradient(115deg,transparent 35%,#fff 49%,#ff00e5 52%,transparent 64%);
-    opacity:.8;animation:adminOnlineSweep .85s linear infinite;
-  }
-  .online-player-row.fx-online.admin-ultimate .online-fx-layer{
-    background:radial-gradient(circle at 14% 50%,#ffd70055,transparent 22%),
-               radial-gradient(circle at 86% 50%,#00e5ff44,transparent 24%);
+  .admin-ultimate-frame.fx-aura .online-fx-layer{
+    background:
+      radial-gradient(circle at 20% 50%,#ffd70066,transparent 34%),
+      radial-gradient(circle at 80% 50%,#00e5ff55,transparent 38%),
+      conic-gradient(from 0deg at 50% 50%,#ff0080,transparent 12%,#00e5ff,transparent 26%,#ffd700,transparent 42%,#b400ff,transparent 60%,#ff0080);
+    filter:blur(4px);opacity:.48;animation:adminOnlineSpin 4s linear infinite;
+    mix-blend-mode:screen;
   }
   .online-player-row.fx-online.admin-ultimate .online-dot{
     box-shadow:0 0 10px #58f58a,0 0 22px #ffd700,0 0 34px #ff00e5;
@@ -703,6 +755,7 @@ function makeAdminUltimateFrame(p, size="online"){
     <div class="stats-grid">
       <div class="stat-box"><div class="val" id="statPower">0</div><div class="lbl">พลังต่อสู้รวม</div></div>
       <div class="stat-box"><div class="val" id="statGold">0</div><div class="lbl">🪙 ทอง</div></div>
+      <div class="stat-box"><div class="val iron" id="statIron">0</div><div class="lbl">⛓️ เหล็ก</div></div>
       <div class="stat-box"><div class="val soul" id="statSoul">0</div><div class="lbl">💎 หินวิญญาณ</div></div>
       <div class="stat-box"><div class="val stardust" id="statStardust">0</div><div class="lbl">🌟 Stardust</div></div>
     <div class="stat-box"><div class="val" style="color:var(--gold);" id="statVaCoin">0</div><div class="lbl">✨ Va Coin</div></div>
@@ -2072,12 +2125,13 @@ function renderRankTop3(){
         ? `<div class="frame-ring fr-${frameMeta.id}${frameRingExtraClasses(frameMeta.id)}"></div>`
         : "";
       const fxClass = frameMeta ? ` fx-card hfx-${frameMeta.id}${tier===5?" hfx-anim":""}` : "";
+      const frameFxClass = frameMeta ? ` fx-aura hfx-${frameMeta.id}${tier===5?" tier-5":""}` : "";
       const row = document.createElement("div");
       row.className = "rank-row" + fxClass;
       row.style.cssText = `display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:var(--panel2); border:1px solid ${isMe?"var(--gold)":"var(--border)"};`;
       row.innerHTML = `
-        <div class="rank-fx-layer"></div>
-        <div class="rank-frame-preview" style="z-index:1;">
+        <div class="rank-frame-preview${frameFxClass}" style="z-index:1;">
+          <div class="rank-fx-layer"></div>
           ${frameRingHtml}
           <div class="frame-preview-avatar">🧙‍♂️</div>
         </div>
@@ -2089,20 +2143,50 @@ function renderRankTop3(){
         <div style="text-align:right; font-weight:bold; color:var(--legendary);z-index:1;">${fmt(d.power||0)}</div>`;
       listEl.appendChild(row);
 
-      // สปอว์น particle effect ตามธีมกรอบ (ใช้ config ชุดเดียวกับ header) กระจายอยู่ทั่วทั้งแถว
+      // Patch 3.22: every ranked player gets THEIR OWN frame aura.
+      // Same visual language as Online Players, but the FX layer is mounted inside
+      // that player's 52x52 frame preview so particles/shockwaves cannot occupy the row.
       if(frameMeta){
-        const fxLayer = row.querySelector(".rank-fx-layer");
+        const framePreview = row.querySelector(".rank-frame-preview");
+        const fxLayer = framePreview.querySelector(".rank-fx-layer");
         const dustCfg = FRAME_DUST[frameMeta.id];
-        const sets = FRAME_PARTICLE_SETS[frameMeta.id];
-        if(sets) sets.forEach(cfg=>{
-          rankParticleTimers.push(setInterval(()=>spawnFrameParticle({...cfg, glow: dustCfg?dustCfg.color:"#ffffff"}, fxLayer), cfg.rate||550));
-        });
+        const auraColor = dustCfg ? dustCfg.color : "#ffffff";
+        const tierRate = tier===5 ? 0.55 : tier===4 ? 0.72 : tier===3 ? 0.82 : 0.92;
+        const sizeBoost = tier===5 ? 1.18 : tier===4 ? 1.10 : tier===3 ? 1.05 : 1;
+
+        framePreview.style.setProperty("--rank-aura", auraColor);
+        framePreview.style.setProperty("--rank-aura-soft", auraColor + (tier>=4 ? "88" : "66"));
+
+        // Start with an immediate burst so each row visibly has its own aura on load.
         if(dustCfg){
-          const rate = TIER_DUST_RATE[tier] || 2200;
-          rankParticleTimers.push(setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), rate));
+          for(let i=0;i<(tier>=5?4:tier>=4?3:2);i++) spawnDustMote(dustCfg, tier, fxLayer);
         }
-        if(tier===5){
-          rankParticleTimers.push(setInterval(()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", fxLayer), TIER5_SHOCKWAVE_RATE));
+
+        const sets = FRAME_PARTICLE_SETS[frameMeta.id] || [];
+        sets.forEach(cfg=>{
+          const boosted = {
+            ...cfg,
+            rate: Math.max(180, Math.round((cfg.rate||550) * tierRate)),
+            size: (cfg.size||14) * sizeBoost
+          };
+          rankParticleTimers.push(setInterval(
+            ()=>spawnFrameParticle({...boosted, glow:auraColor}, fxLayer),
+            boosted.rate
+          ));
+          // one immediate themed particle per set
+          setTimeout(()=>spawnFrameParticle({...boosted, glow:auraColor}, fxLayer), 80 + Math.random()*180);
+        });
+
+        if(dustCfg){
+          const dustRate = Math.max(360, Math.round((TIER_DUST_RATE[tier]||2200) * tierRate));
+          rankParticleTimers.push(setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), dustRate));
+        }
+
+        // Tier 4 gets a pulse; Tier 5 gets a stronger pulse. All are clipped to THIS frame.
+        if(tier>=4){
+          const shockRate = tier===5 ? 2300 : 3400;
+          rankParticleTimers.push(setInterval(()=>spawnShockwave(auraColor, fxLayer), shockRate));
+          setTimeout(()=>spawnShockwave(auraColor, fxLayer), 250 + Math.random()*500);
         }
       }
       rank++;
@@ -3039,21 +3123,23 @@ function stopOnlineParticles(){
 function startOnlineRowFX(row, frameId){
   if(!row || !frameId) return;
   const layer = row.querySelector(".online-fx-layer");
-  if(!layer) return;
+  const frameWrap = layer ? layer.closest(".online-profile-frame, .admin-ultimate-frame") : null;
+  if(!layer || !frameWrap) return;
 
   const tier = FRAME_TIER[frameId] || 1;
   const dustCfg = FRAME_DUST[frameId];
   const sets = FRAME_PARTICLE_SETS[frameId] || [];
 
   row.classList.add("fx-online", "tier-"+tier);
-  if(frameId === "admin_ultimate") row.classList.add("admin-ultimate");
+  frameWrap.classList.add("tier-"+tier, "fx-aura");
+  if(frameId === "admin_ultimate") frameWrap.classList.add("admin-ultimate");
   if(dustCfg){
     row.style.setProperty("--online-aura", dustCfg.color);
     // rgba-like soft tint without requiring a second config table.
     row.style.setProperty("--online-aura-soft", dustCfg.color + "66");
   }
 
-  // Premium particles: same frame theme as the main profile, but spread over the whole row.
+  // Premium particles: same frame theme as the profile, spread across the entire row like the reference design, but clipped strictly to this player's row bounds.
   sets.forEach(cfg=>{
     const boosted = {
       ...cfg,
@@ -3106,8 +3192,7 @@ function renderOnlinePlayersFromSnap(snap){
     const row=document.createElement("div"); row.className="online-player-row";
     if(p.isAdminAccount){ row.style.borderColor="var(--gold)"; row.style.boxShadow="0 0 10px #ffd24a33"; }
 
-    // Patch 3.18: aura layer ครอบทั้งแถวออนไลน์ ให้พื้นที่ข้อมูลที่อยู่ข้างกรอบ
-    // ได้รับเอฟเฟกต์เดียวกับกรอบ ไม่ใช่มีแสงเฉพาะรอบ avatar เท่านั้น
+    // Patch 3.20: local FX canvas — confined to the profile frame only.
     const fxLayer = document.createElement("div");
     fxLayer.className = "online-fx-layer";
 
@@ -3136,7 +3221,11 @@ function renderOnlinePlayersFromSnap(snap){
     const meta=document.createElement("div"); meta.className="online-player-meta";
     meta.textContent=`🆔 ${p.id} · ${p.isAdminAccount?"ADMIN · ":""}พลัง ${fmt(p.power||0)}`;
     main.append(name,meta);
-    row.append(fxLayer,frameWrap,dot,main);
+    /* Patch 3.23: row-wide FX layer. Each player owns one independent layer,
+       and the layer is clipped to this row only. ADMIN • ULTIMATE label stays unchanged. */
+    fxLayer.classList.add("profile-fx-layer");
+    frameWrap.classList.add("fx-aura");
+    row.append(fxLayer, frameWrap, dot, main);
     list.appendChild(row);
 
     if(frameMeta){
@@ -3622,6 +3711,7 @@ function renderUI(){
   if(myPlayer){ document.getElementById("playerIdTag").textContent = `🆔 ${myPlayer.id} · ${myPlayer.username}`; }
   document.getElementById("statPower").textContent = fmt(totalPower());
   document.getElementById("statGold").textContent = fmt(state.gold);
+  document.getElementById("statIron").textContent = fmt(state.iron);
   document.getElementById("statSoul").textContent = fmt(state.souls);
   document.getElementById("statStardust").textContent = fmt(state.stardust);
   document.getElementById("statVaCoin").textContent = fmt(state.vaCoin);
