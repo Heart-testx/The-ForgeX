@@ -934,6 +934,20 @@ function loadLocalPlayer(){
 }
 function saveLocalPlayer(p){ localStorage.setItem(PLAYER_KEY, JSON.stringify(p)); }
 
+// Patch 3.0: เรียกตอนพบว่า Player ID นี้ไม่มีเอกสารอยู่บนคลาวด์แล้ว (แอดมินลบถาวรไป) —
+// ล้างทั้ง Player ID และเซฟในเครื่องนี้ทิ้งแล้วรีโหลดหน้า initPlayer() จะไม่เจอ PLAYER_KEY เดิมอีก
+// จึงเด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ เหมือนเข้าเกมครั้งแรกทุกอย่าง (เริ่มใหม่หมดจริงๆ)
+let restartingAsNewPlayer = false;
+function restartAsNewPlayer(message){
+  if(restartingAsNewPlayer) return; // กันเรียกซ้ำซ้อน (เช่น ถูกเรียกจากทั้ง .get() เริ่มต้นและ onSnapshot พร้อมกัน)
+  restartingAsNewPlayer = true;
+  localStorage.removeItem(PLAYER_KEY);
+  localStorage.removeItem(SAVE_KEY);
+  toast(message);
+  setTimeout(()=>location.reload(), 1500);
+}
+
+
 // เรียกครั้งเดียวตอนเปิดเกม: ถ้ายังไม่มีชื่อ ให้ผู้เล่นตั้งชื่อ ระบบจะสร้าง Player ID ผูกไว้ถาวรในเครื่องนี้
 function initPlayer(){
   return new Promise((resolve)=>{
@@ -986,12 +1000,23 @@ async function pullCloudStateThenWatch(){
       state = Object.assign(state, doc.data().state);
       hydrateStateDefaults();
       applyingRemote = false;
+    }else if(!doc.exists){
+      // Patch 3.0: .get() สำเร็จ (ไม่ใช่ error จากออฟไลน์) แต่ไม่พบเอกสารผู้เล่นเลย = ถูกแอดมินลบถาวรไปแล้ว
+      // ล้างข้อมูลในเครื่องนี้ทิ้งแล้วเริ่มเกมใหม่ทั้งหมด (เด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ)
+      restartAsNewPlayer("⚠️ ไม่พบ Player ID ของคุณในระบบ (อาจถูกรีเซ็ตโดยแอดมิน) กำลังเริ่มต้นใหม่...");
+      return false;
     }
-  }catch(e){ /* ออฟไลน์ได้ - จะใช้เซฟในเครื่องแทน */ }
+  }catch(e){ /* ออฟไลน์ได้ - จะใช้เซฟในเครื่องแทน ไม่ถือว่าถูกลบ */ }
 
   if(cloudUnsub) cloudUnsub();
   cloudUnsub = ref.onSnapshot((snap)=>{
-    if(!snap.exists || snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง
+    if(snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง
+    if(!snap.exists){
+      // Patch 3.0: กว่าจะมาถึงจุดนี้ได้แปลว่าตอนโหลดครั้งแรกเอกสารยังอยู่แน่ๆ (เช็คด้านบนผ่านมาแล้ว)
+      // ถ้าตอนนี้หายไปกลางคันแปลว่าแอดมินเพิ่งลบขณะที่ผู้เล่นเปิดเกมค้างอยู่ -> เริ่มใหม่ทั้งหมดเช่นกัน
+      restartAsNewPlayer("⚠️ บัญชีผู้เล่นของคุณถูกรีเซ็ตโดยแอดมิน กำลังเริ่มต้นใหม่...");
+      return;
+    }
     const data = snap.data();
     if(!data || !data.state) return;
     applyingRemote = true;
@@ -1003,6 +1028,7 @@ async function pullCloudStateThenWatch(){
     toast("🛠️ แอดมินอัปเดตข้อมูลของคุณ!");
   });
 }
+
 
 let cloudSaveTimer = null;
 let lastCloudSaveAt = 0;
@@ -1981,13 +2007,13 @@ document.getElementById("adminDeleteBtn").addEventListener("click", ()=>{
       // ถ้าดันลบ ID ที่กำลังใช้อยู่ในเครื่องนี้เข้า ต้องล้างข้อมูล player ในเครื่องด้วย ไม่งั้นเกมจะพยายาม
       // อ่าน/ฟังเอกสารที่ไม่มีอยู่แล้วไปเรื่อย ๆ ตอนโหลดหน้าครั้งถัดไป
       if(myPlayer && targetId === myPlayer.id){
-        localStorage.removeItem(PLAYER_KEY);
-        localStorage.removeItem(SAVE_KEY);
-        toast("🔄 ลบ ID ของตัวเองที่ใช้อยู่ กำลังรีโหลดหน้า...");
-        setTimeout(()=>location.reload(), 1200);
+        restartAsNewPlayer("🔄 ลบ ID ของตัวเองที่ใช้อยู่ กำลังเริ่มต้นใหม่...");
       }
     }catch(e){
-      statusEl.textContent = "⚠️ เกิดข้อผิดพลาด (ตรวจสอบ Firestore Security Rules ว่าอนุญาตให้แอดมินลบได้)";
+      // Patch 3.0: โชว์ error code จริงจาก Firebase (เช่น permission-denied) แทนข้อความรวมๆ
+      // เพื่อให้เช็คได้ง่ายว่าปัญหาคือ Firestore Security Rules ยังไม่ได้ publish/ไม่ตรงอีเมล หรือสาเหตุอื่น
+      console.error("Delete player failed:", e);
+      statusEl.textContent = `⚠️ ลบไม่สำเร็จ: ${e.code || e.message || "unknown error"} — ตรวจสอบว่า publish Firestore Rules แล้ว และอีเมลใน rule ตรงกับที่ login ทุกตัวอักษร (เคสตัวพิมพ์เล็ก-ใหญ่มีผล)`;
       SFX.error();
     }
   });
@@ -2520,7 +2546,10 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
 (async ()=>{
   await initPlayer();  // ให้ผู้เล่นใหม่ตั้งชื่อ + สร้าง Player ID ก่อน (ผู้เล่นเก่าข้ามขั้นตอนนี้อัตโนมัติ)
   loadGame();           // โหลดเซฟในเครื่องก่อน (ใช้เป็นค่าตั้งต้น/สำรองตอนออฟไลน์)
-  await pullCloudStateThenWatch(); // คลาวด์คือค่าจริงล่าสุด: ทับ state ในเครื่อง + เปิด listener รับการอัปเดตจากแอดมินแบบเรียลไทม์
+  const cloudOk = await pullCloudStateThenWatch(); // คลาวด์คือค่าจริงล่าสุด: ทับ state ในเครื่อง + เปิด listener รับการอัปเดตจากแอดมินแบบเรียลไทม์
+  // Patch 3.0: ถ้า Player ID นี้ถูกแอดมินลบถาวรไปแล้ว pullCloudStateThenWatch() จะเรียก restartAsNewPlayer()
+  // (ล้างเซฟ + ตั้งเวลารีโหลดหน้า) แล้ว return false ไว้ ตรงนี้เลยต้องหยุดไม่ init ต่อด้วย state ที่ไม่สมบูรณ์
+  if(cloudOk === false) return;
   watchGlobalEvent(); // Patch 2.4: ฟัง Lucky Event แบบเรียลไทม์ ให้ทุกคนเห็นพร้อมกันไม่ใช่แค่แอดมิน
   // ซิงก์ checkbox auto-sell กับ state ล่าสุดหลังจากคลาวด์ทับแล้ว
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
