@@ -318,13 +318,13 @@
      The cropped area in the online list gets the same premium FX language as the frame:
      ambient glow, particles, dust, and Tier-5 shockwaves. */
   .online-player-row{
-    position:relative;overflow:hidden;isolation:isolate;
+    position:relative;overflow:visible;isolation:isolate;
     display:flex;align-items:center;gap:10px;background:var(--panel2);
     border:1px solid var(--border);border-radius:12px;padding:10px 12px;
     transition:box-shadow .35s ease,border-color .35s ease,background .35s ease;
   }
   .online-player-row > *:not(.online-fx-layer){position:relative;z-index:2;}
-  .online-fx-layer{
+   .online-fx-layer{
     position:absolute;inset:-18px;border-radius:14px;pointer-events:none;
     overflow:hidden;z-index:0;opacity:.98;
   }
@@ -561,8 +561,8 @@
   filter:blur(2px);animation:adminSweep .9s linear infinite;
 }
 .admin-ultimate-frame .admin-label{
-  position:absolute;z-index:20;bottom:-9px;left:50%;
-  transform:translateX(-50%);padding:2px 6px;border-radius:999px;
+  position:absolute;z-index:50;bottom:-13px;left:50%;
+  transform:translateX(-50%) scale(1.08);padding:2px 6px;border-radius:999px;
   font-size:7px;font-weight:1000;letter-spacing:1px;color:#fff;
   white-space:nowrap;background:linear-gradient(90deg,#ff0080,#ffb300,#00e5ff,#ff0080);
   background-size:300% 100%;border:1px solid #fff;
@@ -579,7 +579,7 @@
 }
 .profile-card-wrap > .admin-ultimate-frame .admin-ray{inset:-12px;}
 .profile-card-wrap > .admin-ultimate-frame .admin-sweep{inset:-10px;border-radius:30px;}
-.profile-card-wrap > .admin-ultimate-frame .admin-label{bottom:-1px;font-size:8px;}
+.profile-card-wrap > .admin-ultimate-frame .admin-label{bottom:-7px;font-size:8px;z-index:60;}
 .profile-card-wrap > .admin-ultimate-frame::after{font-size:15px;}
 
 @keyframes adminSpin{to{transform:rotate(360deg)}}
@@ -593,6 +593,9 @@
   .admin-ultimate-frame,.admin-ultimate-frame *{animation-duration:2s}
 }
 
+/* PATCH 3.18.1 — ADMIN ULTIMATE label intentionally breaks the row border for premium look. */
+.online-player-row.fx-online.admin-ultimate .admin-ultimate-frame{z-index:25;overflow:visible;}
+.online-player-row.fx-online.admin-ultimate .admin-ultimate-frame .admin-label{z-index:80;bottom:-13px;transform:translateX(-50%) scale(1.08);filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ff00e5);}
 </style>
 <script>
 /* PATCH 3.17 — shared admin frame renderer */
