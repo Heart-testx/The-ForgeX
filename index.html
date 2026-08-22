@@ -646,93 +646,6 @@ body{
     max-width:calc(100vw - 28px);
   }
 }
-
-
-/* PATCH 3.20 — ULTRA FRAME SHOWCASE
-   Rank + Online are intentionally treated as premium showcase stages.
-   Visual effects are absolute-only so they never change layout dimensions or mobile zoom. */
-.rank-row,
-.online-player-row{overflow:visible !important;isolation:isolate;}
-.rank-row::before,
-.online-player-row::before{
-  content:"";position:absolute;inset:-10px;border-radius:18px;pointer-events:none;z-index:0;
-  background:radial-gradient(circle at 18% 50%,var(--showcase-aura,#fff) 0%,transparent 30%),
-             radial-gradient(circle at 82% 50%,var(--showcase-aura2,#7c5cff) 0%,transparent 32%);
-  filter:blur(15px);opacity:.28;
-  animation:showcaseAura 1.7s ease-in-out infinite;
-}
-.rank-row::after,
-.online-player-row::after{
-  content:"";position:absolute;inset:-2px;border-radius:15px;pointer-events:none;z-index:1;
-  padding:1px;background:linear-gradient(110deg,transparent 0%,#fff 14%,transparent 25%,transparent 62%,var(--showcase-aura2,#00e5ff) 78%,transparent 90%);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;
-  opacity:.7;animation:showcaseBorderSweep 2.4s linear infinite;
-}
-@keyframes showcaseAura{0%,100%{transform:scale(.985);opacity:.22}50%{transform:scale(1.025);opacity:.46}}
-@keyframes showcaseBorderSweep{0%{filter:hue-rotate(0deg);transform:rotate(0deg)}100%{filter:hue-rotate(360deg);transform:rotate(360deg)}}
-
-/* The frame itself gets a second invisible stage around it: corona + rotating halo. */
-.rank-frame-preview.premium-frame-display,
-.online-profile-frame.premium-frame-display{
-  z-index:12 !important;overflow:visible !important;
-  filter:drop-shadow(0 0 7px var(--showcase-aura,#fff))
-         drop-shadow(0 0 18px var(--showcase-aura2,#7c5cff));
-  transform:scale(1.08);
-}
-.rank-frame-preview.premium-frame-display::before,
-.online-profile-frame.premium-frame-display::before{
-  content:"";position:absolute;inset:-13px;border-radius:22px;pointer-events:none;z-index:-1;
-  border:2px solid var(--showcase-aura,#fff);
-  box-shadow:0 0 12px var(--showcase-aura,#fff),0 0 28px var(--showcase-aura2,#7c5cff),inset 0 0 18px var(--showcase-aura,#fff);
-  opacity:.75;animation:showcaseHalo 1.9s ease-in-out infinite,showcaseHue 3.2s linear infinite;
-}
-.rank-frame-preview.premium-frame-display::after,
-.online-profile-frame.premium-frame-display::after{
-  content:"✦  ✧  ✦";position:absolute;left:50%;top:50%;width:110px;height:110px;
-  transform:translate(-50%,-50%);display:flex;align-items:flex-start;justify-content:center;
-  color:#fff;font-size:10px;letter-spacing:18px;pointer-events:none;z-index:0;
-  text-shadow:0 0 5px #fff,0 0 12px var(--showcase-aura2,#ff00e5);
-  animation:showcaseOrbit 4s linear infinite;
-}
-@keyframes showcaseHalo{0%,100%{transform:scale(.94);opacity:.45}50%{transform:scale(1.08);opacity:.95}}
-@keyframes showcaseHue{to{filter:hue-rotate(360deg)}}
-@keyframes showcaseOrbit{0%{rotate:0deg;opacity:.45}50%{opacity:1}100%{rotate:360deg;opacity:.45}}
-
-/* Tier 5: deliberately excessive premium presentation. */
-.rank-row.tier-showcase-5 .rank-frame-preview,
-.online-player-row.tier-showcase-5 .online-profile-frame{
-  transform:scale(1.16);
-  filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 26px var(--showcase-aura2,#ff00e5)) drop-shadow(0 0 42px var(--showcase-aura,#00e5ff));
-}
-.rank-row.tier-showcase-5::before,
-.online-player-row.tier-showcase-5::before{opacity:.52;filter:blur(21px);}
-.rank-row.tier-showcase-5::after,
-.online-player-row.tier-showcase-5::after{opacity:1;}
-
-/* Premium information plate beside the avatar — visual only, does not affect the frame. */
-.frame-showcase-title{
-  position:absolute;left:50%;bottom:-19px;transform:translateX(-50%);z-index:30;
-  white-space:nowrap;padding:2px 7px;border-radius:999px;
-  font-size:7px;font-weight:1000;letter-spacing:1px;text-transform:uppercase;
-  color:#fff;background:linear-gradient(90deg,#ff0080,#ffb300,#00e5ff,#7c5cff,#ff0080);
-  background-size:300% 100%;border:1px solid #fff8;
-  box-shadow:0 0 7px #fff,0 0 16px var(--showcase-aura2,#ff00e5);
-  animation:showcaseTitle 1.4s linear infinite;
-  pointer-events:none;
-}
-@keyframes showcaseTitle{to{background-position:300% 0}}
-
-/* Keep the giant visuals clipped to the showcase row's visual universe, not the page. */
-.rank-row .rank-fx-layer,.online-player-row .online-fx-layer{overflow:hidden;z-index:0;}
-.rank-row > *:not(.rank-fx-layer),.online-player-row > *:not(.online-fx-layer){position:relative;z-index:10;}
-@media(max-width:640px){
-  .rank-row,.online-player-row{margin-left:8px;margin-right:8px;}
-  .rank-frame-preview.premium-frame-display,.online-profile-frame.premium-frame-display{transform:scale(1.04);}
-  .rank-row.tier-showcase-5 .rank-frame-preview,.online-player-row.tier-showcase-5 .online-profile-frame{transform:scale(1.10);}
-  .frame-showcase-title{font-size:6px;bottom:-17px;}
-}
-
 </style>
 <script>
 /* PATCH 3.17 — shared admin frame renderer */
@@ -994,7 +907,7 @@ function makeAdminUltimateFrame(p, size="online"){
   <div class="panel" id="panel-rank">
     <h2 style="text-align:center; color:var(--legendary);">🏆 Top 3 พลังต่อสู้รวม</h2>
     <div class="small-note" style="text-align:center; margin-bottom:14px;">จัดอันดับจากพลังต่อสู้รวมของอุปกรณ์ที่สวมใส่อยู่ อัปเดตทุกครั้งที่เข้าแท็บนี้</div>
-    <div id="rankList" style="display:flex; flex-direction:column; gap:14px; max-width:520px; margin:0 auto; padding:10px 6px;">
+    <div id="rankList" style="display:flex; flex-direction:column; gap:10px; max-width:480px; margin:0 auto;">
       <div class="small-note" style="text-align:center;">⏳ กำลังโหลด...</div>
     </div>
     <div style="text-align:center; margin-top:14px;">
@@ -1658,23 +1571,6 @@ function initPlayer(){
 // ไอเทมที่เพิ่งได้จึง "หาย" ทั้งที่จริงๆ ยังอยู่ใน localStorage แค่ยังไม่ทันขึ้นคลาวด์
 // วิธีแก้: เทียบเวลา - ถ้าของในเครื่องใหม่กว่าที่อยู่บนคลาวด์ ให้ดันของในเครื่องขึ้นคลาวด์ก่อน
 // (แทนที่จะปล่อยให้คลาวด์เก่าทับ) แล้วค่อยเปิด listener ต่อตามปกติ
-// Patch 3.21: Lucky Event เป็น Global state แยกจาก player state
-// ห้าม cloud sync ของ players/{id} ทับ state.event ที่ได้รับจาก meta/event
-function preserveGlobalEventSnapshot(){
-  return {
-    active: !!(state.event && state.event.active),
-    endTime: (state.event && state.event.endTime) || 0,
-    durationMin: (state.event && state.event.durationMin) || 10
-  };
-}
-function restoreGlobalEventSnapshot(ev){
-  state.event = {
-    active: !!ev.active,
-    endTime: ev.endTime || 0,
-    durationMin: ev.durationMin || 10
-  };
-}
-
 async function pullCloudStateThenWatch(){
   const ref = db.collection("players").doc(myPlayer.id);
   try{
@@ -1687,21 +1583,16 @@ async function pullCloudStateThenWatch(){
         // เครื่องนี้มีความคืบหน้าใหม่กว่าที่คลาวด์ (เช่น เพิ่งเก็บไอเทมแล้วรีเฟรชก่อนถึงรอบ sync)
         // ห้ามทับ state สดด้วยของคลาวด์ที่เก่ากว่า -> ดันของในเครื่อง (ของจริงล่าสุด) ขึ้นคลาวด์ก่อน
         try{
-          const playerStateForCloud = Object.assign({}, state);
-          delete playerStateForCloud.event; // Patch 3.21: Event ใช้ meta/event เท่านั้น
           await ref.set(
-            { username: myPlayer.username, state: playerStateForCloud, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+            { username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
             { merge: true }
           );
           lastCloudSaveAt = Date.now();
         }catch(e){ /* ออฟไลน์ - ไม่เป็นไร ของในเครื่องยังปลอดภัยอยู่ดี จะ sync รอบถัดไปที่ต่อเน็ตได้ */ }
       }else{
-        const globalEventBeforeCloud = preserveGlobalEventSnapshot();
         applyingRemote = true;
         state = Object.assign(state, cloudData.state);
         hydrateStateDefaults();
-        // สำคัญ: cloud player state ห้ามทับ Global Lucky Event
-        restoreGlobalEventSnapshot(globalEventBeforeCloud);
         applyingRemote = false;
       }
     }else if(!doc.exists){
@@ -1728,12 +1619,9 @@ async function pullCloudStateThenWatch(){
     }
     const data = snap.data();
     if(!data || !data.state) return;
-    const globalEventBeforeCloud = preserveGlobalEventSnapshot();
     applyingRemote = true;
     state = Object.assign(state, data.state);
     hydrateStateDefaults();
-    // สำคัญ: realtime player sync ห้ามล้าง Event ที่มาจาก meta/event
-    restoreGlobalEventSnapshot(globalEventBeforeCloud);
     applyingRemote = false;
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     renderUI(); renderInventory(); renderMergePanel(); renderShopPanel(); renderFrameShop();
@@ -1752,10 +1640,8 @@ const CLOUD_SAVE_DEBOUNCE_MS = 900;
 function doCloudSaveNow(){
   if(!myPlayer || applyingRemote) return;
   lastCloudSaveAt = Date.now(); cloudSavePending = false;
-  const playerStateForCloud = Object.assign({}, state);
-  delete playerStateForCloud.event; // Patch 3.21: Event ใช้ meta/event เท่านั้น
   db.collection("players").doc(myPlayer.id).set({
-    username: myPlayer.username, state: playerStateForCloud, power: totalPower(), isAdminAccount: isAdminUser(),
+    username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(),
     online: true, lastSeenAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, {merge:true}).catch(()=>{ cloudSavePending=true; });
 }
@@ -1970,46 +1856,17 @@ function pushGlobalEvent(){
     updatedBy: myPlayer ? myPlayer.username : "unknown"
   }).catch(()=>{ /* ออฟไลน์ได้ - จะ sync รอบถัดไปที่ต่อเน็ตได้ */ });
 }
-let globalEventExpiryTimer = null;
-function scheduleGlobalEventExpiry(){
-  if(globalEventExpiryTimer) clearTimeout(globalEventExpiryTimer);
-  globalEventExpiryTimer = null;
-  const end = state.event && state.event.endTime;
-  if(!state.event || !state.event.active || !end) return;
-  const remain = end - Date.now();
-  if(remain <= 0){
-    // ให้เฉพาะแอดมินเป็นคนปิด Global document เมื่อหมดเวลา
-    if(isAdminUser()) endEvent(false);
-    else {
-      state.event.active = false;
-      state.event.endTime = 0;
-      renderEventBanner();
-    }
-    return;
-  }
-  globalEventExpiryTimer = setTimeout(()=>{
-    // ให้เฉพาะแอดมินเป็นคนเขียน active:false กลับไปยัง Global Event
-    if(isAdminUser()) endEvent(false);
-    else {
-      state.event.active = false;
-      state.event.endTime = 0;
-      renderEventBanner();
-    }
-  }, remain + 50);
-}
-
 function watchGlobalEvent(){
   if(globalEventUnsub) globalEventUnsub();
   globalEventUnsub = db.collection("meta").doc("event").onSnapshot((snap)=>{
     if(snap.metadata.hasPendingWrites) return; // ข้าม echo ของการเขียนตัวเอง
     const data = snap.exists ? snap.data() : null;
-    const wasActive = !!state.event.active;
+    const wasActive = state.event.active;
     state.event.active = !!(data && data.active);
     state.event.endTime = data ? (data.endTime || 0) : 0;
     state.event.durationMin = data ? (data.durationMin || 10) : 10;
-    scheduleGlobalEventExpiry();
     renderEventBanner();
-    // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ และไม่ใช่ผลจากการกระทำของเครื่องตัวเอง
+    // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ และไม่ใช่ผลจากการกระทำของเครื่องตัวเอง (กันซ้ำกับ toast ใน startEvent/endEvent)
     if(state.event.active && !wasActive) toast("🎉 Admin เปิด Lucky Event แล้ว!");
     if(!state.event.active && wasActive) toast("⏰ Lucky Event สิ้นสุดแล้ว");
   });
@@ -2063,16 +1920,7 @@ function showAnnouncementPopup(message){
 
 function isEventActive(){
   if(!state.event.active) return false;
-  if(state.event.endTime && Date.now() >= state.event.endTime){
-    // หมดเวลาในเครื่องนี้แล้ว ให้ซ่อน Event โดยไม่เขียน Global จากผู้เล่นทั่วไป
-    if(isAdminUser()) endEvent(false);
-    else {
-      state.event.active = false;
-      state.event.endTime = 0;
-      renderEventBanner();
-    }
-    return false;
-  }
+  if(state.event.endTime && Date.now() >= state.event.endTime){ endEvent(false); return false; }
   return true;
 }
 // ใช้เฉพาะคูณ "รางวัลเงิน/ทรัพยากร" จากบอสตอน Event เท่านั้น — ไม่ใช้กับจำนวนไอเทมที่ดรอปอีกต่อไป
@@ -2225,17 +2073,13 @@ function renderRankTop3(){
         : "";
       const fxClass = frameMeta ? ` fx-card hfx-${frameMeta.id}${tier===5?" hfx-anim":""}` : "";
       const row = document.createElement("div");
-      row.className = "rank-row premium-rank-row" + fxClass + (tier===5?" tier-showcase-5":" tier-showcase-"+tier);
+      row.className = "rank-row" + fxClass;
       row.style.cssText = `display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:var(--panel2); border:1px solid ${isMe?"var(--gold)":"var(--border)"};`;
-      const rankDustCfg = frameMeta ? FRAME_DUST[frameMeta.id] : null;
-      row.style.setProperty("--showcase-aura", rankDustCfg ? rankDustCfg.color : "#ffffff");
-      row.style.setProperty("--showcase-aura2", rankDustCfg ? rankDustCfg.color : "#7c5cff");
       row.innerHTML = `
         <div class="rank-fx-layer"></div>
-        <div class="rank-frame-preview premium-frame-display" style="z-index:12;">
+        <div class="rank-frame-preview" style="z-index:1;">
           ${frameRingHtml}
           <div class="frame-preview-avatar">🧙‍♂️</div>
-          ${frameMeta?`<div class="frame-showcase-title">${frameMeta.name}</div>`:""}
         </div>
         <div style="font-size:1.6rem;z-index:1;">${RANK_MEDALS[rank]||"🏅"}</div>
         <div style="flex:1;z-index:1;">
@@ -3259,7 +3103,7 @@ function renderOnlinePlayersFromSnap(snap){
   if(badge) badge.textContent=`(${docs.length})`; if(upd) upd.textContent=`อัปเดต ${new Date().toLocaleTimeString("th-TH")}`; if(!list) return; list.innerHTML="";
   if(!docs.length){list.innerHTML='<div class="small-note" style="text-align:center;padding:18px;">ไม่มีผู้เล่นออนไลน์</div>';return;}
   docs.forEach(p=>{
-    const row=document.createElement("div"); row.className="online-player-row premium-online-row";
+    const row=document.createElement("div"); row.className="online-player-row";
     if(p.isAdminAccount){ row.style.borderColor="var(--gold)"; row.style.boxShadow="0 0 10px #ffd24a33"; }
 
     // Patch 3.18: aura layer ครอบทั้งแถวออนไลน์ ให้พื้นที่ข้อมูลที่อยู่ข้างกรอบ
@@ -3270,34 +3114,19 @@ function renderOnlinePlayersFromSnap(snap){
     // Patch 3.17: render กรอบตาม state.frames.equipped ของผู้เล่นออนไลน์
     const eqFrameId = p.state?.frames?.equipped || null;
     const frameMeta = eqFrameId ? FRAME_LIST.find(f=>f.id===eqFrameId) : null;
-    const showcaseTier = frameMeta ? (FRAME_TIER[frameMeta.id] || 1) : 0;
-    if(frameMeta){
-      row.classList.add("tier-showcase-"+showcaseTier);
-      if(showcaseTier===5) row.classList.add("tier-showcase-5");
-      const showcaseDust = FRAME_DUST[frameMeta.id];
-      row.style.setProperty("--showcase-aura", showcaseDust ? showcaseDust.color : "#ffffff");
-      row.style.setProperty("--showcase-aura2", showcaseDust ? showcaseDust.color : "#7c5cff");
-    }
     let frameWrap;
 
     if(p.isAdminAccount && eqFrameId === "admin_ultimate"){
       frameWrap = makeAdminUltimateFrame(p);
-      frameWrap.classList.add("premium-frame-display");
     }else{
       frameWrap = document.createElement("div");
-      frameWrap.className = "online-profile-frame premium-frame-display";
+      frameWrap.className = "online-profile-frame";
       const ring = document.createElement("div");
       ring.className = `frame-ring${frameMeta ? " fr-"+frameMeta.id + frameRingExtraClasses(frameMeta.id) : ""}`;
       const avatar = document.createElement("div");
       avatar.className = "online-profile-avatar";
       avatar.textContent = frameMeta?.emoji || "🧙‍♂️";
       frameWrap.append(ring,avatar);
-      if(frameMeta){
-        const title=document.createElement("div");
-        title.className="frame-showcase-title";
-        title.textContent=frameMeta.name;
-        frameWrap.appendChild(title);
-      }
     }
 
     const dot=document.createElement("span"); dot.className="online-dot";
