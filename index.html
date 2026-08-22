@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AFK Relic Master - End Game Edition (Patch 3.14)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.15)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -309,7 +309,21 @@
   .tab-btn:hover{color:var(--text);border-color:var(--accent);transform:translateX(-2px);}
   .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px #7c5cff66;}
   @media (max-width:640px){.quick-menu{position:fixed;top:10px;right:10px}.tabs{top:50px;width:min(300px,calc(100vw - 24px));}.tab-btn{padding:13px 14px;font-size:.86rem;}}
-  /* Patch 3.14: แสดงกรอบโปรไฟล์ของผู้เล่นที่ออนไลน์ */
+  
+/* PATCH 3.15 — Admin-only renderer */
+function makeAdminUltimateFrame(p){
+  if(!p || !p.isAdminAccount) return null;
+  const wrap=document.createElement("div");
+  wrap.className="admin-ultimate-frame";
+  const ray=document.createElement("div"); ray.className="admin-ray";
+  const sweep=document.createElement("div"); sweep.className="admin-sweep";
+  const core=document.createElement("div"); core.className="admin-core"; core.textContent="👑";
+  const label=document.createElement("div"); label.className="admin-label"; label.textContent="ADMIN • ULTIMATE";
+  wrap.append(ray,core,sweep,label);
+  return wrap;
+}
+
+/* Patch 3.14: แสดงกรอบโปรไฟล์ของผู้เล่นที่ออนไลน์ */
   .online-profile-frame{position:relative;width:46px;height:46px;flex:0 0 46px;}
   .online-profile-frame .frame-ring{inset:-5px;border-radius:15px;}
   .online-profile-avatar{position:relative;z-index:2;width:46px;height:46px;border-radius:12px;background:#1a1a28;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:23px;}
@@ -435,6 +449,77 @@
   .day-cell.milestone .dc-day{color:var(--soul);}
   .day-cell.vip-locked{opacity:.5;}
   .day-cell.vip-locked .dc-btn{background:var(--panel); color:var(--mythic); cursor:not-allowed;}
+
+/* PATCH 3.15 — ADMIN ULTIMATE FRAME: โคตรเวอร์ วิ้งวับ แว๊บทั้งแถบ */
+.admin-ultimate-frame{
+  position:relative; width:58px; height:58px; flex:0 0 58px;
+  display:flex; align-items:center; justify-content:center;
+  isolation:isolate;
+}
+.admin-ultimate-frame .admin-core{
+  position:relative; z-index:8; width:46px; height:46px;
+  border-radius:15px; display:flex; align-items:center; justify-content:center;
+  font-size:25px; background:
+    radial-gradient(circle at 35% 25%,#fff 0 5%,#ffe66d 12%,#ffb300 32%,#8a1700 68%,#1b0010 100%);
+  border:3px solid #fff6a8;
+  box-shadow:0 0 5px #fff,0 0 12px #ffd700,0 0 24px #ff8c00,0 0 38px #ff2e6d;
+  animation:adminCorePulse .75s ease-in-out infinite alternate,adminCoreFlash 1.35s steps(2,end) infinite;
+}
+.admin-ultimate-frame::before{
+  content:""; position:absolute; inset:-13px; border-radius:21px;
+  background:conic-gradient(from 0deg,#fff,#ffd700,#ff7b00,#ff1493,#b400ff,#00e5ff,#fff,#ffd700);
+  filter:blur(1px); z-index:1;
+  animation:adminSpin 1.05s linear infinite;
+  box-shadow:0 0 12px #fff,0 0 30px #ff00e5,0 0 48px #00e5ff;
+}
+.admin-ultimate-frame::after{
+  content:"✦  ✧  ★  ✦  ✧  ★  ✦  ✧  ★";
+  position:absolute; z-index:12; left:-28px; top:-18px;
+  width:114px; height:94px; pointer-events:none;
+  font-size:11px; letter-spacing:3px; color:#fff;
+  text-shadow:0 0 4px #fff,0 0 9px #ffd700,0 0 15px #ff00e5;
+  animation:adminSparkle 0.48s steps(2,end) infinite;
+}
+.admin-ultimate-frame .admin-ray{
+  position:absolute; z-index:3; inset:-30px;
+  border-radius:50%;
+  background:repeating-conic-gradient(from 0deg,transparent 0deg 8deg,#fff8 9deg 10deg,transparent 11deg 18deg);
+  -webkit-mask:radial-gradient(circle,transparent 0 46%,#000 48% 58%,transparent 61%);
+  mask:radial-gradient(circle,transparent 0 46%,#000 48% 58%,transparent 61%);
+  animation:adminSpin .72s linear infinite reverse;
+}
+.admin-ultimate-frame .admin-sweep{
+  position:absolute; z-index:11; inset:-18px; border-radius:22px; overflow:hidden;
+}
+.admin-ultimate-frame .admin-sweep::after{
+  content:""; position:absolute; top:-45%; left:-85%; width:32%; height:190%;
+  transform:rotate(24deg);
+  background:linear-gradient(90deg,transparent,#fff 45%,#fff8 60%,transparent);
+  filter:blur(2px);
+  animation:adminSweep .9s linear infinite;
+}
+.admin-ultimate-frame .admin-label{
+  position:absolute; z-index:20; bottom:-11px; left:50%;
+  transform:translateX(-50%);
+  padding:2px 7px; border-radius:999px;
+  font-size:8px; font-weight:1000; letter-spacing:1.5px;
+  color:#fff; white-space:nowrap;
+  background:linear-gradient(90deg,#ff0080,#ffb300,#00e5ff,#ff0080);
+  background-size:300% 100%;
+  border:1px solid #fff;
+  box-shadow:0 0 8px #fff,0 0 18px #ff00e5;
+  animation:adminLabel 1s linear infinite;
+}
+@keyframes adminSpin{to{transform:rotate(360deg)}}
+@keyframes adminCorePulse{from{transform:scale(.92)}to{transform:scale(1.08)}}
+@keyframes adminCoreFlash{0%,18%{filter:brightness(1)}20%,24%{filter:brightness(2.4)}25%,100%{filter:brightness(1)}}
+@keyframes adminSparkle{0%,30%{opacity:.25;transform:scale(.8) rotate(0deg)}45%,65%{opacity:1;transform:scale(1.15) rotate(8deg)}80%,100%{opacity:.35;transform:scale(.9) rotate(-8deg)}}
+@keyframes adminSweep{0%{left:-90%}100%{left:180%}}
+@keyframes adminLabel{to{background-position:300% 0}}
+@media (prefers-reduced-motion:reduce){
+  .admin-ultimate-frame,.admin-ultimate-frame *{animation-duration:2s}
+}
+
 </style>
 </head>
 <body>
@@ -2802,9 +2887,10 @@ function renderOnlinePlayersFromSnap(snap){
     // ซึ่งถูก sync ขึ้น Firestore อยู่แล้ว จึงแสดงกรอบเดียวกับที่เจ้าของบัญชีใช้งานจริง
     const eqFrameId = p.state && p.state.frames ? p.state.frames.equipped : null;
     const frameMeta = eqFrameId ? FRAME_LIST.find(f=>f.id===eqFrameId) : null;
-    const frameWrap = document.createElement("div");
-    frameWrap.className = "online-profile-frame";
-    if(frameMeta){
+    const adminFrame = makeAdminUltimateFrame(p);
+    const frameWrap = adminFrame || document.createElement("div");
+    if(!adminFrame) frameWrap.className = "online-profile-frame";
+    if(!adminFrame && frameMeta){
       const tier = FRAME_TIER[frameMeta.id] || 1;
       const ring = document.createElement("div");
       ring.className = `frame-ring fr-${frameMeta.id}${frameRingExtraClasses(frameMeta.id)}`;
