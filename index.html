@@ -729,6 +729,8 @@ function makeAdminLabel(){
       <div class="small-note" id="playerIdTag" style="cursor:pointer;" title="กดเพื่อคัดลอก Player ID">🆔 -</div>
       <div class="rarity-tag" id="rarityTag">ไม่มีอุปกรณ์</div>
       <div class="rarity-tag" id="setBonusTag" style="display:none; margin-top:6px;">✨ Set Bonus</div>
+      <!-- Patch 3.20: โชว์ Role (อาชีพ) ปัจจุบันของผู้เล่น — คนละอย่างกับอุปกรณ์สวมใส่ -->
+      <div class="rarity-tag" id="playerRoleTag" style="margin-top:6px;">🎭 Role: ยังไม่มี</div>
       <div class="slots-row" id="slotsRow"></div>
     </div>
     <div class="stats-grid">
@@ -798,6 +800,10 @@ function makeAdminLabel(){
       <b style="font-size:0.8rem; margin-right:10px; color:var(--muted);">⚙️ QoL Auto-Sell:</b>
       <label style="margin-right:14px; font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="autoCommonChk"> ขาย Common อัตโนมัติ</label>
       <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="autoUncommonChk"> ขาย Uncommon อัตโนมัติ</label>
+    </div>
+    <!-- Patch 3.19.1: โชว์จำนวน Rerole คงเหลือในแท็บคลังด้วย (เดิมโชว์แค่ในร้านค้า/ป๊อปอัพไอเทม ทำให้ผู้เล่นซื้อแล้วหาไม่เจอ) -->
+    <div style="background:var(--panel2); padding:8px 14px; border-radius:10px; display:inline-block; border:1px solid var(--border); margin-left:8px;">
+      <span style="font-size:0.85rem;">🎲 Rerole คงเหลือ: <b style="color:var(--gold);" id="invRerollCount">0</b> ครั้ง</span>
     </div>
     <div id="multiSelectBar" style="display:none; background:var(--panel2); border:1px solid var(--mythic); border-radius:10px; padding:8px 12px; margin-top:10px; align-items:center; gap:10px; flex-wrap:wrap;">
       <span class="small-note">เลือกแล้ว: <b id="multiSelectCount">0</b> ชิ้น (ของที่สวมใส่อยู่จะไม่ถูกเลือก)</span>
@@ -902,7 +908,15 @@ function makeAdminLabel(){
         <div class="small-note" style="margin:6px 0;">มี Rerole อยู่: <b style="color:var(--gold);" id="shopRerollCount">0</b> ครั้ง</div>
         <button class="btn gold" id="buyRerollPack">ซื้อ (300 ✨)</button>
       </div>
+      <!-- Patch 3.20: ซื้อ Role (อาชีพ) ของผู้เล่นเอง — คนละอย่างกับ Rerole สุ่มสกิลไอเทมด้านบน สุ่มได้ทีละ 1 อัน ทับของเดิมเสมอ -->
+      <div class="buff-card">
+        <h4>🎭 สุ่ม Role ผู้เล่น</h4>
+        <div class="desc">สุ่ม Role (อาชีพ) ใหม่ให้ตัวผู้เล่น ได้บัฟถาวรแบบสุ่ม 1 ใน 12 ตั้งแต่ Common (Human) ถึง Divine (Archangel) — ยิ่งระดับสูงยิ่งหายากแต่บัฟยิ่งแรง เลือกเองไม่ได้ (ทับ Role เดิมทันที) — หรือมีโอกาส 0.5% ได้ฟรีจากการทุบ The Forge ก็ได้เช่นกัน</div>
+        <div class="small-note" style="margin:6px 0;" id="shopRoleStatus">🎭 ตอนนี้: ยังไม่มี Role</div>
+        <button class="btn gold" id="buyRolePotion">สุ่ม Role (500 ✨)</button>
+      </div>
     </div>
+
 
     <hr style="border-color:var(--border); margin:24px 0;">
     <h2 style="text-align:center; color:var(--gold);">🖼️ กรอบโปรไฟล์ (Patch 2.2)</h2>
@@ -1162,6 +1176,19 @@ function makeAdminLabel(){
         <div class="small-note" style="margin-top:6px;">เพิ่มไอเทมเข้ากระเป๋าโดยตรง ไม่ผ่านระบบสุ่มดรอป (ไม่รับ Auto-Sell)</div>
       </div>
     </details>
+
+    <!-- Patch 3.21: แอดมินกำหนด Role ให้ผู้เล่นได้ตรงๆ ไม่ต้องสุ่ม (คนละอย่างกับปุ่ม "สุ่ม Role" ของผู้เล่นทั่วไปในร้านค้า) -->
+    <details class="admin-section">
+      <summary style="color:var(--gold);">🎭 กำหนด Role ผู้เล่น (Admin Only)</summary>
+      <div class="admin-body">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select id="adminRoleSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); min-width:200px;"></select>
+          <button class="btn gold" id="adminSetRoleBtn">🎭 กำหนด Role</button>
+          <button class="btn small danger" id="adminClearRoleBtn">✖️ ล้าง Role</button>
+        </div>
+        <div class="small-note" style="margin-top:6px;">กำหนด Role ให้ตรงๆ ทันที ไม่ผ่านระบบสุ่ม (ทับ Role เดิมของผู้เล่นเป้าหมาย) ใช้ช่อง Player ID เป้าหมายด้านบนได้เหมือนฟีเจอร์แอดมินอื่นๆ</div>
+      </div>
+    </details>
   </div>
 </div>
 
@@ -1220,6 +1247,48 @@ const RARITY_META = {
 const SLOT_LIST = ["weapon","armor","pants","shoes"];
 const SLOT_META = { weapon: {label:"อาวุธ", icon:"⚔️"}, armor: {label:"เสื้อ", icon:"👕"}, pants: {label:"กางเกง", icon:"👖"}, shoes: {label:"รองเท้า", icon:"👟"} };
 const BOSS_EMOJIS = ["👺","👹","💀","👽","🐉","🦖","👾","🧛"];
+
+/* Patch 3.20: ระบบ Role (อาชีพ) ของ "ผู้เล่น" เอง — คนละอย่างกับ Rerole (สุ่มสกิลไอเทม)
+   ผู้เล่นมี Role ได้ทีละ 1 อัน ได้มาจาก 2 ทาง: (1) ซื้อในร้านค้าด้วย Va Coin หรือ (2) มีโอกาส 0.5%
+   ดรอปจากการทุบ The Forge — ทั้งสองทางเป็นการ "สุ่ม" Role ใหม่ทับของเดิมเสมอ (เลือกเองไม่ได้)
+   Patch 3.20.1: ปรับเป็น 12 Role ระดับ Common-Divine ตามเรทที่กำหนด (ถ่วงน้ำหนักแบบเดียวกับตาราง
+   ดรอปไอเทม — ตัวเลขคือน้ำหนักสัมพัทธ์ ไม่จำเป็นต้องรวมเป็น 100 เป๊ะ) ระดับสูงขึ้น = บัฟแรงขึ้น/หลายสายพร้อมกัน
+   ใช้ rarity เดียวกับของไอเทม (common/rare/epic/legendary/mythic/divine) เพื่อให้สี/ป้ายระดับตรงกันทั้งเกม */
+const ROLE_EFFECT_LABEL = {
+  power:    (v)=>`พลังต่อสู้รวม +${v}%`,
+  gold:     (v)=>`ทองที่ได้รับ +${v}%`,
+  iron:     (v)=>`เหล็กที่ได้รับ +${v}%`,
+  rareDrop: (v)=>`โอกาสดรอปของหายาก (Rare ขึ้นไป) +${v}%`,
+  afkSpeed: (v)=>`ลดเวลา AFK ${v}%`,
+};
+const ROLE_POOL = [
+  { id:"human",      name:"Human",      emoji:"🧑", rarity:"common",    weight:25,   effects:[{type:"gold", value:8}] },
+  { id:"orc",        name:"Orc",        emoji:"🧌", rarity:"rare",      weight:8,    effects:[{type:"power", value:15}] },
+  { id:"dwarf",      name:"Dwarf",      emoji:"🪓", rarity:"epic",      weight:7,    effects:[{type:"iron", value:30}] },
+  { id:"shadow",     name:"Shadow",     emoji:"🥷", rarity:"epic",      weight:6,    effects:[{type:"afkSpeed", value:25}] },
+  { id:"vampire",    name:"Vampire",    emoji:"🧛", rarity:"epic",      weight:4,    effects:[{type:"gold", value:30}] },
+  { id:"minotaur",   name:"Minotaur",   emoji:"🐂", rarity:"legendary", weight:1.75, effects:[{type:"power", value:40}] },
+  { id:"felynx",     name:"Felynx",     emoji:"🐈‍⬛", rarity:"legendary", weight:1.25, effects:[{type:"afkSpeed", value:40}] },
+  { id:"dragonborn", name:"Dragonborn", emoji:"🐉", rarity:"legendary", weight:1.25, effects:[{type:"rareDrop", value:35}] },
+  { id:"golem",      name:"Golem",      emoji:"🗿", rarity:"legendary", weight:1.25, effects:[{type:"iron", value:45}] },
+  { id:"angel",      name:"Angel",      emoji:"😇", rarity:"mythic",    weight:0.5,  effects:[{type:"gold", value:40},{type:"iron", value:40}] },
+  { id:"demon",      name:"Demon",      emoji:"😈", rarity:"mythic",    weight:0.5,  effects:[{type:"power", value:35},{type:"rareDrop", value:35}] },
+  { id:"archangel",  name:"Archangel",  emoji:"👼", rarity:"divine",    weight:0.1,  effects:[{type:"power", value:25},{type:"gold", value:25},{type:"iron", value:25},{type:"rareDrop", value:25},{type:"afkSpeed", value:15}] },
+];
+const ROLE_BUY_COST = 500; // ราคาซื้อ/สุ่มใหม่ในร้านค้า (Va Coin)
+const ROLE_FORGE_DROP_CHANCE = 0.005; // 0.5% ต่อการทุบ The Forge 1 ครั้ง (ทุกโซน) — โอกาสได้ Role ใดๆ ใน ROLE_POOL ก่อนถ่วงน้ำหนักตาม weight
+function getRoleDef(){ return state.playerRole && state.playerRole.id ? ROLE_POOL.find(r=>r.id===state.playerRole.id) : null; }
+function roleBonus(type){ const r = getRoleDef(); if(!r) return 0; return r.effects.filter(e=>e.type===type).reduce((s,e)=>s+e.value,0); }
+function roleEffectsText(r){ return r.effects.map(e=>ROLE_EFFECT_LABEL[e.type](e.value)).join(", "); }
+// สุ่ม Role แบบถ่วงน้ำหนักตาม weight ของแต่ละ Role (ยิ่ง weight เยอะยิ่งได้ง่าย) เหมือน rollWeightedRarity ของไอเทม
+function grantRandomRole(){
+  const total = ROLE_POOL.reduce((s,r)=>s+r.weight, 0);
+  let roll = Math.random()*total, chosen = ROLE_POOL[ROLE_POOL.length-1];
+  for(const r of ROLE_POOL){ if(roll < r.weight){ chosen = r; break; } roll -= r.weight; }
+  state.playerRole = { id: chosen.id };
+  return chosen;
+}
+
 
 const SKILL_DICT = {
   gold_boost:           { base: 15, scale: 2,   txt: (v) => `เพิ่มทองที่ได้ +${v}%` },
@@ -1737,6 +1806,8 @@ function createDefaultState(){
     vaCoin: 0,
     // Patch 3.19: Rerole Pack — สุ่มสกิลใหม่ให้ไอเทมที่มีอยู่ (คงระดับ/rarity เดิม) ใช้ VaCoin ซื้อเป็นแพ็ค
     rerollCharges: 0,
+    // Patch 3.20: Role ของผู้เล่น (อาชีพ/คลาส) — ให้บัฟถาวร มีได้ทีละ 1 อัน ได้จากร้านค้าหรือดรอปจาก The Forge
+    playerRole: { id: null },
     shop: { autoForgeEndTime: 0, luckyEndTime: 0, zoneBoostEndTime: 0 },
     // Patch 2.2: ร้านค้ากรอบโปรไฟล์ (Cosmetic เท่านั้น ไม่มีผลต่อสถานะ)
     frames: { owned: [], equipped: null },
@@ -1782,6 +1853,9 @@ function hydrateStateDefaults(){
   if(!state.event) state.event = { active:false, endTime:0, durationMin:10 };
   if(state.vaCoin===undefined) state.vaCoin=0;
   if(state.rerollCharges===undefined) state.rerollCharges=0;
+  // Patch 3.20: เซฟเก่าที่ยังไม่มีระบบ Role ของผู้เล่น ให้ default เป็นยังไม่มี Role
+  if(!state.playerRole) state.playerRole = { id: null };
+  if(state.playerRole.id===undefined) state.playerRole.id = null;
   if(!state.shop) state.shop = { autoForgeEndTime:0, luckyEndTime:0, zoneBoostEndTime:0 };
   if(state.shop.autoForgeEndTime===undefined) state.shop.autoForgeEndTime=0;
   if(state.shop.luckyEndTime===undefined) state.shop.luckyEndTime=0;
@@ -2029,6 +2103,14 @@ function applyLuckyBoost(w){
   Object.keys(boosted).forEach(k=>{ if(k!=="common") boosted[k] = boosted[k]*6; });
   return boosted;
 }
+// Patch 3.20: Role "นักเวท" (mage) เพิ่มโอกาสดรอปของหายาก (ทุกระดับที่ไม่ใช่ Common) ตามค่า roleBonus("rareDrop")
+function applyRoleBoost(w){
+  const b = roleBonus("rareDrop");
+  if(!b) return w;
+  const boosted = Object.assign({}, w);
+  Object.keys(boosted).forEach(k=>{ if(k!=="common") boosted[k] = boosted[k]*(1+b/100); });
+  return boosted;
+}
 
 function startEvent(minutes){
   state.event.active = true;
@@ -2250,7 +2332,7 @@ function totalPower() {
   const stardustMult = Math.pow(1.5, state.stardustBuffs.power);
   const finalPower = ((gearPower * setMult) + baseCharPower) * stardustMult;
 
-  return Math.floor(finalPower * (1 + state.buffs.power * 0.1));
+  return Math.floor(finalPower * (1 + state.buffs.power * 0.1) * (1 + roleBonus("power")/100));
 }
 
 function grantMaterials(bG, bI){
@@ -2258,8 +2340,8 @@ function grantMaterials(bG, bI){
   // ทำให้สกิลนี้ไม่มีผลใดๆ ทั้งที่มีคำอธิบายว่า "เพิ่มเหล็กที่ได้ +X%" ตอนนี้แยกตัวคูณทอง/เหล็กออกจากกัน
   // Patch 3.18: Divine ascendance — บวก +25% ทอง/เหล็กเพิ่มจากทุกสายที่มีอยู่แล้ว (เอฟเฟกต์รวมทุกสาย)
   const divineOn = hasSkill("divine_ascendance");
-  let goldMult = (1 + getSkillTotal("gold_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1) * (divineOn?1.25:1);
-  let ironMult = (1 + getSkillTotal("iron_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1) * (divineOn?1.25:1);
+  let goldMult = (1 + getSkillTotal("gold_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1) * (divineOn?1.25:1) * (1 + roleBonus("gold")/100);
+  let ironMult = (1 + getSkillTotal("iron_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1) * (divineOn?1.25:1) * (1 + roleBonus("iron")/100);
   goldMult *= (1 + state.buffs.gold * 0.1);
   ironMult *= (1 + state.buffs.gold * 0.1);
   let g = bG * goldMult; let i = bI * ironMult;
@@ -2296,7 +2378,7 @@ let lastFrame=null;
 function afkTick(ts){
   if(!lastFrame) lastFrame=ts; const delta=ts-lastFrame; lastFrame=ts;
   // Patch 3.18: Divine ascendance ลดเวลา AFK เพิ่มอีก 10% (คูณแยกจาก afk_speed ปกติ)
-  let cycle = 4000 * (1 - Math.min(85, getSkillTotal("afk_speed")+getSkillTotal("afk_speed_35"))/100) * (hasSkill("divine_ascendance")?0.9:1);
+  let cycle = 4000 * (1 - Math.min(85, getSkillTotal("afk_speed")+getSkillTotal("afk_speed_35"))/100) * (hasSkill("divine_ascendance")?0.9:1) * (1 - roleBonus("afkSpeed")/100);
   state.afkProgress += (100/cycle) * delta;
   if(state.afkProgress>=100){
     state.afkProgress=0; const {g,i} = grantMaterials(rand(4,9), rand(3,7));
@@ -2305,7 +2387,7 @@ function afkTick(ts){
     // Patch 3.18: Divine ascendance เพิ่มโอกาสดรอปอีก +5%
     let dropChance = (isEventActive() ? 0.12 : 0.04) + getSkillTotal("drop_boost_small")/100 + (state.buffs.drop * 0.01) + (hasSkill("divine_ascendance")?0.05:0); 
     if(Math.random() < dropChance){
-      let w = applyLuckyBoost(afkDropWeights());
+      let w = applyRoleBoost(applyLuckyBoost(afkDropWeights()));
       if(hasSkill("legendary_triple")){ w.legendary*=3; w.mythic*=3; }
       const total = Object.values(w).reduce((a,b)=>a+b,0); let r=Math.random()*total, rarity;
       for(const k in w){ if(r<w[k]){rarity=k;break;} r-=w[k]; }
@@ -2377,7 +2459,7 @@ document.getElementById("forgeBtn").addEventListener("click", (e)=>{
     res.style.color = t==="perfect"?"var(--legendary)":"var(--uncommon)"; res.textContent = t==="perfect"?"🌟 PERFECT!":"✔️ Good!";
     if(t==="perfect") SFX.forgePerfect(); else SFX.forgeGood();
     const {g,i} = grantMaterials(t==="perfect"?12:6, t==="perfect"?10:5);
-    const w = applyLuckyBoost(forgeDropWeights(t));
+    const w = applyRoleBoost(applyLuckyBoost(forgeDropWeights(t)));
     // Patch 2.0: เดิมตอน Event ดรอปไอเทม x10 ชิ้นต่อครั้ง (ทำให้ไอเทมเฟ้อ) ตอนนี้ดรอป 1 ชิ้นเสมอ
     // แต่ rollWeightedRarity() จะเพิ่มโอกาสได้ของหายากขึ้น +1000% ระหว่าง Event แทน
     const rarity = rollWeightedRarity(w);
@@ -2386,6 +2468,13 @@ document.getElementById("forgeBtn").addEventListener("click", (e)=>{
       const eventTag = isEventActive() ? ` 🎉 <b style="color:var(--gold)">EVENT!</b> <span style="font-size:.75rem">(โอกาสของหายาก +${EVENT_LUCK_BONUS_PCT}%)</span>` : "";
       logMsg(`⚒️ <b>${res.textContent}</b> ได้ <span style="color:${RARITY_META[it.rarity].color}">${it.name}</span>${eventTag}`);
       renderInventory(); renderMergePanel();
+    }
+    // Patch 3.20: ทุบ The Forge สำเร็จ (ไม่ใช่ miss) มีโอกาส 0.5% ได้ Role ใหม่แบบสุ่ม (ทับของเดิม)
+    if(Math.random() < ROLE_FORGE_DROP_CHANCE){
+      const r = grantRandomRole();
+      toast(`🎭 ปัง! ได้รับ Role ใหม่: ${r.emoji} ${r.name} (${RARITY_META[r.rarity].label})`);
+      logMsg(`🎭 <b style="color:${RARITY_META[r.rarity].color}">The Forge มอบ Role ใหม่!</b> ได้ ${r.emoji} <b style="color:${RARITY_META[r.rarity].color}">${r.name}</b> [${RARITY_META[r.rarity].label}] (${roleEffectsText(r)})`);
+      SFX.forgePerfect(); renderRolePanel();
     }
   }
   renderUI(); saveGame();
@@ -2397,7 +2486,7 @@ document.getElementById("forgeBtn").addEventListener("click", (e)=>{
 // QoL: Auto-Forge 10x
 document.getElementById("forge10xBtn").addEventListener("click", ()=>{
   if(state.gold < 100){ toast("ทองไม่พอจ่ายค่าแรงช่างเหล็ก (🪙100)!"); return; }
-  state.gold -= 100; let pCount=0, gCount=0, mCount=0, itemsDropped=0;
+  state.gold -= 100; let pCount=0, gCount=0, mCount=0, itemsDropped=0; let gotRole=null;
   for(let i=0; i<10; i++){
     const r = Math.random(); let t = "miss";
     // Patch 1.3: ให้ forge_zone_boost มีผลกับออโต้ทุบด้วย (เดิมมีผลแค่ทุบมือ) เพื่อความสม่ำเสมอของสกิล
@@ -2406,16 +2495,23 @@ document.getElementById("forge10xBtn").addEventListener("click", ()=>{
     if(t==="miss") mCount++; else {
       if(t==="perfect") pCount++; else gCount++;
       grantMaterials(t==="perfect"?12:6, t==="perfect"?10:5);
-      const w = applyLuckyBoost(forgeDropWeights(t));
+      const w = applyRoleBoost(applyLuckyBoost(forgeDropWeights(t)));
       // Patch 2.0: ดรอปไอเทม 1 ชิ้นต่อการทุบสำเร็จเสมอ (เดิม Event คูณ x10 ทำให้ไอเทมเฟ้อ)
       // โอกาสได้ของหายากเพิ่มขึ้น +1000% ระหว่าง Event ผ่าน rollWeightedRarity() แทน
       const rarity = rollWeightedRarity(w);
       handleItemDrop(pick(SLOT_LIST), rarity, true, true);
       itemsDropped++;
+      // Patch 3.20: แต่ละครั้งที่ทุบสำเร็จในชุดออโต้ 10 ครั้ง ก็มีโอกาส 0.5% ได้ Role ใหม่เหมือนทุบมือ
+      if(Math.random() < ROLE_FORGE_DROP_CHANCE) gotRole = grantRandomRole();
     }
   }
   const eventNote = isEventActive() ? ` 🎉 <b style="color:var(--gold)">EVENT!</b> โอกาสของหายาก +${EVENT_LUCK_BONUS_PCT}%` : "";
   logMsg(`⚡ <b>ทุบออโต้ 10 ครั้ง:</b> Perfect <span style="color:var(--legendary)">${pCount}</span>, Good <span style="color:var(--uncommon)">${gCount}</span>, Miss <span style="color:#ff5a5a">${mCount}</span>${eventNote}`);
+  if(gotRole){
+    toast(`🎭 ปัง! ได้รับ Role ใหม่: ${gotRole.emoji} ${gotRole.name} (${RARITY_META[gotRole.rarity].label})`);
+    logMsg(`🎭 <b style="color:${RARITY_META[gotRole.rarity].color}">The Forge มอบ Role ใหม่!</b> ได้ ${gotRole.emoji} <b style="color:${RARITY_META[gotRole.rarity].color}">${gotRole.name}</b> [${RARITY_META[gotRole.rarity].label}] (${roleEffectsText(gotRole)})`);
+    renderRolePanel();
+  }
   toast("ทุบ 10 ครั้งเสร็จสิ้น!"); renderInventory(); renderMergePanel(); renderUI(); saveGame();
 });
 
@@ -2454,7 +2550,7 @@ function autoForgeTick(){
   }
 
   grantMaterials(t==="perfect" ? 8 : 5, t==="perfect" ? 6 : 4);
-  const w = applyLuckyBoost(forgeDropWeights(t));
+  const w = applyRoleBoost(applyLuckyBoost(forgeDropWeights(t)));
   const rarity = rollWeightedRarity(w);
   const it = handleItemDrop(pick(SLOT_LIST), rarity, true, true);
   if(it){
@@ -2462,6 +2558,13 @@ function autoForgeTick(){
     const tierLabel = t==="perfect" ? "Perfect" : "Good";
     logMsg(`⚒️ <b style="color:var(--gold)">Auto Forge (${tierLabel})</b> ได้: <span style="color:${RARITY_META[it.rarity].color}">${it.name}</span>${eventTag}`);
     renderInventory(); renderMergePanel();
+  }
+  // Patch 3.20: Auto Forge (ของร้านค้า) ก็นับเป็นการทุบ The Forge เช่นกัน จึงมีโอกาส 0.5% ได้ Role ใหม่ด้วย
+  if(Math.random() < ROLE_FORGE_DROP_CHANCE){
+    const r = grantRandomRole();
+    toast(`🎭 ปัง! ได้รับ Role ใหม่: ${r.emoji} ${r.name} (${RARITY_META[r.rarity].label})`);
+    logMsg(`🎭 <b style="color:${RARITY_META[r.rarity].color}">Auto Forge มอบ Role ใหม่!</b> ได้ ${r.emoji} <b style="color:${RARITY_META[r.rarity].color}">${r.name}</b> [${RARITY_META[r.rarity].label}] (${roleEffectsText(r)})`);
+    renderRolePanel();
   }
   renderUI(); renderShopPanel(); saveGame();
 }
@@ -2477,7 +2580,33 @@ function renderShopPanel(){
   document.getElementById("shopZoneStatus").textContent = isZoneBoostActive()
     ? `🟢 ใช้งานอยู่ (เหลือ ~${Math.max(0,Math.ceil((state.shop.zoneBoostEndTime-Date.now())/(60000*60*24)))} วัน)` : "🔴 ไม่ได้ใช้งาน";
   const rc = document.getElementById("shopRerollCount"); if(rc) rc.textContent = fmt(state.rerollCharges||0);
+  renderRolePanel();
 }
+// Patch 3.20: อัปเดต text แสดง Role ปัจจุบันของผู้เล่น ทั้งในหัวโปรไฟล์และในร้านค้า (สีตามระดับ rarity ของ Role นั้น)
+function renderRolePanel(){
+  const r = getRoleDef();
+  const tag = document.getElementById("playerRoleTag");
+  if(tag){
+    if(r){
+      tag.textContent = `🎭 ${r.emoji} ${r.name} [${RARITY_META[r.rarity].label}] — ${roleEffectsText(r)}`;
+      tag.style.background = RARITY_META[r.rarity].color; tag.style.color = "#000";
+    } else {
+      tag.textContent = "🎭 Role: ยังไม่มี";
+      tag.style.background = ""; tag.style.color = "";
+    }
+  }
+  const status = document.getElementById("shopRoleStatus");
+  if(status) status.textContent = r ? `🎭 ตอนนี้: ${r.emoji} ${r.name} [${RARITY_META[r.rarity].label}] — ${roleEffectsText(r)}` : "🎭 ตอนนี้: ยังไม่มี Role";
+}
+document.getElementById("buyRolePotion").addEventListener("click", ()=>{
+  if(state.vaCoin < ROLE_BUY_COST){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
+  state.vaCoin -= ROLE_BUY_COST;
+  const r = grantRandomRole();
+  toast(`🎭 ได้รับ Role ใหม่: ${r.emoji} ${r.name} (${RARITY_META[r.rarity].label})!`);
+  logMsg(`🎭 สุ่ม Role จากร้านค้า ได้ ${r.emoji} <b style="color:${RARITY_META[r.rarity].color}">${r.name}</b> [${RARITY_META[r.rarity].label}] (${roleEffectsText(r)})`);
+  SFX.coin();
+  renderUI(); renderShopPanel(); saveGame();
+});
 document.getElementById("buyAutoForge").addEventListener("click", ()=>{
   if(state.vaCoin < 140){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
   state.vaCoin -= 140; startAutoForge(15*60*1000);
@@ -2501,7 +2630,7 @@ document.getElementById("buyRerollPack").addEventListener("click", ()=>{
   if(state.vaCoin < 300){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
   state.vaCoin -= 300; state.rerollCharges = (state.rerollCharges||0) + 10;
   toast("🎲 ได้รับ Rerole Pack 10 ครั้ง!"); logMsg("🎲 ซื้อ Rerole Pack (10 ครั้ง) จากร้านค้า"); SFX.coin();
-  renderUI(); renderShopPanel(); saveGame();
+  renderUI(); renderShopPanel(); renderInventory(); saveGame();
 });
 
 /* ================= DAILY LOGIN & VIP SYSTEM (Patch 3.1) =================
@@ -3515,6 +3644,80 @@ document.getElementById("adminAddItemBtn").addEventListener("click", async ()=>{
   }
 });
 
+/* ================= ADMIN: กำหนด Role ผู้เล่นตรงๆ ไม่ต้องสุ่ม (Patch 3.21) =================
+   คนละฟีเจอร์กับปุ่ม "สุ่ม Role" ในร้านค้าของผู้เล่นทั่วไป (ที่สุ่มถ่วงน้ำหนักตาม weight เท่านั้น) —
+   อันนี้แอดมินเลือก Role เจาะจงได้เองจาก ROLE_POOL ทั้งหมด แล้วยิงตรงไปที่ state.playerRole
+   ของผู้เล่นเป้าหมาย (หรือของตัวเองถ้าไม่ได้ระบุ Player ID) เหมือนแพทเทิร์นเพิ่มทรัพยากร/ไอเทมด้านบน */
+function populateAdminRoleSelect(){
+  const sel = document.getElementById("adminRoleSelect"); if(!sel) return; sel.innerHTML = "";
+  ROLE_POOL.forEach(r=>{
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = `${r.emoji} ${r.name} [${RARITY_META[r.rarity].label}] — ${roleEffectsText(r)}`;
+    sel.appendChild(opt);
+  });
+}
+populateAdminRoleSelect();
+
+document.getElementById("adminSetRoleBtn").addEventListener("click", async ()=>{
+  const roleId = document.getElementById("adminRoleSelect").value;
+  const roleDef = ROLE_POOL.find(r=>r.id===roleId);
+  if(!roleDef){ toast("⚠️ ไม่พบ Role นี้"); SFX.error(); return; }
+  const targetId = getAdminTargetId();
+  const statusEl = document.getElementById("adminTargetStatus");
+
+  if(!targetId || (myPlayer && targetId === myPlayer.id)){
+    state.playerRole = { id: roleDef.id };
+    toast(`✅ กำหนด Role เป็น ${roleDef.emoji} ${roleDef.name} แล้ว`);
+    logMsg(`🛠️ <span style="color:var(--gold)">Admin</span> กำหนด Role เป็น ${roleDef.emoji} <b style="color:${RARITY_META[roleDef.rarity].color}">${roleDef.name}</b> [${RARITY_META[roleDef.rarity].label}] (${roleEffectsText(roleDef)})`);
+    SFX.upgrade(); renderUI(); renderShopPanel(); saveGame();
+    return;
+  }
+
+  statusEl.textContent = "⏳ กำลังส่ง...";
+  try{
+    const ref = db.collection("players").doc(targetId);
+    const doc = await ref.get();
+    if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+    await ref.update({
+      "state.playerRole": { id: roleDef.id },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = `✅ กำหนด Role ${roleDef.emoji} ${roleDef.name} ให้ผู้เล่น ${targetId} แล้ว`;
+    toast(`✅ กำหนด Role ให้ ${targetId} แล้ว`); SFX.upgrade();
+  }catch(e){
+    statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
+  }
+});
+
+document.getElementById("adminClearRoleBtn").addEventListener("click", async ()=>{
+  const targetId = getAdminTargetId();
+  const statusEl = document.getElementById("adminTargetStatus");
+
+  if(!targetId || (myPlayer && targetId === myPlayer.id)){
+    state.playerRole = { id: null };
+    toast("✅ ล้าง Role แล้ว");
+    logMsg(`🛠️ <span style="color:var(--gold)">Admin</span> ล้าง Role ผู้เล่น`);
+    SFX.click(); renderUI(); renderShopPanel(); saveGame();
+    return;
+  }
+
+  statusEl.textContent = "⏳ กำลังส่ง...";
+  try{
+    const ref = db.collection("players").doc(targetId);
+    const doc = await ref.get();
+    if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+    await ref.update({
+      "state.playerRole": { id: null },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    statusEl.textContent = `✅ ล้าง Role ของผู้เล่น ${targetId} แล้ว`;
+    toast(`✅ ล้าง Role ของ ${targetId} แล้ว`); SFX.click();
+  }catch(e){
+    statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
+  }
+});
+
 /* ================= MERGE SYSTEM ================= */
 function renderMergePanel(){
   const container = document.getElementById("mergeContainer"); container.innerHTML = "";
@@ -3778,6 +3981,8 @@ function renderInventory(){
     grid.appendChild(d);
   });
   const cntEl = document.getElementById("multiSelectCount"); if(cntEl) cntEl.textContent = selectedUids.size;
+  // Patch 3.19.1: อัปเดตจำนวน Rerole คงเหลือที่โชว์ในแท็บคลังทุกครั้งที่ render
+  const invRc = document.getElementById("invRerollCount"); if(invRc) invRc.textContent = fmt(state.rerollCharges||0);
 }
 
 /* ================= INVENTORY: BULK SELL / DELETE (Patch 2.0) ================= */
@@ -3960,9 +4165,12 @@ async function resetSaveKeepVaCoinItems(){
   const keptDailyLogin = state.dailyLogin ? JSON.parse(JSON.stringify(state.dailyLogin)) : { freeClaimed:{}, vipClaimed:{} };
   // Patch 3.19: Rerole Pack ก็ซื้อด้วย Va Coin เหมือนกัน จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
   const keptRerollCharges = state.rerollCharges || 0;
+  // Patch 3.20: Role ของผู้เล่นได้มาจากการซื้อด้วย Va Coin (หรือดรอปในเกม) เหมือนกัน จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
+  const keptPlayerRole = state.playerRole ? JSON.parse(JSON.stringify(state.playerRole)) : { id: null };
   state = createDefaultState();
   state.frames = keptFrames; // ยกเว้นของที่ใช้ Va Coin ซื้อ ไม่ต้องรีเซ็ต
   state.vip = keptVip; state.dailyLogin = keptDailyLogin; state.rerollCharges = keptRerollCharges;
+  state.playerRole = keptPlayerRole;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if(myPlayer){
     try{
