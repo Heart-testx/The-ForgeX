@@ -291,6 +291,28 @@
   .modal-close{position:absolute;top:8px;right:12px;cursor:pointer;color:var(--muted);font-size:1.2rem;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);padding:10px 18px;border-radius:10px;font-size:.85rem;opacity:0;transition:opacity .3s;z-index:200; pointer-events:none;}
   .toast.show{opacity:1;}
+
+  /* DAILY LOGIN / VIP (Patch 3.1) */
+  .vip-badge{display:inline-block; font-size:.68rem; font-weight:800; padding:2px 8px; border-radius:20px; margin-top:4px;}
+  .vip-badge.vip-normal{background:#3d3d55; color:#cfcfe6; border:1px solid var(--muted);}
+  .vip-badge.vip-gold{background:linear-gradient(90deg,#ffd24a,#ffb02e); color:#3a2600; border:1px solid var(--gold); box-shadow:0 0 8px #ffd24a88;}
+  .daily-row{display:flex; gap:8px; overflow-x:auto; padding:6px 2px 12px; scroll-snap-type:x proximity;}
+  .day-cell{flex:0 0 auto; scroll-snap-align:start; width:92px; min-height:118px; background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:8px 6px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:space-between; transition:.15s;}
+  .day-cell .dc-day{font-size:.7rem; color:var(--muted); font-weight:700;}
+  .day-cell .dc-rewards{font-size:.72rem; line-height:1.35; margin:4px 0; min-height:2.6em;}
+  .day-cell .dc-btn{width:100%; padding:5px 0; font-size:.68rem; border-radius:8px; border:none; cursor:pointer; font-weight:700;}
+  .day-cell.claimable{border-color:var(--gold); box-shadow:0 0 10px #ffd24a55; animation:dcpulse 1.6s ease-in-out infinite;}
+  @keyframes dcpulse{0%,100%{box-shadow:0 0 6px #ffd24a44;}50%{box-shadow:0 0 16px #ffd24aaa;}}
+  .day-cell.claimable .dc-btn{background:var(--gold); color:#000;}
+  .day-cell.claimed{opacity:.75; border-color:var(--uncommon);}
+  .day-cell.claimed .dc-btn{background:var(--panel); color:var(--uncommon); cursor:default;}
+  .day-cell.missed{opacity:.45;}
+  .day-cell.missed .dc-btn{background:var(--panel); color:var(--muted); cursor:default;}
+  .day-cell.locked .dc-btn{background:var(--panel); color:var(--muted); cursor:not-allowed;}
+  .day-cell.milestone{border-color:var(--soul);}
+  .day-cell.milestone .dc-day{color:var(--soul);}
+  .day-cell.vip-locked{opacity:.5;}
+  .day-cell.vip-locked .dc-btn{background:var(--panel); color:var(--mythic); cursor:not-allowed;}
 </style>
 </head>
 <body>
@@ -336,6 +358,7 @@
     <button class="tab-btn" data-tab="merge">🔮 หลอมรวม</button>
     <button class="tab-btn" data-tab="tower" style="color:var(--soul); border-color:var(--soul);">⚔️ หอคอยบอส</button>
     <button class="tab-btn" data-tab="shop" style="color:var(--gold); border-color:var(--gold);">🛒 ร้านค้า</button>
+    <button class="tab-btn" data-tab="daily" style="color:var(--soul); border-color:var(--soul);">📅 Daily Login</button>
     <button class="tab-btn" data-tab="rank" style="color:var(--legendary); border-color:var(--legendary);">🏆 อันดับ</button>
   </div>
 
@@ -485,6 +508,36 @@
     <h2 style="text-align:center; color:var(--gold);">🖼️ กรอบโปรไฟล์ (Patch 2.2)</h2>
     <div class="small-note" style="text-align:center; margin-bottom:6px;">กรอบตกแต่งสุดเฟี้ยว มี Motion เคลื่อนไหวรอบตัวละคร ไม่มีผลต่อพลังต่อสู้ ใส่เพื่อความเท่เท่านั้น!</div>
     <div class="frame-shop-grid" id="frameShopGrid"></div>
+  </div>
+
+  <!-- PANEL: DAILY LOGIN & VIP (Patch 3.1) -->
+  <div class="panel" id="panel-daily">
+    <h2 style="text-align:center; color:var(--soul);">📅 Daily Login</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:14px;">วันใหม่เริ่มทุกเที่ยงคืน • พลาดวันไหนของช่องนั้นจะไม่สามารถย้อนกลับไปรับได้ • สถานะ VIP อยู่ถึงสิ้นเดือนปฏิทินปัจจุบันเท่านั้น</div>
+
+    <div class="buff-grid" style="margin-bottom:14px;">
+      <div class="buff-card" style="border-color:var(--muted);">
+        <h4>👤 VIP NORMAL</h4>
+        <div class="desc">ปลดล็อกช่องรางวัล VIP รายวัน — ต้องกดรับเองทีละวัน หากพลาดวันใดจะรับย้อนหลังไม่ได้</div>
+        <button class="btn gold" id="buyVipNormalBtn">ซื้อ VIP NORMAL (399 ✨)</button>
+      </div>
+      <div class="buff-card" style="border-color:var(--gold);">
+        <h4>👑 VIP GOLD</h4>
+        <div class="desc">ปลดล็อกช่องรางวัล VIP + กดรับรางวัล VIP "ทั้งเดือน" ได้ทันทีในครั้งเดียว (สิทธิ์นี้ใช้ได้ 1 ครั้งต่อการซื้อ 1 ครั้ง และไม่คาบเกี่ยวไปเดือนถัดไป)</div>
+        <button class="btn gold" id="buyVipGoldBtn">ซื้อ VIP GOLD (999 ✨)</button>
+      </div>
+    </div>
+
+    <div class="small-note" style="text-align:center; margin-bottom:8px;" id="vipStatusText">สถานะ: ไม่ได้เป็น VIP</div>
+    <div style="text-align:center; margin-bottom:18px;">
+      <button class="btn soul" id="claimVipBulkBtn" style="display:none; padding:10px 22px; font-size:.9rem; box-shadow:0 0 14px #00e5ff66;">👑 รับรางวัล VIP ทั้งเดือนทันที!</button>
+    </div>
+
+    <h3 style="margin-bottom:2px;">🆓 รางวัลรายวัน (ฟรี — เล่นได้ทุกคน)</h3>
+    <div class="daily-row" id="dailyFreeRow"></div>
+
+    <h3 style="margin:14px 0 2px;">👑 รางวัลรายวัน (VIP)</h3>
+    <div class="daily-row" id="dailyVipRow"></div>
   </div>
 
   <!-- PANEL: RANK TOP 3 (Patch 2.4) -->
@@ -1083,7 +1136,10 @@ function createDefaultState(){
     // Patch 2.2: ร้านค้ากรอบโปรไฟล์ (Cosmetic เท่านั้น ไม่มีผลต่อสถานะ)
     frames: { owned: [], equipped: null },
     // Patch 2.1: ตั้งค่าเสียง (เอฟเฟกต์ + เพลงพื้นหลัง สังเคราะห์ด้วย Web Audio API ฟรี 100%)
-    settings: { sfxOn: true, musicOn: true, sfxVol: 0.7, musicVol: 0.3 }
+    settings: { sfxOn: true, musicOn: true, sfxVol: 0.7, musicVol: 0.3 },
+    // Patch 3.1: ระบบ VIP (NORMAL/GOLD) + Daily Login (ฟรี + VIP แยกช่องกัน)
+    vip: { tier: "none", expiresAt: 0, goldBulkAvailable: false, goldBulkMonthKey: "" },
+    dailyLogin: { freeClaimed: {}, vipClaimed: {} }
   };
 }
 let state = createDefaultState();
@@ -1117,6 +1173,15 @@ function hydrateStateDefaults(){
   if(!state.buffs) state.buffs = { power:0, gold:0, drop:0 };
   if(!state.equipped) state.equipped = { weapon:null, armor:null, pants:null, shoes:null };
   if(!state.inventory) state.inventory = [];
+  // Patch 3.1: VIP + Daily Login
+  if(!state.vip) state.vip = { tier:"none", expiresAt:0, goldBulkAvailable:false, goldBulkMonthKey:"" };
+  if(state.vip.tier===undefined) state.vip.tier="none";
+  if(state.vip.expiresAt===undefined) state.vip.expiresAt=0;
+  if(state.vip.goldBulkAvailable===undefined) state.vip.goldBulkAvailable=false;
+  if(state.vip.goldBulkMonthKey===undefined) state.vip.goldBulkMonthKey="";
+  if(!state.dailyLogin) state.dailyLogin = { freeClaimed:{}, vipClaimed:{} };
+  if(!state.dailyLogin.freeClaimed) state.dailyLogin.freeClaimed = {};
+  if(!state.dailyLogin.vipClaimed) state.dailyLogin.vipClaimed = {};
 }
 function loadGame(){
   try{
@@ -1736,6 +1801,173 @@ document.getElementById("buyZone").addEventListener("click", ()=>{
   toast("🎯 ขยายโซน Perfect +35% เป็นเวลา 1 สัปดาห์!"); logMsg("🎯 ซื้อขยายโซน Perfect +35% (1 สัปดาห์) จากร้านค้า"); SFX.coin();
   renderUI(); setupForge(); renderShopPanel(); saveGame();
 });
+
+/* ================= DAILY LOGIN & VIP SYSTEM (Patch 3.1) =================
+   - ฟรี: ผู้เล่นทุกคนกดรับได้ 1 ครั้ง/วัน พลาดวันไหนคือพลาดเลย (ไม่มีการรับย้อนหลัง)
+   - VIP NORMAL (399 ✨/เดือน): ปลดล็อกช่องรางวัล VIP แต่ต้องกดรับทีละวันเหมือนช่องฟรี
+   - VIP GOLD (999 ✨/เดือน): ปลดล็อกช่องรางวัล VIP + ได้สิทธิ์กดรับรางวัล VIP "ทั้งเดือน" ในคลิกเดียว
+     สิทธิ์นี้ใช้ได้ 1 ครั้งต่อการซื้อ 1 ครั้ง และผูกกับเดือนที่ซื้อเท่านั้น (ไม่คาบเกี่ยวไปเดือนถัดไป)
+   - สถานะ VIP (ทั้ง NORMAL/GOLD) หมดอายุตอนสิ้นเดือนปฏิทินปัจจุบันเสมอ ไม่ว่าจะซื้อวันไหนของเดือนก็ตาม
+   ตัวเลขรางวัลด้านล่างเป็นค่าออกแบบเริ่มต้น ปรับ base ในฟังก์ชัน getFreeDailyReward()/getVipDailyReward()
+   ได้อิสระภายหลังโดยไม่กระทบ logic ส่วนอื่น */
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+function dateKeyOf(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function monthKeyOf(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; }
+function daysInMonthOf(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
+function endOfMonthTs(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0, 23, 59, 59, 999).getTime(); }
+const DAILY_MILESTONES = [7,14,21,28,30,31];
+
+// ค่าฐาน — ปรับได้อิสระ (ไม่ต้องแตะ logic ด้านล่าง)
+const FREE_BASE = { gold:40, goldPerDay:2, ironStart:15, ironPerWeek:15, soulsStart:5, soulsPerWeek:10, milestoneGoldMult:1.5, milestoneVaCoinBase:10, milestoneVaCoinPerWeek:10 };
+const VIP_BASE  = { gold:150, goldPerDay:5, iron:60, ironPerWeek:40, souls:20, soulsPerWeek:15, vaCoin:25, vaCoinPerWeek:15, milestoneGoldMult:1.6, milestoneSoulsMult:1.5, milestoneVaCoinBonus:40, milestoneStardustBonus:2 };
+
+function getFreeDailyReward(day){
+  const week = Math.ceil(day/7);
+  const milestone = DAILY_MILESTONES.includes(day);
+  let gold = FREE_BASE.gold + (week-1)*30 + day*FREE_BASE.goldPerDay;
+  let iron = day>=2 ? FREE_BASE.ironStart + (week-1)*FREE_BASE.ironPerWeek : 0;
+  let souls = day>=5 ? FREE_BASE.soulsStart + (week-1)*FREE_BASE.soulsPerWeek : 0;
+  let stardust = 0, vaCoin = 0;
+  if(milestone){
+    gold = Math.round(gold*FREE_BASE.milestoneGoldMult);
+    vaCoin = FREE_BASE.milestoneVaCoinBase + (week-1)*FREE_BASE.milestoneVaCoinPerWeek;
+    if(day>=14) stardust = week-2;
+  }
+  return { gold, iron, souls, stardust:Math.max(0,stardust), vaCoin };
+}
+function getVipDailyReward(day){
+  const week = Math.ceil(day/7);
+  const milestone = DAILY_MILESTONES.includes(day);
+  let gold = VIP_BASE.gold + (week-1)*100 + day*VIP_BASE.goldPerDay;
+  let iron = VIP_BASE.iron + (week-1)*VIP_BASE.ironPerWeek;
+  let souls = VIP_BASE.souls + (week-1)*VIP_BASE.soulsPerWeek;
+  let vaCoin = VIP_BASE.vaCoin + (week-1)*VIP_BASE.vaCoinPerWeek;
+  let stardust = day>=14 ? week-2 : 0;
+  if(milestone){
+    gold = Math.round(gold*VIP_BASE.milestoneGoldMult);
+    souls = Math.round(souls*VIP_BASE.milestoneSoulsMult);
+    vaCoin += VIP_BASE.milestoneVaCoinBonus;
+    stardust += VIP_BASE.milestoneStardustBonus;
+  }
+  return { gold, iron, souls, stardust:Math.max(0,stardust), vaCoin };
+}
+function rewardLine(r){
+  const parts = [];
+  if(r.gold) parts.push(`🪙${fmt(r.gold)}`);
+  if(r.iron) parts.push(`⛓️${fmt(r.iron)}`);
+  if(r.souls) parts.push(`💎${fmt(r.souls)}`);
+  if(r.stardust) parts.push(`🌟${fmt(r.stardust)}`);
+  if(r.vaCoin) parts.push(`✨${fmt(r.vaCoin)}`);
+  return parts.join("<br>");
+}
+function grantReward(r){ state.gold+=r.gold||0; state.iron+=r.iron||0; state.souls+=r.souls||0; state.stardust+=r.stardust||0; state.vaCoin+=r.vaCoin||0; }
+
+function isVipActive(){ return state.vip.tier!=="none" && Date.now() < state.vip.expiresAt; }
+function checkVipExpiry(){
+  if(state.vip.tier!=="none" && Date.now() >= state.vip.expiresAt){
+    state.vip.tier = "none"; state.vip.goldBulkAvailable = false;
+  }
+}
+
+document.getElementById("buyVipNormalBtn").addEventListener("click", ()=>{
+  if(state.vaCoin < 399){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
+  state.vaCoin -= 399; state.vip.tier = "normal"; state.vip.expiresAt = endOfMonthTs(new Date());
+  toast("👤 เปิดใช้งาน VIP NORMAL!"); logMsg("👤 ซื้อ VIP NORMAL (399 ✨) — อยู่ถึงสิ้นเดือนปฏิทินนี้"); SFX.coin();
+  renderUI(); renderDailyLoginPanel(); saveGame();
+});
+document.getElementById("buyVipGoldBtn").addEventListener("click", ()=>{
+  if(state.vaCoin < 999){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
+  state.vaCoin -= 999; state.vip.tier = "gold"; state.vip.expiresAt = endOfMonthTs(new Date());
+  state.vip.goldBulkAvailable = true; state.vip.goldBulkMonthKey = monthKeyOf(new Date());
+  toast("👑 เปิดใช้งาน VIP GOLD!"); logMsg("👑 ซื้อ VIP GOLD (999 ✨) — อยู่ถึงสิ้นเดือนปฏิทินนี้ (รับรางวัล VIP ทั้งเดือนได้ทันที)"); SFX.coin();
+  renderUI(); renderDailyLoginPanel(); saveGame();
+});
+document.getElementById("claimVipBulkBtn").addEventListener("click", ()=>{
+  const now = new Date();
+  if(state.vip.tier!=="gold" || !state.vip.goldBulkAvailable || state.vip.goldBulkMonthKey!==monthKeyOf(now)){ toast("👑 ไม่มีสิทธิ์รับรางวัลทั้งเดือน"); SFX.error(); return; }
+  const total = { gold:0, iron:0, souls:0, stardust:0, vaCoin:0 };
+  const nDays = daysInMonthOf(now);
+  for(let d=1; d<=nDays; d++){
+    const key = dateKeyOf(new Date(now.getFullYear(), now.getMonth(), d));
+    if(!state.dailyLogin.vipClaimed[key]){
+      const r = getVipDailyReward(d);
+      total.gold+=r.gold; total.iron+=r.iron; total.souls+=r.souls; total.stardust+=r.stardust; total.vaCoin+=r.vaCoin;
+      state.dailyLogin.vipClaimed[key] = true;
+    }
+  }
+  grantReward(total); state.vip.goldBulkAvailable = false;
+  toast(`👑 รับรางวัล VIP ทั้งเดือนสำเร็จ! ${rewardLine(total).replace(/<br>/g," ")}`);
+  logMsg(`👑 รับรางวัล VIP GOLD ทั้งเดือน (${nDays} วัน) ในครั้งเดียว: ${rewardLine(total).replace(/<br>/g," ")}`);
+  SFX.upgrade(); renderUI(); renderDailyLoginPanel(); saveGame();
+});
+
+function claimDailyDay(track){ // track: "free" | "vip"
+  const now = new Date();
+  const key = dateKeyOf(now);
+  const day = now.getDate();
+  if(track==="vip" && !isVipActive()){ toast("👑 ต้องเป็น VIP ก่อนถึงจะรับช่องนี้ได้"); SFX.error(); return; }
+  const store = track==="free" ? state.dailyLogin.freeClaimed : state.dailyLogin.vipClaimed;
+  if(store[key]){ toast("✅ วันนี้รับไปแล้ว"); return; }
+  const r = track==="free" ? getFreeDailyReward(day) : getVipDailyReward(day);
+  grantReward(r); store[key] = true;
+  toast(`🎁 รับรางวัล${track==="vip"?" VIP":""}วันนี้แล้ว! ${rewardLine(r).replace(/<br>/g," ")}`);
+  logMsg(`📅 Daily Login (${track==="vip"?"VIP":"ฟรี"}) วันที่ ${day}: ${rewardLine(r).replace(/<br>/g," ")}`);
+  SFX.coin(); renderUI(); renderDailyLoginPanel(); saveGame();
+}
+
+function buildDailyRow(containerId, track){
+  const el = document.getElementById(containerId); if(!el) return;
+  const now = new Date();
+  const todayNum = now.getDate();
+  const nDays = daysInMonthOf(now);
+  const store = track==="free" ? state.dailyLogin.freeClaimed : state.dailyLogin.vipClaimed;
+  const vipOn = isVipActive();
+  let html = "";
+  for(let d=1; d<=nDays; d++){
+    const key = dateKeyOf(new Date(now.getFullYear(), now.getMonth(), d));
+    const claimed = !!store[key];
+    const milestone = DAILY_MILESTONES.includes(d);
+    const r = track==="free" ? getFreeDailyReward(d) : getVipDailyReward(d);
+    let status, btnText, disabled = true;
+    if(track==="vip" && !vipOn){
+      status = "vip-locked"; btnText = "ต้อง VIP";
+    }else if(claimed){
+      status = "claimed"; btnText = "✅ รับแล้ว";
+    }else if(d === todayNum){
+      status = "claimable"; btnText = "🎁 รับเลย"; disabled = false;
+    }else if(d < todayNum){
+      status = "missed"; btnText = "❌ พลาดแล้ว";
+    }else{
+      status = "locked"; btnText = "🔒 ยังไม่ถึง";
+    }
+    html += `<div class="day-cell ${status}${milestone?" milestone":""}">
+      <div class="dc-day">วัน ${d}${milestone?" 🌟":""}</div>
+      <div class="dc-rewards">${rewardLine(r) || "-"}</div>
+      <button class="dc-btn" ${disabled?"disabled":""} onclick="claimDailyDay('${track}')">${btnText}</button>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderDailyLoginPanel(){
+  if(!document.getElementById("panel-daily")) return;
+  checkVipExpiry();
+  const statusEl = document.getElementById("vipStatusText");
+  if(isVipActive()){
+    const d = new Date(state.vip.expiresAt);
+    const label = state.vip.tier==="gold" ? "👑 VIP GOLD" : "👤 VIP NORMAL";
+    statusEl.innerHTML = `สถานะ: <b style="color:${state.vip.tier==="gold"?"var(--gold)":"var(--soul)"};">${label}</b> — หมดอายุสิ้นเดือนนี้ (${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()})`;
+  }else{
+    statusEl.innerHTML = "สถานะ: ไม่ได้เป็น VIP";
+  }
+  const bulkBtn = document.getElementById("claimVipBulkBtn");
+  const bulkReady = state.vip.tier==="gold" && state.vip.goldBulkAvailable && state.vip.goldBulkMonthKey===monthKeyOf(new Date());
+  bulkBtn.style.display = bulkReady ? "inline-block" : "none";
+  document.getElementById("buyVipNormalBtn").textContent = state.vip.tier==="normal" ? "✅ ต่ออายุ VIP NORMAL (399 ✨)" : "ซื้อ VIP NORMAL (399 ✨)";
+  document.getElementById("buyVipGoldBtn").textContent = state.vip.tier==="gold" ? "✅ ต่ออายุ VIP GOLD (999 ✨)" : "ซื้อ VIP GOLD (999 ✨)";
+  buildDailyRow("dailyFreeRow", "free");
+  buildDailyRow("dailyVipRow", "vip");
+}
 
 /* ================= SHOP: PROFILE FRAMES (Patch 2.2) ================= */
 // กรอบโปรไฟล์แบบ Cosmetic เท่านั้น ไม่มีผลต่อพลังต่อสู้หรือสถานะใดๆ ใส่เพื่อความสวยงาม/เท่
@@ -2488,6 +2720,7 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     btn.classList.add("active"); document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
     SFX.tab();
     if(btn.dataset.tab === "rank") renderRankTop3(); else stopRankLive();
+    if(btn.dataset.tab === "daily") renderDailyLoginPanel();
   };
 });
 document.getElementById("refreshRankBtn").addEventListener("click", renderRankTop3);
@@ -2513,8 +2746,12 @@ async function resetSaveKeepVaCoinItems(){
     owned: (state.frames && state.frames.owned) ? [...state.frames.owned] : [],
     equipped: (state.frames && state.frames.equipped) || null
   };
+  // Patch 3.1: สถานะ VIP + ประวัติการรับ Daily Login ก็ซื้อ/จ่ายด้วย Va Coin เหมือนกรอบโปรไฟล์ จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
+  const keptVip = state.vip ? JSON.parse(JSON.stringify(state.vip)) : { tier:"none", expiresAt:0, goldBulkAvailable:false, goldBulkMonthKey:"" };
+  const keptDailyLogin = state.dailyLogin ? JSON.parse(JSON.stringify(state.dailyLogin)) : { freeClaimed:{}, vipClaimed:{} };
   state = createDefaultState();
   state.frames = keptFrames; // ยกเว้นของที่ใช้ Va Coin ซื้อ ไม่ต้องรีเซ็ต
+  state.vip = keptVip; state.dailyLogin = keptDailyLogin;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if(myPlayer){
     try{
@@ -2554,8 +2791,8 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   // ซิงก์ checkbox auto-sell กับ state ล่าสุดหลังจากคลาวด์ทับแล้ว
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
-  renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop();
-  requestAnimationFrame(afkTick); setInterval(saveGame, 15000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000);
+  renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop(); renderDailyLoginPanel();
+  requestAnimationFrame(afkTick); setInterval(saveGame, 15000); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000); setInterval(renderDailyLoginPanel, 30000);
 })();
 </script>
 </body>
