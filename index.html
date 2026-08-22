@@ -175,6 +175,29 @@
     --glow-a:0 0 18px #ffd24aee,0 0 34px #ff6ea0aa,0 0 56px #7c5cff77,0 0 78px #00e5ff55; --glow-b:0 0 36px #fff6d0ff,0 0 62px #ffd24aee,0 0 96px #ff6ea0bb,0 0 130px #7c5cffaa;
     animation:fr-spin 2.5s linear infinite,fr-glowpulse 1.1s ease-in-out infinite,fr-breathe 1.6s ease-in-out infinite;}
 
+  /* Patch 3.7: กรอบชุดใหม่ 10,000v — ราคาสูงกว่าฟีนิกซ์เทวะ (9999v) เดิม จึงอยู่ tier 5 เดียวกัน
+     (ได้วงแหวนคู่ + breathe + shine + burst + gems ครบเหมือนกัน) แยกความพิเศษด้วยธีม/สีของตัวเอง */
+  .frame-ring.fr-ocean_emperor{background:conic-gradient(from 0deg,#001a2e,#00b4d8,#90e0ef,#00b4d8,#001a2e,#0077b6,#001a2e,#00b4d8,#001a2e);
+    --outer-a:#90e0ef;--outer-b:#00b4d8;--outer-c:#001a2e;
+    --glow-a:0 0 16px #00b4d8cc,0 0 32px #90e0efaa,0 0 55px #0077b666; --glow-b:0 0 34px #90e0efff,0 0 60px #00b4d8ee,0 0 96px #0077b699,0 0 125px #ffffff44;
+    animation:fr-spin 3.4s linear infinite,fr-glowpulse 1.6s ease-in-out infinite,fr-breathe 2.6s ease-in-out infinite;}
+  .frame-ring.fr-void_reaper{background:conic-gradient(from 0deg,#000000,#0d3b1e,#39ff8f,#0d3b1e,#000000,#3a0d5c,#000000,#39ff8f,#000000);
+    --outer-a:#39ff8f;--outer-b:#000000;--outer-c:#3a0d5c;
+    --glow-a:0 0 18px #39ff8fbb,0 0 32px #00000099,0 0 55px #3a0d5c88; --glow-b:0 0 34px #7cffb3ee,0 0 60px #000000cc,0 0 95px #39ff8f99,0 0 120px #3a0d5c99;
+    animation:fr-spin-rev 4s linear infinite,fr-glowpulse 1.5s ease-in-out infinite,fr-breathe 2s ease-in-out infinite;}
+  .frame-ring.fr-celestial_dragon{background:conic-gradient(from 0deg,#fffdf5,#ffe9a8,#ff9ec7,#9ec7ff,#c9ffe0,#ffe9a8,#fffdf5,#e0c9ff,#fffdf5);
+    --outer-a:#ffffff;--outer-b:#ffe08a;--outer-c:#c9a8ff;
+    --glow-a:0 0 18px #ffe9a8ee,0 0 34px #ff9ec7aa,0 0 56px #9ec7ff77; --glow-b:0 0 36px #ffffffff,0 0 62px #ffe08aee,0 0 96px #ff9ec7bb,0 0 130px #9ec7ffaa;
+    animation:fr-spin 2.8s linear infinite,fr-glowpulse 1.2s ease-in-out infinite,fr-breathe 1.7s ease-in-out infinite;}
+  .frame-ring.fr-blood_moon{background:conic-gradient(from 0deg,#1a0000,#8b0000,#ff2b2b,#8b0000,#1a0000,#3a0000,#1a0000,#ff2b2b,#1a0000);
+    --outer-a:#ff2b2b;--outer-b:#1a0000;--outer-c:#8b0000;
+    --glow-a:0 0 16px #ff2b2bcc,0 0 30px #8b000099,0 0 52px #1a000088; --glow-b:0 0 32px #ff5a5aee,0 0 58px #ff2b2bcc,0 0 90px #8b000099,0 0 118px #1a0000aa;
+    animation:fr-spin-rev 3.2s linear infinite,fr-flicker .2s steps(3) infinite,fr-breathe 2.2s ease-in-out infinite;}
+  .frame-ring.fr-storm_titan{background:conic-gradient(from 0deg,#0d1418,#4a6572,#7fe8d0,#4a6572,#0d1418,#2b3d45,#0d1418,#7fe8d0,#0d1418);
+    --outer-a:#7fe8d0;--outer-b:#4a6572;--outer-c:#0d1418;
+    --glow-a:0 0 16px #7fe8d0cc,0 0 30px #4a657299,0 0 52px #0d141888; --glow-b:0 0 32px #b0fff0ee,0 0 58px #7fe8d0cc,0 0 90px #4a657299,0 0 118px #ffffff44;
+    animation:fr-spin 1.9s linear infinite,fr-glowpulse 0.95s ease-in-out infinite,fr-breathe 2.3s ease-in-out infinite;}
+
   /* Tier 5 header FX: quad-layer glow + a slow animated color tint across the whole card so the
      priciest frames feel unmistakably grander than gold, even before particles appear. */
   @keyframes hfx-glowpulse{0%,100%{box-shadow:var(--hglow-a);}50%{box-shadow:var(--hglow-b);}}
@@ -189,6 +212,39 @@
     --hglow-a:0 0 0 1.5px #ff2e6d99,0 0 40px #00000077 inset,0 0 65px #7c003f66; --hglow-b:0 0 0 2px #ff5a8fee,0 0 65px #ff2e6daa inset,0 0 100px #000000aa,0 0 130px #7c003f88;}
   .fx-card.hfx-divine_phoenix{border-color:#ffd24a;background-image:radial-gradient(circle at 50% 0%,#ffd24a3d,transparent 62%),radial-gradient(circle at 15% 100%,#ff6ea02e,transparent 50%),radial-gradient(circle at 85% 100%,#7c5cff22,transparent 50%);
     --hglow-a:0 0 0 2px #ffd24ac0,0 0 42px #fff6d066 inset,0 0 70px #ff6ea055,0 0 95px #7c5cff44; --hglow-b:0 0 0 2.5px #fff6d0ff,0 0 68px #ffd24abb inset,0 0 110px #ff6ea0aa,0 0 140px #7c5cff88;}
+
+  .fx-card.hfx-ocean_emperor{border-color:#00b4d8cc;background-image:radial-gradient(circle at 15% 20%,#00b4d833,transparent 55%),radial-gradient(circle at 85% 80%,#90e0ef2e,transparent 55%);
+    --hglow-a:0 0 0 1.5px #00b4d899,0 0 40px #90e0ef55 inset,0 0 65px #0077b655; --hglow-b:0 0 0 2px #90e0efee,0 0 64px #00b4d8aa inset,0 0 100px #0077b699,0 0 130px #ffffff33;}
+  .fx-card.hfx-void_reaper{border-color:#39ff8fcc;background-image:radial-gradient(circle at 20% 80%,#00000055,transparent 60%),radial-gradient(circle at 80% 20%,#3a0d5c44,transparent 55%);
+    --hglow-a:0 0 0 1.5px #39ff8f99,0 0 40px #00000077 inset,0 0 65px #3a0d5c66; --hglow-b:0 0 0 2px #7cffb3ee,0 0 65px #39ff8faa inset,0 0 100px #000000aa,0 0 130px #3a0d5c88;}
+  .fx-card.hfx-celestial_dragon{border-color:#ffe08a;background-image:radial-gradient(circle at 50% 0%,#ffe08a3d,transparent 62%),radial-gradient(circle at 15% 100%,#ff9ec72e,transparent 50%),radial-gradient(circle at 85% 100%,#9ec7ff22,transparent 50%);
+    --hglow-a:0 0 0 2px #ffe08ac0,0 0 42px #fffdf566 inset,0 0 70px #ff9ec755,0 0 95px #9ec7ff44; --hglow-b:0 0 0 2.5px #fffdf5ff,0 0 68px #ffe08abb inset,0 0 110px #ff9ec7aa,0 0 140px #9ec7ff88;}
+  .fx-card.hfx-blood_moon{border-color:#ff2b2bcc;background-image:radial-gradient(circle at 25% 80%,#1a000055,transparent 60%),radial-gradient(circle at 75% 20%,#8b000044,transparent 55%);
+    --hglow-a:0 0 0 1.5px #ff2b2b99,0 0 40px #1a000077 inset,0 0 65px #8b000066; --hglow-b:0 0 0 2px #ff5a5aee,0 0 65px #ff2b2baa inset,0 0 100px #1a0000aa,0 0 130px #8b000088;}
+  .fx-card.hfx-storm_titan{border-color:#7fe8d0cc;background-image:radial-gradient(circle at 12% 15%,#4a657233,transparent 55%),radial-gradient(circle at 88% 85%,#7fe8d02e,transparent 55%);
+    --hglow-a:0 0 0 1.5px #7fe8d099,0 0 40px #4a657255 inset,0 0 65px #0d141866; --hglow-b:0 0 0 2px #b0fff0ee,0 0 62px #7fe8d0aa inset,0 0 100px #4a657299,0 0 135px #ffffff44;}
+
+  /* Patch 3.6: ทำให้กรอบระดับแพง "วังกว่าเดิม" อีกขั้น — เพิ่ม 2 เลเยอร์ใหม่เฉพาะที่ header หลัก
+     (จุดที่ผู้เล่นมองบ่อยสุด) โดยไม่ไปแตะระบบ particle/ring เดิมเลย กันของเดิมเพี้ยน:
+     1) frame-burst = รัศมีแสงพุ่งคล้ายรังสีดวงอาทิตย์หมุนช้าๆ อยู่หลังกรอบ (tier 4-5)
+     2) frame-gems  = อัญมณีเรืองแสง 4 มุมรอบกรอบ กระพริบไล่จังหวะ (tier 5 เท่านั้น - ของหายากสุดๆ) */
+  .frame-burst{position:absolute;inset:-46px;z-index:0;pointer-events:none;opacity:0;color:#ffffff;
+    background:repeating-conic-gradient(from 0deg, currentColor 0deg 2.5deg, transparent 2.5deg 16deg);
+    -webkit-mask:radial-gradient(circle,#000 36%,transparent 74%);
+    mask:radial-gradient(circle,#000 36%,transparent 74%);
+    transition:opacity .5s ease; animation:fr-spin 26s linear infinite;}
+  .frame-burst.fb-t4{opacity:.22;}
+  .frame-burst.fb-t5{opacity:.4; animation-duration:20s;}
+  .frame-gems{position:absolute;inset:0;z-index:2;pointer-events:none;}
+  .frame-gem{position:absolute;width:9px;height:9px;border-radius:2px;transform:rotate(45deg);color:#ffffff;
+    background:radial-gradient(circle at 32% 32%,#ffffff,currentColor 55%,transparent 100%);
+    box-shadow:0 0 6px currentColor,0 0 14px currentColor;
+    animation:fr-gem-pulse 1.8s ease-in-out infinite;}
+  .frame-gem.gem-n{top:-17px;left:50%;margin-left:-4.5px;}
+  .frame-gem.gem-s{bottom:-17px;left:50%;margin-left:-4.5px;}
+  .frame-gem.gem-e{right:-17px;top:50%;margin-top:-4.5px;}
+  .frame-gem.gem-w{left:-17px;top:50%;margin-top:-4.5px;}
+  @keyframes fr-gem-pulse{0%,100%{transform:rotate(45deg) scale(1);filter:brightness(1);}50%{transform:rotate(45deg) scale(1.3);filter:brightness(1.5);}}
 
   .frame-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px;}
   .frame-shop-card{background:var(--panel2);border:2px solid var(--border);border-radius:14px;padding:12px;text-align:center;transition:.15s;}
@@ -360,8 +416,10 @@
   <div class="header fx-card" id="headerCard">
     <div class="header-fx-layer" id="headerFxLayer"></div>
     <div class="profile-card-wrap" id="profileCardWrap">
+      <div class="frame-burst" id="frameBurst"></div>
       <div class="frame-ring" id="frameRing"></div>
       <div class="profile-card tier-common" id="profileCard"><span id="profileEmoji">🧙‍♂️</span></div>
+      <div class="frame-gems" id="frameGems"></div>
     </div>
     <div class="profile-info">
       <div class="pname">ผู้พิทักษ์ (Relic Master)</div>
@@ -2132,6 +2190,12 @@ const FRAME_LIST = [
   { id:"cosmic_infinity", name:"จักรวาลอนันต์", emoji:"🌠", price:6999, desc:"ประกายดาวจักรวาลพวยพุ่งเต็มกล่อง หลุมดำจิ๋วดูดกลืนแสงรอบตัว ระดับจักรวาล" },
   { id:"demon_king",    name:"ราชันปีศาจ",      emoji:"👹", price:7999, desc:"เปลวไฟนรกสีม่วง-ดำโหมกระหน่ำ ฝุ่นวิญญาณล่องลอย น่าสะพรึงที่สุดในร้านค้า" },
   { id:"divine_phoenix", name:"ฟีนิกซ์เทวะ",    emoji:"🦅", price:9999, desc:"ปีกไฟนกฟีนิกซ์ศักดิ์สิทธิ์โบยบินทั่วกล่อง แสงทอง-รุ้งระยิบระยับ สูงสุดแห่งเซิร์ฟเวอร์!" },
+  // Patch 3.7: กรอบชุดใหม่ 10,000v — แพงกว่าฟีนิกซ์เทวะ เป็นเพดานราคาใหม่ของร้านค้า
+  { id:"ocean_emperor",    name:"จักรพรรดิสมุทรลึก",   emoji:"🔱", price:10000, desc:"ตรีศูลจักรพรรดิแห่งท้องทะเลลึก คลื่นยักษ์ซัดสาดพร้อมแสงเรืองน้ำเงินเทอร์ควอยซ์ทั่วกล่อง" },
+  { id:"void_reaper",      name:"ยมทูตขุมนรก",        emoji:"💀", price:10000, desc:"หมอกพิษเขียวมรณะพวยพุ่งจากขุมนรกที่ลึกที่สุด ความเงียบก่อนความตายทั่วทั้งกล่อง" },
+  { id:"celestial_dragon", name:"มังกรสวรรค์เก้าสี",   emoji:"🐲", price:10000, desc:"มังกรแห่งสรวงสวรรค์ร่ายรำรอบตัว แสงทอง-ชมพู-ฟ้าพาสเทลเปล่งประกายศักดิ์สิทธิ์สุดวิจิตร" },
+  { id:"blood_moon",       name:"จันทรารัตติกาลเลือด", emoji:"🌕", price:10000, desc:"พระจันทร์สีเลือดลอยเด่นกลางค่ำคืน หยดเลือดหยดพร่างพราวพร้อมแสงแดงกระพริบดุดัน" },
+  { id:"storm_titan",      name:"ไททันจอมพายุ",       emoji:"🌪️", price:10000, desc:"ไททันแห่งพายุหมุนควบคุมสายฟ้าและลมกรด พายุทอร์นาโดพัดกระหน่ำทั่วกล่องแบบไม่ยั้ง" },
   // Patch 3.2: กรอบพิเศษเฉพาะสมาชิก VIP — ไม่ขายในร้านค้า (vipOnly:true), ได้มาอัตโนมัติตอนซื้อ VIP
   // และใช้งานได้เฉพาะช่วงที่ยังเป็น VIP อยู่เท่านั้น (ดูฟังก์ชัน grantVipFrame/revokeVipFrame)
   { id:"vip_normal", name:"เกียรติยศ VIP",  emoji:"👤", price:null, vipOnly:true, desc:"กรอบพิเศษเฉพาะสมาชิก VIP NORMAL ใช้งานได้ตลอดช่วงที่เป็น VIP เท่านั้น" },
@@ -2141,7 +2205,9 @@ const FRAME_LIST = [
 // spread across the WHOLE header card, not just the avatar. Number of layers + rate scale with
 // the frame's price tier so a 2999✨ frame visibly outclasses a 299✨ one.
 const FRAME_TIER = { lightning:1, wave:1, wind:1, fire:2, frost:2, sakura:2, galaxy:3, rainbow:3, shadow:3, gold:4,
-  thunder_god:5, hell_dragon:5, cosmic_infinity:5, demon_king:5, divine_phoenix:5, vip_normal:3, vip_gold:4 };
+  thunder_god:5, hell_dragon:5, cosmic_infinity:5, demon_king:5, divine_phoenix:5,
+  ocean_emperor:5, void_reaper:5, celestial_dragon:5, blood_moon:5, storm_titan:5,
+  vip_normal:3, vip_gold:4 };
 // Patch 3.5: จำกัดจำนวน "ชนิด" particle ต่อกรอบไว้ไม่เกิน 2 แบบเสมอ (แม้ Tier 5) แล้วให้ความอลังการ
 // ของกรอบแพงมาจากความถี่/ขนาด/แสง (ผ่าน dust-mote + glow ที่ scale ตาม tier อยู่แล้ว) แทนการโปะ emoji
 // หลายแบบพร้อมกันจนดูรก — เปลี่ยนของเดิมบางตัวที่เลือกมาแบบขอไปที (⚫ วงกลมดำเฉยๆ, 👁️ ตาที่ไม่เข้าธีม)
@@ -2169,6 +2235,12 @@ const FRAME_PARTICLE_SETS = {
   // (หมอกวิญญาณล่องลอยแทนที่จะพุ่งขึ้นตรงๆ) ให้ความรู้สึกหลอนกว่าเดิม
   demon_king:     [ {emoji:"💜",mode:"rise",rate:280,size:14}, {emoji:"💨",mode:"drift",rate:1300,size:18} ],
   divine_phoenix: [ {emoji:"🔥",mode:"rise",rate:240,size:18}, {emoji:"🪶",mode:"fall",rate:850,size:15} ],
+  // Patch 3.7: กรอบชุดใหม่ 10,000v
+  ocean_emperor:    [ {emoji:"🌊",mode:"rise",rate:250,size:18}, {emoji:"💧",mode:"fall",rate:850,size:14} ],
+  void_reaper:      [ {emoji:"☠️",mode:"rise",rate:280,size:16}, {emoji:"💚",mode:"drift",rate:1200,size:12} ],
+  celestial_dragon: [ {emoji:"✨",mode:"rise",rate:230,size:17}, {emoji:"🐉",mode:"drift",rate:2600,size:20} ],
+  blood_moon:       [ {emoji:"🩸",mode:"fall",rate:520,size:14}, {emoji:"🌑",mode:"drift",rate:2100,size:18} ],
+  storm_titan:      [ {emoji:"🌪️",mode:"drift",rate:900,size:18}, {emoji:"⚡",mode:"rise",rate:260,size:16} ],
   vip_normal: [ {emoji:"👤",mode:"drift",rate:1400,size:14}, {emoji:"✨",mode:"rise",rate:700,size:11} ],
   vip_gold:   [ {emoji:"👑",mode:"drift",rate:1300,size:16}, {emoji:"✨",mode:"rise",rate:400,size:14} ],
 };
@@ -2181,12 +2253,15 @@ const FRAME_DUST = {
   gold:{color:"#ffe08a"},
   thunder_god:{color:"#cfeaff"}, hell_dragon:{color:"#ffb26b"}, cosmic_infinity:{color:"#a8c8ff"},
   demon_king:{color:"#ff9ec2"}, divine_phoenix:{color:"#ffe6b0"},
+  ocean_emperor:{color:"#7fe0ff"}, void_reaper:{color:"#39ff8f"}, celestial_dragon:{color:"#ffe9c2"},
+  blood_moon:{color:"#ff5a5a"}, storm_titan:{color:"#a8fff0"},
   vip_normal:{color:"#a6a6ff"}, vip_gold:{color:"#ffe08a"},
 };
 const TIER_DUST_RATE = {1:2600, 2:1900, 3:1400, 4:1000, 5:750};
 const TIER_DUST_SIZE = {1:4, 2:5, 3:6, 4:7, 5:8};
 // Tier 5 only: a slow expanding shockwave ring sweeps across the whole card every few seconds.
-const TIER5_IDS = ["thunder_god","hell_dragon","cosmic_infinity","demon_king","divine_phoenix"];
+const TIER5_IDS = ["thunder_god","hell_dragon","cosmic_infinity","demon_king","divine_phoenix",
+  "ocean_emperor","void_reaper","celestial_dragon","blood_moon","storm_titan"];
 const TIER5_SHOCKWAVE_RATE = 4200;
 // Patch 3.5: คลาส CSS เสริมของวงแหวนตาม tier — ใช้ร่วมกันทุกจุดที่ render frame-ring (header, ร้านค้า,
 // การ์ด VIP, อันดับ) กันลืมใส่ไม่ครบบางจุด: tier 5 ได้วงแหวนคู่ (fr-tier5), tier 4 ขึ้นไปได้แสงไล่กวาด
@@ -2340,6 +2415,33 @@ function applyFrameVisual(){
     frameRingExtraClasses(eq).trim().split(" ").filter(Boolean).forEach(c=>ring.classList.add(c));
     startFrameParticles(eq);
   } else stopFrameParticles();
+  applyFramePremiumFX(eq);
+}
+// Patch 3.6: เปิด/ปิด "รัศมีแสง" (frame-burst) และ "อัญมณี 4 มุม" (frame-gems) ตาม tier ของกรอบที่สวมอยู่
+// ทำงานแยกจาก applyFrameVisual เดิมโดยสิ้นเชิง เพื่อไม่ให้กระทบ ring/particle เดิมที่ tune ไว้แล้ว
+function applyFramePremiumFX(eq){
+  const burst = document.getElementById("frameBurst");
+  const gemsBox = document.getElementById("frameGems");
+  if(!burst || !gemsBox) return;
+  burst.classList.remove("fb-t4","fb-t5");
+  gemsBox.innerHTML = "";
+  if(!eq) return;
+  const tier = FRAME_TIER[eq] || 1;
+  const color = (FRAME_DUST[eq] && FRAME_DUST[eq].color) || "#ffd24a";
+  if(tier >= 4){
+    burst.style.color = color;
+    burst.classList.add(tier === 5 ? "fb-t5" : "fb-t4");
+  }
+  if(tier === 5){
+    const spots = [["gem-n",0],["gem-e",.45],["gem-s",.9],["gem-w",1.35]];
+    spots.forEach(([cls,delay])=>{
+      const g = document.createElement("span");
+      g.className = "frame-gem "+cls;
+      g.style.color = color;
+      g.style.animationDelay = delay+"s";
+      gemsBox.appendChild(g);
+    });
+  }
 }
 
 /* ================= ADMIN: F8 HIDDEN PANEL (Patch 1.8) ================= */
