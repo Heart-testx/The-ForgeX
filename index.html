@@ -182,6 +182,12 @@
   .frame-shop-card .fdesc{font-size:.66rem;color:var(--muted);margin-bottom:8px;min-height:2.6em;line-height:1.3;}
   .frame-shop-card .btn{width:100%;}
 
+  /* Patch 2.5: กรอบโปรไฟล์ที่สวมใส่อยู่ (ซื้อจากร้านค้า) แสดงในหน้า Top 3 อันดับด้วย — ใช้โครง .frame-preview
+     เดิม แต่ย่อขนาดให้พอดีกับแถวอันดับ */
+  .rank-frame-preview{position:relative;width:52px;height:52px;flex-shrink:0;}
+  .rank-frame-preview .frame-ring{inset:-6px;border-radius:16px;}
+  .rank-frame-preview .frame-preview-avatar{width:52px;height:52px;border-radius:14px;font-size:24px;}
+
   .profile-info{display:flex;flex-direction:column;gap:6px;justify-content:center;min-width:150px;}
   .profile-info .pname{font-size:1.1rem;font-weight:bold;}
   .rarity-tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:bold;width:fit-content;}
@@ -935,6 +941,7 @@ async function pullCloudStateThenWatch(){
     if(doc.exists && doc.data().state){
       applyingRemote = true;
       state = Object.assign(state, doc.data().state);
+      hydrateStateDefaults();
       applyingRemote = false;
     }
   }catch(e){ /* ออฟไลน์ได้ - จะใช้เซฟในเครื่องแทน */ }
@@ -946,6 +953,7 @@ async function pullCloudStateThenWatch(){
     if(!data || !data.state) return;
     applyingRemote = true;
     state = Object.assign(state, data.state);
+    hydrateStateDefaults();
     applyingRemote = false;
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     renderUI(); renderInventory(); renderMergePanel(); renderShopPanel(); renderFrameShop();
@@ -999,27 +1007,39 @@ let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
 function saveGame(){ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); cloudSaveState(); }
+// BUGFIX: เดิม defaulting logic นี้อยู่ใน loadGame() เท่านั้น แต่ pullCloudStateThenWatch() ก็ทับ state
+// ด้วยข้อมูลจากคลาวด์เหมือนกัน (ทั้งตอนดึงครั้งแรกและทุกครั้งที่มี realtime update) โดยไม่เคย backfill ฟิลด์ใหม่ๆ
+// เลย ถ้าเซฟบนคลาวด์เก่ากว่า field ใหม่ (เช่น settings/frames/shop ที่เพิ่มมาทีหลัง) ค่าพวกนี้จะถูกลบทิ้งเงียบๆ
+// ทุกครั้งที่ sync จากคลาวด์ ตอนนี้แยกฟังก์ชันออกมาเพื่อเรียกซ้ำได้ทั้งสองจุด
+function hydrateStateDefaults(){
+  if(state.stardust===undefined) state.stardust=0;
+  if(!state.stardustBuffs) state.stardustBuffs={power:0};
+  if(state.autoSellCommon===undefined) state.autoSellCommon=false;
+  if(state.autoSellUncommon===undefined) state.autoSellUncommon=false;
+  if(!state.event) state.event = { active:false, endTime:0, durationMin:10 };
+  if(state.vaCoin===undefined) state.vaCoin=0;
+  if(!state.shop) state.shop = { autoForgeEndTime:0, luckyEndTime:0, zoneBoostEndTime:0 };
+  if(state.shop.autoForgeEndTime===undefined) state.shop.autoForgeEndTime=0;
+  if(state.shop.luckyEndTime===undefined) state.shop.luckyEndTime=0;
+  if(state.shop.zoneBoostEndTime===undefined) state.shop.zoneBoostEndTime=0;
+  if(!state.frames) state.frames = { owned:[], equipped:null };
+  if(!state.frames.owned) state.frames.owned = [];
+  if(state.frames.equipped===undefined) state.frames.equipped = null;
+  if(!state.settings) state.settings = { sfxOn:true, musicOn:true, sfxVol:0.7, musicVol:0.3 };
+  if(state.settings.sfxOn===undefined) state.settings.sfxOn=true;
+  if(state.settings.musicOn===undefined) state.settings.musicOn=true;
+  if(state.settings.sfxVol===undefined) state.settings.sfxVol=0.7;
+  if(state.settings.musicVol===undefined) state.settings.musicVol=0.3;
+  if(!state.buffs) state.buffs = { power:0, gold:0, drop:0 };
+  if(!state.equipped) state.equipped = { weapon:null, armor:null, pants:null, shoes:null };
+  if(!state.inventory) state.inventory = [];
+}
 function loadGame(){
   try{
     const raw = localStorage.getItem(SAVE_KEY);
     if(raw){
       const s = JSON.parse(raw); state = Object.assign(state, s);
-      if(state.stardust===undefined) state.stardust=0;
-      if(!state.stardustBuffs) state.stardustBuffs={power:0};
-      if(state.autoSellCommon===undefined) state.autoSellCommon=false;
-      if(state.autoSellUncommon===undefined) state.autoSellUncommon=false;
-      if(!state.event) state.event = { active:false, endTime:0, durationMin:10 };
-      if(state.vaCoin===undefined) state.vaCoin=0;
-      if(!state.shop) state.shop = { autoForgeEndTime:0, luckyEndTime:0, zoneBoostEndTime:0 };
-      if(state.shop.zoneBoostEndTime===undefined) state.shop.zoneBoostEndTime=0;
-      if(!state.frames) state.frames = { owned:[], equipped:null };
-      if(!state.frames.owned) state.frames.owned = [];
-      if(state.frames.equipped===undefined) state.frames.equipped = null;
-      if(!state.settings) state.settings = { sfxOn:true, musicOn:true, sfxVol:0.7, musicVol:0.3 };
-      if(state.settings.sfxOn===undefined) state.settings.sfxOn=true;
-      if(state.settings.musicOn===undefined) state.settings.musicOn=true;
-      if(state.settings.sfxVol===undefined) state.settings.sfxVol=0.7;
-      if(state.settings.musicVol===undefined) state.settings.musicVol=0.3;
+      hydrateStateDefaults();
     }
   }catch(e){}
   
@@ -1256,13 +1276,24 @@ async function renderRankTop3(){
     snap.forEach(doc=>{
       const d = doc.data();
       const isMe = myPlayer && doc.id === myPlayer.id;
+      // Patch 2.5: ดึงกรอบโปรไฟล์ที่ผู้เล่นคนนั้นสวมอยู่ (เก็บอยู่ใน state.frames.equipped ที่ sync ขึ้นคลาวด์
+      // อยู่แล้วทุกครั้งที่ saveGame) มาโชว์คู่กับอันดับ ถ้าไม่มีกรอบหรือ id ไม่ตรงกับรายการปัจจุบันก็ไม่แสดงอะไรเพิ่ม
+      const eqFrameId = d.state && d.state.frames && d.state.frames.equipped;
+      const frameMeta = eqFrameId ? FRAME_LIST.find(f=>f.id===eqFrameId) : null;
+      const frameRingHtml = frameMeta
+        ? `<div class="frame-ring fr-${frameMeta.id}${FRAME_TIER[frameMeta.id]===5?" fr-tier5":""}"></div>`
+        : "";
       const row = document.createElement("div");
       row.style.cssText = `display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:var(--panel2); border:1px solid ${isMe?"var(--gold)":"var(--border)"};`;
       row.innerHTML = `
+        <div class="rank-frame-preview">
+          ${frameRingHtml}
+          <div class="frame-preview-avatar">🧙‍♂️</div>
+        </div>
         <div style="font-size:1.6rem;">${RANK_MEDALS[rank]||"🏅"}</div>
         <div style="flex:1;">
           <div style="font-weight:bold;">${(d.username||"ไม่ทราบชื่อ")}${isMe?' <span style="color:var(--gold); font-size:.75rem;">(คุณ)</span>':""}</div>
-          <div class="small-note">🆔 ${doc.id}</div>
+          <div class="small-note">🆔 ${doc.id}${frameMeta?` · 🖼️ ${frameMeta.emoji} ${frameMeta.name}`:""}</div>
         </div>
         <div style="text-align:right; font-weight:bold; color:var(--legendary);">${fmt(d.power||0)}</div>`;
       listEl.appendChild(row);
@@ -1319,9 +1350,13 @@ function totalPower() {
   const stats = getPlayerStats();
   
   // 1. Skill Combo Trigger
+  // BUGFIX: เดิม comboMult ถูกล็อกไว้ที่ 4.0 คงที่ ทำให้การอัพเกรดเลเวลไอเทมที่มีสกิล shatter_strike
+  // (เช่น Glacial Sword) ไม่มีผลอะไรเลย ทั้งที่คำอธิบายสกิลบอกว่า "ตีมอนแช่แข็งแรงขึ้น +X%" และมี
+  // scale ต่อเลเวลกำหนดไว้ใน SKILL_DICT อยู่แล้ว ตอนนี้คำนวณจาก getSkillTotal() ให้ตรงกับที่อธิบายไว้จริง
+  // (ที่เลเวล +0 ค่า base=300% จะได้ผลลัพธ์ x4.0 เท่าเดิม แล้วเพิ่มขึ้นเมื่ออัพเกรด)
   let comboMult = 1.0;
   if (hasSkill("freeze_aura") && hasSkill("shatter_strike")) {
-    comboMult = 4.0; // ดาเมจคูณ 4 ถ้าใส่ดาบและรองเท้าคู่กัน
+    comboMult = 1 + getSkillTotal("shatter_strike")/100;
   }
 
   // 2. Stat Synergy Multiplier (Patch 1.3: ใช้ sqrt(ผลคูณ) แทนผลคูณตรงๆ
@@ -1348,9 +1383,13 @@ function totalPower() {
 }
 
 function grantMaterials(bG, bI){
-  let mult = (1 + getSkillTotal("gold_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1);
-  mult *= (1 + state.buffs.gold * 0.1); 
-  let g = bG * mult; let i = bI * mult;
+  // BUGFIX: iron_boost skill (บนไอเทมอย่าง Storm Hammer / Knight Plate) เดิมไม่เคยถูกใช้เลย
+  // ทำให้สกิลนี้ไม่มีผลใดๆ ทั้งที่มีคำอธิบายว่า "เพิ่มเหล็กที่ได้ +X%" ตอนนี้แยกตัวคูณทอง/เหล็กออกจากกัน
+  let goldMult = (1 + getSkillTotal("gold_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1);
+  let ironMult = (1 + getSkillTotal("iron_boost")/100) * (1 + getSkillTotal("material_boost_small")/100) * (hasSkill("material_double")?2:1);
+  goldMult *= (1 + state.buffs.gold * 0.1);
+  ironMult *= (1 + state.buffs.gold * 0.1);
+  let g = bG * goldMult; let i = bI * ironMult;
   if(Math.random() < Math.min(0.9, getSkillTotal("afk_double_chance")/100)){ g*=2; i*=2; }
   state.gold += g; state.iron += i;
   return { g:Math.floor(g), i:Math.floor(i) };
