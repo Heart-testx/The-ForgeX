@@ -84,16 +84,16 @@
   @keyframes shockwave-pulse{0%{opacity:.6;transform:translate(-50%,-50%) scale(.12);}70%{opacity:.16;}100%{opacity:0;transform:translate(-50%,-50%) scale(1);}}
 
   /* Ambient tint + header glow per equipped frame, strength scales with tier (299v ~ subtle -> 2999v ~ dramatic) */
-  .header.hfx-lightning{box-shadow:0 0 0 1px #3d9bff33,0 0 22px #3d9bff33 inset;border-color:#3d9bff55;}
-  .header.hfx-wave{box-shadow:0 0 0 1px #3d9bff33,0 0 22px #3d9bff2e inset;border-color:#3d9bff55;}
-  .header.hfx-wind{box-shadow:0 0 0 1px #4caf5033,0 0 22px #4caf502e inset;border-color:#4caf5055;}
-  .header.hfx-fire{box-shadow:0 0 0 1px #ff5a1f4a,0 0 34px #ff5a1f3d inset;border-color:#ff5a1f70;}
-  .header.hfx-frost{box-shadow:0 0 0 1px #7fe8ff4a,0 0 34px #7fe8ff3a inset;border-color:#7fe8ff70;}
-  .header.hfx-sakura{box-shadow:0 0 0 1px #ff9ec74a,0 0 34px #ff9ec73a inset;border-color:#ff9ec770;}
-  .header.hfx-galaxy{box-shadow:0 0 0 1px #7c5cff5c,0 0 46px #00e5ff40 inset,0 0 46px #7c5cff3d;border-color:#7c5cff88;background-image:radial-gradient(circle at 15% 20%,#7c5cff22,transparent 55%);}
-  .header.hfx-rainbow{box-shadow:0 0 0 1px #ffffff5c,0 0 46px #ff2e6d3d inset,0 0 46px #7c5cff33;border-color:#ffffff88;background-image:radial-gradient(circle at 85% 25%,#ffb02e22,transparent 55%);}
-  .header.hfx-shadow{box-shadow:0 0 0 1px #b24bff5c,0 0 46px #00000066 inset,0 0 40px #b24bff33;border-color:#b24bff88;background-image:radial-gradient(circle at 20% 80%,#00000055,transparent 60%);}
-  .header.hfx-gold{box-shadow:0 0 0 1.5px #ffd24a80,0 0 30px #fff6d055 inset,0 0 60px #ffd24a55,0 0 90px #ffd24a33;border-color:#ffd24a;background-image:radial-gradient(circle at 50% 0%,#ffd24a22,transparent 60%);}
+  .fx-card.hfx-lightning{box-shadow:0 0 0 1px #3d9bff33,0 0 22px #3d9bff33 inset;border-color:#3d9bff55;}
+  .fx-card.hfx-wave{box-shadow:0 0 0 1px #3d9bff33,0 0 22px #3d9bff2e inset;border-color:#3d9bff55;}
+  .fx-card.hfx-wind{box-shadow:0 0 0 1px #4caf5033,0 0 22px #4caf502e inset;border-color:#4caf5055;}
+  .fx-card.hfx-fire{box-shadow:0 0 0 1px #ff5a1f4a,0 0 34px #ff5a1f3d inset;border-color:#ff5a1f70;}
+  .fx-card.hfx-frost{box-shadow:0 0 0 1px #7fe8ff4a,0 0 34px #7fe8ff3a inset;border-color:#7fe8ff70;}
+  .fx-card.hfx-sakura{box-shadow:0 0 0 1px #ff9ec74a,0 0 34px #ff9ec73a inset;border-color:#ff9ec770;}
+  .fx-card.hfx-galaxy{box-shadow:0 0 0 1px #7c5cff5c,0 0 46px #00e5ff40 inset,0 0 46px #7c5cff3d;border-color:#7c5cff88;background-image:radial-gradient(circle at 15% 20%,#7c5cff22,transparent 55%);}
+  .fx-card.hfx-rainbow{box-shadow:0 0 0 1px #ffffff5c,0 0 46px #ff2e6d3d inset,0 0 46px #7c5cff33;border-color:#ffffff88;background-image:radial-gradient(circle at 85% 25%,#ffb02e22,transparent 55%);}
+  .fx-card.hfx-shadow{box-shadow:0 0 0 1px #b24bff5c,0 0 46px #00000066 inset,0 0 40px #b24bff33;border-color:#b24bff88;background-image:radial-gradient(circle at 20% 80%,#00000055,transparent 60%);}
+  .fx-card.hfx-gold{box-shadow:0 0 0 1.5px #ffd24a80,0 0 30px #fff6d055 inset,0 0 60px #ffd24a55,0 0 90px #ffd24a33;border-color:#ffd24a;background-image:radial-gradient(circle at 50% 0%,#ffd24a22,transparent 60%);}
 
   /* Tier 1 (299-399 va): slim ring, soft single glow */
   .frame-ring.fr-lightning{padding:5px;background:conic-gradient(from 0deg,#eaf6ff,#8fe0ff,#3d9bff,#8fe0ff,#eaf6ff,#8fe0ff,#eaf6ff);
@@ -158,16 +158,16 @@
   /* Tier 5 header FX: quad-layer glow + a slow animated color tint across the whole card so the
      priciest frames feel unmistakably grander than gold, even before particles appear. */
   @keyframes hfx-glowpulse{0%,100%{box-shadow:var(--hglow-a);}50%{box-shadow:var(--hglow-b);}}
-  .header.hfx-anim{animation:hfx-glowpulse 2.6s ease-in-out infinite;}
-  .header.hfx-thunder_god{border-color:#eaf6ffdd;background-image:radial-gradient(circle at 12% 15%,#7c5cff2e,transparent 55%),radial-gradient(circle at 88% 85%,#3d9bff2e,transparent 55%);
+  .fx-card.hfx-anim{animation:hfx-glowpulse 2.6s ease-in-out infinite;}
+  .fx-card.hfx-thunder_god{border-color:#eaf6ffdd;background-image:radial-gradient(circle at 12% 15%,#7c5cff2e,transparent 55%),radial-gradient(circle at 88% 85%,#3d9bff2e,transparent 55%);
     --hglow-a:0 0 0 1.5px #eaf6ffaa,0 0 34px #7c5cff55 inset,0 0 60px #3d9bff55; --hglow-b:0 0 0 2px #ffffffee,0 0 55px #7c5cffaa inset,0 0 95px #3d9bffaa,0 0 130px #ffffff44;}
-  .header.hfx-hell_dragon{border-color:#ff5a1fdd;background-image:radial-gradient(circle at 15% 85%,#ff2e0033,transparent 55%),radial-gradient(circle at 85% 15%,#ffd24a2e,transparent 55%);
+  .fx-card.hfx-hell_dragon{border-color:#ff5a1fdd;background-image:radial-gradient(circle at 15% 85%,#ff2e0033,transparent 55%),radial-gradient(circle at 85% 15%,#ffd24a2e,transparent 55%);
     --hglow-a:0 0 0 1.5px #ff5a1fa0,0 0 40px #ff2e0055 inset,0 0 65px #ffb02a55; --hglow-b:0 0 0 2px #ffb02aee,0 0 62px #ff5a1faa inset,0 0 100px #ff2e0099,0 0 135px #ffd24a55;}
-  .header.hfx-cosmic_infinity{border-color:#00e5ffcc;background-image:radial-gradient(circle at 20% 20%,#7c5cff33,transparent 55%),radial-gradient(circle at 80% 80%,#00e5ff2e,transparent 55%);
+  .fx-card.hfx-cosmic_infinity{border-color:#00e5ffcc;background-image:radial-gradient(circle at 20% 20%,#7c5cff33,transparent 55%),radial-gradient(circle at 80% 80%,#00e5ff2e,transparent 55%);
     --hglow-a:0 0 0 1.5px #00e5ff99,0 0 40px #7c5cff55 inset,0 0 65px #b24bff44; --hglow-b:0 0 0 2px #9c7cffee,0 0 64px #00e5ffaa inset,0 0 100px #b24bff99,0 0 130px #ffffff33;}
-  .header.hfx-demon_king{border-color:#ff2e6dcc;background-image:radial-gradient(circle at 25% 80%,#00000055,transparent 60%),radial-gradient(circle at 75% 20%,#7c003f44,transparent 55%);
+  .fx-card.hfx-demon_king{border-color:#ff2e6dcc;background-image:radial-gradient(circle at 25% 80%,#00000055,transparent 60%),radial-gradient(circle at 75% 20%,#7c003f44,transparent 55%);
     --hglow-a:0 0 0 1.5px #ff2e6d99,0 0 40px #00000077 inset,0 0 65px #7c003f66; --hglow-b:0 0 0 2px #ff5a8fee,0 0 65px #ff2e6daa inset,0 0 100px #000000aa,0 0 130px #7c003f88;}
-  .header.hfx-divine_phoenix{border-color:#ffd24a;background-image:radial-gradient(circle at 50% 0%,#ffd24a3d,transparent 62%),radial-gradient(circle at 15% 100%,#ff6ea02e,transparent 50%),radial-gradient(circle at 85% 100%,#7c5cff22,transparent 50%);
+  .fx-card.hfx-divine_phoenix{border-color:#ffd24a;background-image:radial-gradient(circle at 50% 0%,#ffd24a3d,transparent 62%),radial-gradient(circle at 15% 100%,#ff6ea02e,transparent 50%),radial-gradient(circle at 85% 100%,#7c5cff22,transparent 50%);
     --hglow-a:0 0 0 2px #ffd24ac0,0 0 42px #fff6d066 inset,0 0 70px #ff6ea055,0 0 95px #7c5cff44; --hglow-b:0 0 0 2.5px #fff6d0ff,0 0 68px #ffd24abb inset,0 0 110px #ff6ea0aa,0 0 140px #7c5cff88;}
 
   .frame-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px;}
@@ -187,6 +187,10 @@
   .rank-frame-preview{position:relative;width:52px;height:52px;flex-shrink:0;}
   .rank-frame-preview .frame-ring{inset:-6px;border-radius:16px;}
   .rank-frame-preview .frame-preview-avatar{width:52px;height:52px;border-radius:14px;font-size:24px;}
+  /* Patch 2.6: แถวอันดับตอนนี้เป็น .fx-card ด้วย (ใช้ CSS โทนสี/แสงชุดเดียวกับ header) + มีเลเยอร์
+     particle ของตัวเอง (rank-fx-layer) กระจายอยู่ทั่วทั้งแถว ไม่ใช่แค่รอบอวาตาร์เท่านั้น */
+  .rank-row{position:relative;overflow:hidden;}
+  .rank-fx-layer{position:absolute;inset:0;border-radius:12px;pointer-events:none;overflow:hidden;z-index:0;}
 
   .profile-info{display:flex;flex-direction:column;gap:6px;justify-content:center;min-width:150px;}
   .profile-info .pname{font-size:1.1rem;font-weight:bold;}
@@ -302,7 +306,7 @@
     🎉 <span>LUCKY EVENT!</span> โอกาสดรอปของหายาก +1000% &amp; รางวัลบอส x10! <span class="ev-timer" id="eventTimer"></span>
   </div>
 
-  <div class="header" id="headerCard">
+  <div class="header fx-card" id="headerCard">
     <div class="header-fx-layer" id="headerFxLayer"></div>
     <div class="profile-card-wrap" id="profileCardWrap">
       <div class="frame-ring" id="frameRing"></div>
@@ -963,7 +967,17 @@ async function pullCloudStateThenWatch(){
 
 let cloudSaveTimer = null;
 let lastCloudSaveAt = 0;
-const CLOUD_SAVE_MIN_GAP_MS = 15000; // เขียนขึ้น Firestore ได้บ่อยสุด 1 ครั้งทุก 15 วิ (ลดจำนวนการบันทึกลง)
+// Patch 2.7: เดิม 15 วิ ถี่เกินไปสำหรับเกมแนว AFK ที่คนส่วนใหญ่เปิดแท็บค้างไว้ทั้งวัน — เพราะมี
+// setInterval(saveGame, ...) เรียกซ้ำตลอดเวลาแม้ผู้เล่นจะไม่ได้กดอะไรเลย ทำให้เขียนขึ้น Firestore
+// เป็น "heartbeat" รัวๆ ตลอด 24 ชม. กินโควตาฟรีของ Firebase (Spark plan) หมดเร็วมาก
+// Patch 2.8: 60 วิ ยังถี่เกินไป — โควตาฟรีของ Firestore (Spark plan) อยู่ที่ ~20,000 เขียน/วัน
+// รวมกันทั้งโปรเจกต์ (ไม่ใช่ต่อผู้เล่น) ถ้าเปิดแท็บค้างไว้ 24 ชม. ที่ 60 วิ/ครั้ง คนเดียวก็กิน
+// ไปแล้ว ~1,440 เขียน/วัน มีผู้เล่นพร้อมกันแค่ ~14 คนก็ชนโควตาแล้ว จึงขยายเป็น 5 นาที ลดการเขียนลง
+// อีก ~5 เท่าจากเดิม (ข้อมูลในเครื่อง/localStorage ยังเซฟถี่เหมือนเดิมทุก 15 วิ ไม่กระทบ เพราะ
+// localStorage ไม่เกี่ยวกับโควตา Firebase — กระทบแค่ความถี่ในการ sync ขึ้นคลาวด์เท่านั้น ผู้เล่นคนอื่น/
+// แอดมินจะเห็นข้อมูลอัปเดตช้าลงหน่อย แต่ยังปลอดภัยเพราะทุกการกระทำสำคัญ ๆ ก็เรียก saveGame() ทันทีอยู่แล้ว
+// ถ้ายังกังวลโควตาอยู่ ปรับตัวเลขนี้ให้สูงขึ้นได้อีก)
+const CLOUD_SAVE_MIN_GAP_MS = 300000; // เขียนขึ้น Firestore ได้บ่อยสุด 1 ครั้งทุก 5 นาที (300,000 ms)
 function doCloudSaveNow(){
   lastCloudSaveAt = Date.now();
   db.collection("players").doc(myPlayer.id).set(
@@ -986,23 +1000,28 @@ function cloudSaveState(){
 }
 
 /* ================= STATE & SAVE ================= */
-let state = {
-  gold: 0, iron: 0, souls: 0, stardust: 0, towerFloor: 1, inventory: [], nextUid: 1,
-  equipped: { weapon:null, armor:null, pants:null, shoes:null },
-  buffs: { power:0, gold:0, drop:0 },
-  stardustBuffs: { power:0 },
-  afkProgress: 0, autoSellCommon: false, autoSellUncommon: false,
-  // Patch 1.4: ระบบ Lucky Event (แอดมินเปิด/ปิดได้ หรือกำหนดเวลาเป็นนาที)
-  // endTime: 0 = ไม่จำกัดเวลา (ต้องปิดเองด้วยมือ), มากกว่า 0 = timestamp ที่ event จะหมดเวลาอัตโนมัติ
-  event: { active: false, endTime: 0, durationMin: 10 },
-  // Patch 1.8: ร้านค้า Va Coin
-  vaCoin: 0,
-  shop: { autoForgeEndTime: 0, luckyEndTime: 0, zoneBoostEndTime: 0 },
-  // Patch 2.2: ร้านค้ากรอบโปรไฟล์ (Cosmetic เท่านั้น ไม่มีผลต่อสถานะ)
-  frames: { owned: [], equipped: null },
-  // Patch 2.1: ตั้งค่าเสียง (เอฟเฟกต์ + เพลงพื้นหลัง สังเคราะห์ด้วย Web Audio API ฟรี 100%)
-  settings: { sfxOn: true, musicOn: true, sfxVol: 0.7, musicVol: 0.3 }
-};
+// Patch 2.8: ดึงค่าเริ่มต้นออกมาเป็นฟังก์ชัน (แทนที่จะ hardcode เป็น object เดียว) เพื่อให้ resetSave
+// เรียกสร้าง state สะอาดใหม่ได้โดยไม่ต้องพิมพ์ค่าเริ่มต้นซ้ำสองที่ (กัน bug ตอนแก้ค่าเริ่มต้นแล้วลืมแก้อีกจุด)
+function createDefaultState(){
+  return {
+    gold: 0, iron: 0, souls: 0, stardust: 0, towerFloor: 1, inventory: [], nextUid: 1,
+    equipped: { weapon:null, armor:null, pants:null, shoes:null },
+    buffs: { power:0, gold:0, drop:0 },
+    stardustBuffs: { power:0 },
+    afkProgress: 0, autoSellCommon: false, autoSellUncommon: false,
+    // Patch 1.4: ระบบ Lucky Event (แอดมินเปิด/ปิดได้ หรือกำหนดเวลาเป็นนาที)
+    // endTime: 0 = ไม่จำกัดเวลา (ต้องปิดเองด้วยมือ), มากกว่า 0 = timestamp ที่ event จะหมดเวลาอัตโนมัติ
+    event: { active: false, endTime: 0, durationMin: 10 },
+    // Patch 1.8: ร้านค้า Va Coin
+    vaCoin: 0,
+    shop: { autoForgeEndTime: 0, luckyEndTime: 0, zoneBoostEndTime: 0 },
+    // Patch 2.2: ร้านค้ากรอบโปรไฟล์ (Cosmetic เท่านั้น ไม่มีผลต่อสถานะ)
+    frames: { owned: [], equipped: null },
+    // Patch 2.1: ตั้งค่าเสียง (เอฟเฟกต์ + เพลงพื้นหลัง สังเคราะห์ด้วย Web Audio API ฟรี 100%)
+    settings: { sfxOn: true, musicOn: true, sfxVol: 0.7, musicVol: 0.3 }
+  };
+}
+let state = createDefaultState();
 let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
@@ -1262,46 +1281,81 @@ function renderAdminPanel(){
   }
 }
 
-/* ================= RANK TOP 3 (Patch 2.4) =================
-   ดึงผู้เล่นพลังต่อสู้รวมสูงสุด 3 อันดับแรกจากทุก Player ID ในระบบ (query จากฟิลด์ power ที่บันทึกไว้ตอน cloudSave) */
+/* ================= RANK TOP 3 (Patch 2.4 / live update + particles ตั้งแต่ Patch 2.6) =================
+   ดึงผู้เล่นพลังต่อสู้รวมสูงสุด 3 อันดับแรกจากทุก Player ID ในระบบ (query จากฟิลด์ power ที่บันทึกไว้ตอน cloudSave)
+   Patch 2.6: เปลี่ยนจาก .get() แบบครั้งเดียวเป็น onSnapshot() แบบเรียลไทม์ เพื่อให้กรอบโปรไฟล์/อันดับที่โชว์
+   อัปเดตทันทีตามที่ผู้เล่นกดสวมใส่ (ไม่ต้องกดรีเฟรชเอง) พร้อมสปอว์น particle effect (ไฟ/หิมะ/ใบไม้ ฯลฯ)
+   ให้แต่ละแถวตามกรอบที่ผู้เล่นคนนั้นสวมอยู่ เหมือนกับที่ header ของเราเองมี */
 const RANK_MEDALS = ["🥇","🥈","🥉"];
-async function renderRankTop3(){
+let rankUnsub = null;
+let rankParticleTimers = [];
+function stopRankParticles(){
+  rankParticleTimers.forEach(t=>clearInterval(t));
+  rankParticleTimers = [];
+}
+function stopRankLive(){
+  if(rankUnsub){ rankUnsub(); rankUnsub = null; }
+  stopRankParticles();
+}
+function renderRankTop3(){
   const listEl = document.getElementById("rankList");
   listEl.innerHTML = `<div class="small-note" style="text-align:center;">⏳ กำลังโหลด...</div>`;
-  try{
-    const snap = await db.collection("players").orderBy("power","desc").limit(3).get();
+  if(rankUnsub) rankUnsub(); // เผื่อมีการเรียกซ้ำ (เช่นกดปุ่มรีเฟรช) กันสมัครซ้อนหลายตัว
+  rankUnsub = db.collection("players").orderBy("power","desc").limit(3).onSnapshot((snap)=>{
+    stopRankParticles(); // เคลียร์ particle timer ของรอบเก่าก่อน re-render ทุกครั้ง กันไทม์เมอร์ค้าง
     if(snap.empty){ listEl.innerHTML = `<div class="small-note" style="text-align:center;">ยังไม่มีข้อมูลผู้เล่น</div>`; return; }
     listEl.innerHTML = "";
     let rank = 0;
     snap.forEach(doc=>{
       const d = doc.data();
       const isMe = myPlayer && doc.id === myPlayer.id;
-      // Patch 2.5: ดึงกรอบโปรไฟล์ที่ผู้เล่นคนนั้นสวมอยู่ (เก็บอยู่ใน state.frames.equipped ที่ sync ขึ้นคลาวด์
-      // อยู่แล้วทุกครั้งที่ saveGame) มาโชว์คู่กับอันดับ ถ้าไม่มีกรอบหรือ id ไม่ตรงกับรายการปัจจุบันก็ไม่แสดงอะไรเพิ่ม
+      // ดึงกรอบโปรไฟล์ที่ผู้เล่นคนนั้นสวมอยู่ (เก็บอยู่ใน state.frames.equipped ที่ sync ขึ้นคลาวด์อยู่แล้ว
+      // ทุกครั้งที่ saveGame) มาโชว์คู่กับอันดับ ถ้าไม่มีกรอบหรือ id ไม่ตรงกับรายการปัจจุบันก็ไม่แสดงอะไรเพิ่ม
       const eqFrameId = d.state && d.state.frames && d.state.frames.equipped;
       const frameMeta = eqFrameId ? FRAME_LIST.find(f=>f.id===eqFrameId) : null;
+      const tier = frameMeta ? (FRAME_TIER[frameMeta.id] || 1) : 0;
       const frameRingHtml = frameMeta
-        ? `<div class="frame-ring fr-${frameMeta.id}${FRAME_TIER[frameMeta.id]===5?" fr-tier5":""}"></div>`
+        ? `<div class="frame-ring fr-${frameMeta.id}${tier===5?" fr-tier5":""}"></div>`
         : "";
+      const fxClass = frameMeta ? ` fx-card hfx-${frameMeta.id}${tier===5?" hfx-anim":""}` : "";
       const row = document.createElement("div");
+      row.className = "rank-row" + fxClass;
       row.style.cssText = `display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:12px; background:var(--panel2); border:1px solid ${isMe?"var(--gold)":"var(--border)"};`;
       row.innerHTML = `
-        <div class="rank-frame-preview">
+        <div class="rank-fx-layer"></div>
+        <div class="rank-frame-preview" style="z-index:1;">
           ${frameRingHtml}
           <div class="frame-preview-avatar">🧙‍♂️</div>
         </div>
-        <div style="font-size:1.6rem;">${RANK_MEDALS[rank]||"🏅"}</div>
-        <div style="flex:1;">
+        <div style="font-size:1.6rem;z-index:1;">${RANK_MEDALS[rank]||"🏅"}</div>
+        <div style="flex:1;z-index:1;">
           <div style="font-weight:bold;">${(d.username||"ไม่ทราบชื่อ")}${isMe?' <span style="color:var(--gold); font-size:.75rem;">(คุณ)</span>':""}</div>
           <div class="small-note">🆔 ${doc.id}${frameMeta?` · 🖼️ ${frameMeta.emoji} ${frameMeta.name}`:""}</div>
         </div>
-        <div style="text-align:right; font-weight:bold; color:var(--legendary);">${fmt(d.power||0)}</div>`;
+        <div style="text-align:right; font-weight:bold; color:var(--legendary);z-index:1;">${fmt(d.power||0)}</div>`;
       listEl.appendChild(row);
+
+      // สปอว์น particle effect ตามธีมกรอบ (ใช้ config ชุดเดียวกับ header) กระจายอยู่ทั่วทั้งแถว
+      if(frameMeta){
+        const fxLayer = row.querySelector(".rank-fx-layer");
+        const sets = FRAME_PARTICLE_SETS[frameMeta.id];
+        if(sets) sets.forEach(cfg=>{
+          rankParticleTimers.push(setInterval(()=>spawnFrameParticle(cfg, fxLayer), cfg.rate||550));
+        });
+        const dustCfg = FRAME_DUST[frameMeta.id];
+        if(dustCfg){
+          const rate = TIER_DUST_RATE[tier] || 2200;
+          rankParticleTimers.push(setInterval(()=>spawnDustMote(dustCfg, tier, fxLayer), rate));
+        }
+        if(tier===5){
+          rankParticleTimers.push(setInterval(()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff", fxLayer), TIER5_SHOCKWAVE_RATE));
+        }
+      }
       rank++;
     });
-  }catch(e){
+  }, (err)=>{
     listEl.innerHTML = `<div class="small-note" style="text-align:center;">⚠️ โหลดอันดับไม่สำเร็จ ลองใหม่อีกครั้ง</div>`;
-  }
+  });
 }
 
 function getEquipped(slot){ const u = state.equipped[slot]; return u ? state.inventory.find(i=>i.uid===u)||null : null; }
@@ -1751,8 +1805,8 @@ function startFrameParticles(id){
     frameParticleTimers.push(setInterval(()=>spawnShockwave(dustCfg ? dustCfg.color : "#ffffff"), TIER5_SHOCKWAVE_RATE));
   }
 }
-function spawnFrameParticle(cfg){
-  const layer = document.getElementById("headerFxLayer"); if(!layer) return;
+function spawnFrameParticle(cfg, targetLayer){
+  const layer = targetLayer || document.getElementById("headerFxLayer"); if(!layer) return;
   const w = layer.clientWidth || 300, h = layer.clientHeight || 150;
   const span = document.createElement("span");
   span.textContent = cfg.emoji;
@@ -1774,8 +1828,8 @@ function spawnFrameParticle(cfg){
   layer.appendChild(span);
   span.addEventListener("animationend", ()=>span.remove());
 }
-function spawnDustMote(dustCfg, tier){
-  const layer = document.getElementById("headerFxLayer"); if(!layer) return;
+function spawnDustMote(dustCfg, tier, targetLayer){
+  const layer = targetLayer || document.getElementById("headerFxLayer"); if(!layer) return;
   const w = layer.clientWidth || 300, h = layer.clientHeight || 150;
   const size = (TIER_DUST_SIZE[tier]||4) + Math.random()*2;
   const mote = document.createElement("span");
@@ -1790,8 +1844,8 @@ function spawnDustMote(dustCfg, tier){
   layer.appendChild(mote);
   mote.addEventListener("animationend", ()=>mote.remove());
 }
-function spawnShockwave(color){
-  const layer = document.getElementById("headerFxLayer"); if(!layer) return;
+function spawnShockwave(color, targetLayer){
+  const layer = targetLayer || document.getElementById("headerFxLayer"); if(!layer) return;
   const w = layer.clientWidth || 300, h = layer.clientHeight || 150;
   const size = Math.hypot(w,h) * 1.15;
   const ring = document.createElement("span");
@@ -2302,7 +2356,7 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
     btn.classList.add("active"); document.getElementById("panel-"+btn.dataset.tab).classList.add("active");
     SFX.tab();
-    if(btn.dataset.tab === "rank") renderRankTop3();
+    if(btn.dataset.tab === "rank") renderRankTop3(); else stopRankLive();
   };
 });
 document.getElementById("refreshRankBtn").addEventListener("click", renderRankTop3);
@@ -2317,8 +2371,33 @@ document.getElementById("adminEventStartBtn").addEventListener("click", ()=>{
   startEvent(mins);
 });
 // Patch 1.7: ปุ่ม Reset Save เปลี่ยนมาใช้ showConfirm() แทน window.confirm() ด้วยเหตุผลเดียวกับปุ่มจุติ
+// Patch 2.8 BUGFIX: เดิมแค่ localStorage.removeItem() แล้ว reload() มีปัญหา 2 อย่าง —
+// 1) ของที่ผู้เล่นจ่ายเงินจริงซื้อด้วย Va Coin (กรอบโปรไฟล์) หายไปด้วย ทั้งที่ไม่ควรรีเซ็ต
+// 2) รีเซ็ตแค่ในเครื่อง แต่ไม่ได้ทับข้อมูลบนคลาวด์ ตอน reload หน้าเว็บจะไปดึง state เก่าจาก
+//    Firestore กลับมาทับอีกที (pullCloudStateThenWatch) ทำให้ "รีเซ็ต" ไม่เกิดผลจริงเลย
+// ตอนนี้: สร้าง state สะอาดใหม่ทั้งหมด เก็บเฉพาะ frames.owned/equipped (ของที่ซื้อด้วย Va Coin) ไว้
+// แล้ว push ทับขึ้นคลาวด์ทันทีก่อน reload
+async function resetSaveKeepVaCoinItems(){
+  const keptFrames = {
+    owned: (state.frames && state.frames.owned) ? [...state.frames.owned] : [],
+    equipped: (state.frames && state.frames.equipped) || null
+  };
+  state = createDefaultState();
+  state.frames = keptFrames; // ยกเว้นของที่ใช้ Va Coin ซื้อ ไม่ต้องรีเซ็ต
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+  if(myPlayer){
+    try{
+      // ไม่ใช้ {merge:true} เพราะต้องการให้ state บนคลาวด์ถูกแทนที่ทั้งก้อนด้วยของที่รีเซ็ตแล้ว
+      // ถ้า merge จะมีความเสี่ยงที่ field เก่าที่ merge แบบ deep ไม่ครบจะหลงเหลืออยู่
+      await db.collection("players").doc(myPlayer.id).set({
+        username: myPlayer.username, state, power: totalPower(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }catch(e){ /* ออฟไลน์ - รีเซ็ตในเครื่องสำเร็จอยู่ดี พอกลับมาออนไลน์ค่อย sync ขึ้นคลาวด์รอบถัดไป */ }
+  }
+  location.reload();
+}
 document.getElementById("resetSaveBtn").addEventListener("click", ()=>{
-  showConfirm("ลบเซฟทั้งหมด?", ()=>{ localStorage.removeItem(SAVE_KEY); location.reload(); });
+  showConfirm("ลบเซฟทั้งหมด? (ไอเทมที่ซื้อด้วย Va Coin จะไม่ถูกลบ)", resetSaveKeepVaCoinItems);
 });
 
 // Patch 2.1: ปุ่ม/แถบควบคุมเสียง (SFX + เพลงพื้นหลัง)
