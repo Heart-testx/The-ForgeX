@@ -410,6 +410,14 @@
   .online-player-main{min-width:0;flex:1;}
   .online-player-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .online-player-meta{font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* Patch 3.23: แถวไอเทมที่สวมใส่ + Lv ของผู้เล่นแต่ละคนในลิสต์ออนไลน์ (ไม่แตะ layout/ระบบเดิม แค่เพิ่มบรรทัดใหม่ต่อท้าย) */
+  .online-equip-row{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+  .online-equip-slot{display:flex;align-items:center;gap:3px;font-size:.66rem;background:#00000038;
+    border:1px solid var(--border);border-radius:7px;padding:1px 6px 1px 4px;line-height:1.4;white-space:nowrap;}
+  .online-equip-slot .oe-icon{font-size:.86rem;filter:drop-shadow(0 0 2px #0006);}
+  .online-equip-slot .oe-lvl{font-weight:800;}
+  .online-equip-slot.empty{opacity:.32;}
+  .online-equip-slot.empty .oe-lvl{display:none;}
   .admin-player-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid #1a1a28;cursor:pointer;}
   .admin-player-row:last-child{border-bottom:none;}
   .admin-player-row:hover{background:#1c1c2b;}
@@ -3301,6 +3309,34 @@ function startOnlineRowFX(row, frameId){
   }
 }
 
+// Patch 3.23: สร้างแถวไอเทม 4 ช่อง (อาวุธ/เสื้อ/กางเกง/รองเท้า) ที่ผู้เล่นออนไลน์แต่ละคนสวมใส่อยู่ พร้อม Lv
+// อ่านจาก p.state.equipped (uid ต่อช่อง) + p.state.inventory (รายละเอียดไอเทม) ที่ sync ขึ้นคลาวด์อยู่แล้ว
+// เป็นฟังก์ชันแยกต่างหาก ไม่ไปแก้ getEquipped()/isEquipped() หรือ renderInventory() ของหน้าคลังผู้เล่นเอง
+// จึงไม่กระทบระบบสวมใส่/คลัง/ฟอร์จ/ร้านค้าที่มีอยู่เดิมเลย
+function buildOnlineEquipRow(p){
+  const wrap=document.createElement("div"); wrap.className="online-equip-row";
+  const inv=(p.state && Array.isArray(p.state.inventory)) ? p.state.inventory : [];
+  const eq=(p.state && p.state.equipped) || {};
+  SLOT_LIST.forEach(slot=>{
+    const uid=eq[slot];
+    const it=(uid!=null) ? inv.find(i=>i.uid===uid) : null;
+    const box=document.createElement("span");
+    box.className="online-equip-slot"+(it?"":" empty");
+    box.title = it
+      ? `${SLOT_META[slot].label}: ${it.name} +${it.level} (${RARITY_META[it.rarity].label})`
+      : `${SLOT_META[slot].label}: ว่าง`;
+    const icon=document.createElement("span"); icon.className="oe-icon"; icon.textContent = it ? it.emoji : SLOT_META[slot].icon;
+    const lvl=document.createElement("span"); lvl.className="oe-lvl";
+    if(it){
+      lvl.textContent = "+"+it.level;
+      lvl.style.color = RARITY_META[it.rarity].color;
+      box.style.borderColor = RARITY_META[it.rarity].color+"77";
+    }
+    box.append(icon,lvl);
+    wrap.appendChild(box);
+  });
+  return wrap;
+}
 function renderOnlinePlayersFromSnap(snap){
   stopOnlineParticles();
   const now=Date.now();
@@ -3349,7 +3385,8 @@ function renderOnlinePlayersFromSnap(snap){
     name.textContent=(p.isAdminAccount?"👑 ":"")+(p.username||"ไม่ทราบชื่อ")+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");
     const meta=document.createElement("div"); meta.className="online-player-meta";
     meta.textContent=`🆔 ${p.id} · ${p.isAdminAccount?"ADMIN · ":""}พลัง ${fmt(p.power||0)}`;
-    main.append(name,meta);
+    const equipRow = buildOnlineEquipRow(p); // Patch 3.23
+    main.append(name,meta,equipRow);
     row.append(fxLayer,frameWrap,dot,main);
 
     // Patch 3.21: wrap the row so the ADMIN•ULTIMATE badge can float past the row's own
