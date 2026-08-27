@@ -4111,6 +4111,12 @@ document.getElementById("modalEquipBtn").onclick = ()=>{
   if(isEquipped(modalItem)) state.equipped[modalItem.type]=null; else state.equipped[modalItem.type]=modalItem.uid;
   SFX.equip();
   closeModal(); renderUI(); renderInventory(); renderMergePanel(); saveGame();
+  // BUGFIX: เดิมกดสวมใส่/ถอดแล้วเรียกแค่ saveGame() ซึ่งเซฟลงเครื่อง (localStorage) ทันที แต่ฝั่งคลาวด์
+  // จะถูก cloudSaveState() หน่วงไว้อย่างน้อย 20 วิ (CLOUD_SAVE_MIN_GAP_MS) ก่อนอัปขึ้นจริง ทำให้ผู้เล่นรู้สึกว่า
+  // "กดสวมใส่แล้วไม่เซฟ" ต้องกดซ้ำหลายครั้ง/รอนาน (เช่น พลังต่อสู้ในหน้า Top 3 อันดับ หรือช่องไอเทมที่โชว์ให้
+  // ผู้เล่นออนไลน์คนอื่นเห็น ยังไม่อัปเดตทันที) แก้โดยบังคับ sync ขึ้นคลาวด์ทันทีเหมือนที่ equipFrame/unequipFrame
+  // ทำอยู่แล้ว โดยไม่แตะระบบอื่น
+  forceCloudSaveNow();
 };
 document.getElementById("modalUpgradeBtn").onclick = ()=>{
   const cG=Math.floor(10*(RARITY_ORDER.indexOf(modalItem.rarity)+1)*Math.pow(1.5,modalItem.level)), cI=Math.floor(cG*0.7);
