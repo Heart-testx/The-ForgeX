@@ -9,21 +9,50 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <!-- Patch 2.9: Firebase Authentication สำหรับระบบ Admin Login (บัญชีเดียว ป้องกันคนอื่นสวมรอยเป็น "admin") -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<!-- UI/UX Refresh: ฟอนต์ Google Fonts สำหรับธีมเกมมิ่ง (Kanit = หัวข้อ/ปุ่ม, Prompt = เนื้อหาทั่วไป) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#0a0a12; --panel:#12121e; --panel2:#181826; --border:#2a2a3d;
     --text:#e6e6f0; --muted:#8888a0; --accent:#7c5cff; --gold:#ffd24a; --soul:#00e5ff;
-    --common:#9e9e9e; --uncommon:#4caf50; --rare:#3d9bff; --epic:#b24bff;
-    --legendary:#ffb02e; --mythic:#ff2e6d; --stardust:#e0b0ff; --divine:#fff2b8;
+    --common:#c3cad6; --uncommon:#4caf50; --rare:#29d3ff; --epic:#9d4dff;
+    --legendary:#ffd23c; --mythic:#ff2f8f; --stardust:#e0b0ff; --divine:#fff2b8;
+    /* UI/UX Refresh: premium rarity glow tokens (Common→Mythic). Used for Glow box-shadow only — does not touch game logic. */
+    --glow-common:0 0 6px #c3cad64d, inset 0 0 0 1px #c3cad626;
+    --glow-rare:0 0 14px #29d3ffcc, 0 0 26px #29d3ff66;
+    --glow-epic:0 0 16px #9d4dffcc, 0 0 30px #9d4dff66;
+    --glow-legendary:0 0 16px #ffd23cdd, 0 0 30px #ffb02e77;
+    --glow-mythic:0 0 18px #ff2f8fee, 0 0 34px #ff2f8f99, 0 0 54px #ff2f8f4d;
+    /* --- UI/UX Refresh: design tokens (เพิ่มใหม่ ไม่แก้ตัวแปรเดิมด้านบน กัน logic/สีเดิมเพี้ยน) --- */
+    --font-display:'Kanit',-apple-system,sans-serif; --font-body:'Prompt',-apple-system,sans-serif;
+    --panel-glass:linear-gradient(180deg,#181826ee,#12121ef2);
+    --elev-1:0 2px 8px #0006, inset 0 1px 0 #ffffff0f;
+    --elev-2:0 10px 30px #000a, inset 0 1px 0 #ffffff14;
+    --ease-pop:cubic-bezier(.34,1.56,.64,1);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; min-height:100vh; padding:14px;}
+  html,body{margin:0;padding:0; background:var(--bg); color:var(--text); font-family:var(--font-body),'Segoe UI',sans-serif; min-height:100vh; padding:14px; -webkit-font-smoothing:antialiased;}
   body{ background: radial-gradient(circle at 20% 10%, #1a1030 0%, transparent 40%), radial-gradient(circle at 80% 90%, #0d1a30 0%, transparent 40%), var(--bg); }
-  .wrap{max-width:1150px;margin:0 auto;}
-  h1,h2,h3{margin:0;}
+  ::selection{background:var(--accent);color:#fff;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--panel2);border:2px solid var(--bg);border-radius:20px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+  a:focus-visible, button:focus-visible, input:focus-visible, .btn:focus-visible, .chip:focus-visible, .tab-btn:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--soul); outline-offset:2px; border-radius:6px;
+  }
+  .wrap{max-width:1150px;margin:0 auto; animation:wrapIn .55s var(--ease-pop) both;}
+  @keyframes wrapIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
+  h1,h2,h3{margin:0; font-family:var(--font-display);}
+  h2,h3{letter-spacing:.2px;}
   .title-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;}
-  .title-bar h1{font-size:1.6rem; background:linear-gradient(90deg,#ff2e6d,#ffb02e,#7c5cff,#3d9bff); background-size:300% auto; -webkit-background-clip:text; color:transparent; animation:titleflow 6s linear infinite; letter-spacing:1px;}
+  .title-bar h1{font-size:1.6rem; font-weight:800; background:linear-gradient(90deg,#ff2e6d,#ffb02e,#7c5cff,#3d9bff); background-size:300% auto; -webkit-background-clip:text; color:transparent; animation:titleflow 6s linear infinite; letter-spacing:1px;}
   @keyframes titleflow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  }
 
   /* SOUND BAR (Patch 2.1) */
   .sound-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
@@ -51,11 +80,11 @@
   @media (max-width:640px){ .announce-popup{top:10px; padding:12px 16px;} }
 
   /* HEADER */
-  .header{position:relative;display:flex;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;overflow:hidden;transition:box-shadow .6s ease,border-color .6s ease;}
+  .header{position:relative;display:flex;gap:16px;flex-wrap:wrap;background:var(--panel-glass);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;overflow:hidden;box-shadow:var(--elev-2);transition:box-shadow .6s ease,border-color .6s ease;}
   .header-fx-layer{position:absolute;inset:0;border-radius:16px;pointer-events:none;overflow:hidden;z-index:0;}
   .profile-card{ width:120px;height:120px;border-radius:20px;display:flex;align-items:center;justify-content:center; font-size:50px;position:relative;flex-shrink:0;background:#1a1a28;border:4px solid var(--common); transition:.4s;overflow:visible; }
   .profile-card.tier-common{ border-color:#666; } .profile-card.tier-uncommon{ border-color:var(--uncommon); box-shadow:0 0 10px #4caf5080; } .profile-card.tier-rare{ border-color:var(--rare); box-shadow:0 0 18px #3d9bffaa; } .profile-card.tier-epic{ border-color:var(--epic); box-shadow:0 0 20px #b24bffaa; background:linear-gradient(135deg,#1a1030,#2a1040,#1a1030);} .profile-card.tier-legendary{ border-color:var(--legendary); background:linear-gradient(120deg,#2a1d00,#3a2600,#2a1d00); animation:legendaryglow 1.8s ease-in-out infinite;} .profile-card.tier-mythic{ border-color:var(--mythic); background:linear-gradient(135deg,#1a0022,#2a0033,#1a0022); animation:mythicglow 1.2s ease-in-out infinite;} .profile-card.tier-divine{ border-color:var(--divine); background:linear-gradient(135deg,#3a3200,#4a3f00,#3a3200); animation:divineglow 1s ease-in-out infinite;}
-  @keyframes legendaryglow{0%,100%{box-shadow:0 0 22px #ffb02ecc;}50%{box-shadow:0 0 34px #ffd24aee;}} @keyframes mythicglow{0%,100%{box-shadow:0 0 26px #ff2e6dcc;}50%{box-shadow:0 0 42px #ff6ea0ee;}}
+  @keyframes legendaryglow{0%,100%{box-shadow:0 0 22px #ffb02ecc;}50%{box-shadow:0 0 36px #ffe27aee;}} @keyframes mythicglow{0%,100%{box-shadow:0 0 26px #ff2f8fcc;}50%{box-shadow:0 0 44px #ff7ab8ee;}}
   /* Patch 3.18: Divine tier — ระดับสูงสุดเหนือ Mythic ดรอปได้จาก The Forge เท่านั้น (0.2%) */
   @keyframes divineglow{0%,100%{box-shadow:0 0 30px #fff2b8dd, 0 0 55px #ffd24a99;}50%{box-shadow:0 0 48px #fffbe0ff, 0 0 85px #ffe9a8cc;}}
 
@@ -263,7 +292,8 @@
   @keyframes fr-gem-pulse{0%,100%{transform:rotate(45deg) scale(1);filter:brightness(1);}50%{transform:rotate(45deg) scale(1.3);filter:brightness(1.5);}}
 
   .frame-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px;}
-  .frame-shop-card{background:var(--panel2);border:2px solid var(--border);border-radius:14px;padding:12px;text-align:center;transition:.15s;}
+  .frame-shop-card{background:var(--panel2);border:2px solid var(--border);border-radius:14px;padding:12px;text-align:center;transition:transform .18s var(--ease-pop),box-shadow .18s ease;}
+  .frame-shop-card:hover{transform:translateY(-3px);box-shadow:var(--elev-1);}
   .frame-shop-card.owned{border-color:var(--gold);}
   .frame-shop-card.equipped{border-color:var(--soul);box-shadow:0 0 12px #00e5ff55;}
   .frame-preview{position:relative;width:74px;height:74px;margin:0 auto 8px;}
@@ -288,14 +318,16 @@
   .profile-info .pname{font-size:1.1rem;font-weight:bold;}
   .rarity-tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:bold;width:fit-content;}
   .slots-row{display:flex;gap:8px;flex-wrap:wrap;}
-  .slot-box{width:56px;height:56px;border-radius:12px;background:var(--panel2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;cursor:pointer;transition:.15s;}
-  .slot-box:hover{transform:translateY(-2px);border-color:var(--accent);}
+  .slot-box{width:56px;height:56px;border-radius:12px;background:var(--panel2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;cursor:pointer;transition:.18s var(--ease-pop);}
+  .slot-box:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:var(--elev-1);}
+  .slot-box:active{transform:scale(.94);}
   .slot-box.empty{opacity:.45;}
-  .slot-box.r-rare{border-color:var(--rare);box-shadow:0 0 8px #3d9bff77;} .slot-box.r-epic{border-color:var(--epic);box-shadow:0 0 10px #b24bff88;} .slot-box.r-legendary{border-color:var(--legendary);box-shadow:0 0 12px #ffb02eaa;} .slot-box.r-mythic{border-color:var(--mythic);box-shadow:0 0 14px #ff2e6dcc;}
+  .slot-box.r-rare{border-color:var(--rare);box-shadow:0 0 8px #29d3ff88;} .slot-box.r-epic{border-color:var(--epic);box-shadow:0 0 10px #9d4dff99;} .slot-box.r-legendary{border-color:var(--legendary);box-shadow:0 0 12px #ffd23cb0;} .slot-box.r-mythic{border-color:var(--mythic);box-shadow:0 0 14px #ff2f8fd0;}
 
   .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;flex:2;min-width:260px;align-content:center;}
-  .stat-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:8px;text-align:center;}
-  .stat-box .val{font-size:1.1rem;font-weight:bold;color:var(--gold);}
+  .stat-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:8px;text-align:center;transition:transform .18s var(--ease-pop),border-color .18s ease;}
+  .stat-box:hover{transform:translateY(-2px);border-color:var(--accent);}
+  .stat-box .val{font-size:1.1rem;font-weight:bold;font-family:var(--font-display);color:var(--gold);}
   .stat-box .val.soul{color:var(--soul); text-shadow: 0 0 8px var(--soul);}
   .stat-box .val.stardust{color:var(--stardust); text-shadow: 0 0 8px var(--stardust);}
   .stat-box .lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;}
@@ -303,14 +335,16 @@
   /* Patch 3.13: รวมปุ่มเมนูทั้งหมดไว้ในปุ่ม ... มุมขวาบน ลดความรกของหน้าหลัก */
   /* Patch 3.14: จุด ... ลอยตามหน้าจอเมื่อเลื่อนลง ไม่ยึดกับ header */
   .quick-menu{position:fixed;top:12px;right:12px;z-index:1000;}
-  .quick-menu-toggle{width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:1.45rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0005;transition:.2s;}
-  .quick-menu-toggle:hover{border-color:var(--accent);color:#fff;box-shadow:0 0 14px #7c5cff66;}
+  .quick-menu-toggle{width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-size:1.45rem;font-weight:900;line-height:1;cursor:pointer;box-shadow:0 6px 18px #0005;transition:.2s var(--ease-pop);}
+  .quick-menu-toggle:hover{border-color:var(--accent);color:#fff;box-shadow:0 0 14px #7c5cff66;transform:translateY(-2px);}
+  .quick-menu-toggle:active{transform:scale(.92);}
   .quick-menu-toggle.open{background:var(--accent);border-color:var(--accent);}
   .tabs{position:absolute;top:52px;right:0;width:min(290px,calc(100vw - 28px));display:none;gap:8px;flex-direction:column;background:rgba(18,18,30,.98);border:1px solid var(--border);border-radius:14px;padding:10px;box-shadow:0 18px 40px #000c;backdrop-filter:blur(12px);margin:0;}
   .tabs.open{display:flex;animation:menuIn .18s ease;}
   @keyframes menuIn{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-  .tab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 14px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:700;transition:.2s;width:100%;text-align:left;}
+  .tab-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:12px 14px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:700;font-family:var(--font-display);transition:.2s var(--ease-pop);width:100%;text-align:left;}
   .tab-btn:hover{color:var(--text);border-color:var(--accent);transform:translateX(-2px);}
+  .tab-btn:active{transform:scale(.97);}
   .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px #7c5cff66;}
   @media (max-width:640px){.quick-menu{position:fixed;top:10px;right:10px}.tabs{top:50px;width:min(300px,calc(100vw - 24px));}.tab-btn{padding:13px 14px;font-size:.86rem;}}
   
@@ -424,8 +458,10 @@
   .admin-player-row .ap-name{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .admin-player-row .ap-id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem;color:var(--gold);user-select:all;}
   .admin-player-row .ap-online{font-size:.68rem;color:#58f58a;}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;display:none; animation: fadein .3s ease;}
-  .panel.active{display:block;}
+  .panel{background:var(--panel-glass);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;display:none;
+    box-shadow:var(--elev-1); animation: fadein .3s ease;}
+  .panel.active{display:block; animation: panelIn .35s var(--ease-pop) both;}
+  @keyframes panelIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
   @keyframes fadein { from{opacity:0; transform:translateY(5px)} to{opacity:1; transform:translateY(0)} }
 
   /* AFK & FORGE */
@@ -441,27 +477,36 @@
   .forge-zone{position:absolute;top:0;bottom:0;}
   .zone-miss{background:#3a1616;} .zone-good{background:#4a3a12;} .zone-perfect{background:#123a1c;box-shadow:inset 0 0 14px #4caf5088;}
   .forge-indicator{position:absolute;top:-4px;bottom:-4px;width:6px;background:#fff;box-shadow:0 0 10px #fff, 0 0 20px var(--accent);border-radius:3px;}
-  .forge-btn{display:block;margin:10px auto;padding:12px 30px;font-size:1rem;font-weight:bold;border:none;border-radius:12px;cursor:pointer;background:linear-gradient(90deg,#ff2e6d,#7c5cff);color:#fff;box-shadow:0 0 16px #7c5cff88;transition:transform .1s;}
+  .forge-btn{display:block;margin:10px auto;padding:12px 30px;font-size:1rem;font-weight:bold;font-family:var(--font-display);letter-spacing:.3px;border:none;border-radius:12px;cursor:pointer;background:linear-gradient(90deg,#ff2e6d,#7c5cff);color:#fff;box-shadow:0 0 16px #7c5cff88;transition:transform .15s var(--ease-pop),box-shadow .2s ease;}
+  .forge-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 22px #7c5cffbb;}
   .forge-btn:active{transform:scale(.95);} .forge-btn:disabled{opacity:.4;cursor:not-allowed;}
   .forge-result{text-align:center;font-weight:bold;min-height:26px;margin-top:8px;}
 
   /* BUTTONS & CHIPS */
   button{font-family:inherit;}
-  .btn{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;transition:.15s;}
-  .btn:hover:not(:disabled){border-color:var(--accent);color:#fff;}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .btn.gold{background:linear-gradient(90deg,#a67c00,#ffd24a);border-color:#ffd24a;color:#1a1a00;}
-  .btn.danger{background:#3a1616;border-color:#ff2e6d55;}
-  .btn.soul{background:linear-gradient(90deg,#007bb5,#00e5ff);border-color:#00e5ff;color:#000;box-shadow:0 0 10px #00e5ff55;}
-  .btn.stardust{background:linear-gradient(90deg,#4a235a,#9b59b6);border-color:var(--stardust);color:#fff;box-shadow:0 0 10px #9b59b688;}
-  .btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1);}
-  .chip{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:600;}
-  .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn{background:linear-gradient(180deg,#20202f,var(--panel2));border:1px solid var(--border);color:var(--text);
+    padding:9px 16px;border-radius:10px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:var(--font-display);letter-spacing:.2px;
+    box-shadow:var(--elev-1); transition:transform .15s var(--ease-pop),box-shadow .2s ease,border-color .2s ease,color .2s ease,filter .2s ease;
+    position:relative; -webkit-tap-highlight-color:transparent;}
+  .btn:hover:not(:disabled){border-color:var(--accent);color:#fff;transform:translateY(-2px);box-shadow:0 6px 16px #0007, 0 0 0 1px #7c5cff44, inset 0 1px 0 #ffffff1a;}
+  .btn:active:not(:disabled){transform:translateY(1px) scale(.97);box-shadow:var(--elev-1);filter:brightness(.94);transition-duration:.05s;}
+  .btn.primary{background:linear-gradient(180deg,#8f72ff,var(--accent));border-color:var(--accent);color:#fff;}
+  .btn.gold{background:linear-gradient(180deg,#ffdf7a,#a67c00);border-color:#ffd24a;color:#1a1a00;}
+  .btn.danger{background:linear-gradient(180deg,#4a1c1c,#3a1616);border-color:#ff2e6d55;}
+  .btn.soul{background:linear-gradient(180deg,#3adfff,#007bb5);border-color:#00e5ff;color:#000;box-shadow:var(--elev-1),0 0 10px #00e5ff55;}
+  .btn.stardust{background:linear-gradient(180deg,#b876d1,#4a235a);border-color:var(--stardust);color:#fff;box-shadow:var(--elev-1),0 0 10px #9b59b688;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1);transform:none;}
+  .chip{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:600;font-family:var(--font-display);transition:.18s var(--ease-pop);}
+  .chip:hover{color:var(--text);border-color:var(--accent);transform:translateY(-1px);}
+  .chip:active{transform:scale(.95);}
+  .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px #7c5cff66;}
 
   /* INVENTORY & CARDS */
   .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px;}
-  .item-card{background:var(--panel2);border:2px solid var(--border);border-radius:12px;padding:10px;text-align:center;cursor:pointer;position:relative;transition:.15s;}
-  .item-card:hover{transform:translateY(-3px);}
+  .item-card{background:var(--panel2);border:2px solid var(--border);border-radius:12px;padding:10px;text-align:center;cursor:pointer;position:relative;transition:transform .18s var(--ease-pop),box-shadow .18s ease,border-color .18s ease;}
+  .item-card:hover{transform:translateY(-3px);box-shadow:var(--elev-1);}
+  .item-card:active{transform:translateY(-1px) scale(.98);}
+  .item-card .iname{font-family:var(--font-display);}
   .item-card.equipped{outline:2px solid var(--gold);box-shadow:0 0 12px #ffd24a88;}
   .item-card.selected{outline:2px solid var(--mythic);box-shadow:0 0 12px #ff2e6d88;}
   .item-card .select-badge{position:absolute;bottom:4px;right:6px;font-size:.9rem;}
@@ -471,6 +516,17 @@
   .item-card .iname{font-size:.76rem;font-weight:bold;min-height:2.2em;}
   .item-card .ilvl{font-size:.68rem;color:var(--muted);}
   .r-common{border-color:var(--common);} .r-uncommon{border-color:var(--uncommon);} .r-rare{border-color:var(--rare);} .r-epic{border-color:var(--epic);} .r-legendary{border-color:var(--legendary);} .r-mythic{border-color:var(--mythic);}
+
+  /* UI/UX Refresh: Premium Rarity Frame glow — layered on top of the r-* classes above (already
+     applied dynamically by the game's JS), so no HTML/JS edits are needed for this to take effect. */
+  .item-card.r-common{box-shadow:var(--glow-common);}
+  .item-card.r-rare{box-shadow:var(--glow-rare);}
+  .item-card.r-epic{box-shadow:var(--glow-epic);}
+  .item-card.r-legendary{box-shadow:var(--glow-legendary);animation:itemLegendaryShimmer 2.2s ease-in-out infinite;}
+  .item-card.r-mythic{box-shadow:var(--glow-mythic);animation:itemMythicPulse 1.35s ease-in-out infinite;}
+  @keyframes itemLegendaryShimmer{0%,100%{box-shadow:0 0 12px #ffd23caa,0 0 22px #ffb02e55;}50%{box-shadow:0 0 20px #ffe9a0dd,0 0 36px #ffd23c88;}}
+  @keyframes itemMythicPulse{0%,100%{box-shadow:0 0 14px #ff2f8fbb,0 0 26px #ff2f8f66;}50%{box-shadow:0 0 26px #ff6ab3ee,0 0 48px #ff2f8f99;}}
+  @media (prefers-reduced-motion:reduce){ .item-card.r-legendary,.item-card.r-mythic{animation:none;} }
 
   /* MERGE & TOWER PANELS */
   .merge-row{display:flex; align-items:center; justify-content:space-between; background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px;}
@@ -677,6 +733,60 @@ body{
     max-width:calc(100vw - 28px);
   }
 }
+
+  /* =====================================================================
+     UI/UX Refresh — Mobile Layout Pass (adds classes/selectors + CSS only;
+     no id, onclick, or JS logic above this block was removed/renamed).
+     Goal: stop the "scroll marathon" on phones by (a) compacting item grids,
+     (b) containing long item lists inside their own max-height scroll box
+     so the outer page stays put, and (c) pinning the main action button.
+     ===================================================================== */
+  @media (max-width:640px){
+    /* (a) Inventory / Frame Shop: vertical list -> compact grid */
+    .inv-grid, .frame-shop-grid{
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+    .item-card{padding:7px;}
+    .item-card .icon{font-size:22px;margin-bottom:2px;}
+    .item-card .iname{font-size:.64rem;min-height:1.7em;line-height:1.2;}
+    .item-card .ilvl{font-size:.58rem;}
+    .item-card .equip-badge{font-size:.56rem;padding:1px 4px;}
+
+    /* (b) Contain scrolling inside the item zones themselves — the page
+       around them (filters, buttons, tabs) stays fixed in place. */
+    #invGrid, #frameShopGrid, #mergeContainer{
+      max-height:60vh;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+      padding-right:2px;
+      scrollbar-width:none; /* Firefox */
+    }
+    #invGrid::-webkit-scrollbar, #frameShopGrid::-webkit-scrollbar, #mergeContainer::-webkit-scrollbar{
+      display:none; /* Chrome/Safari — keep the swipe area clean */
+    }
+
+    /* Also let the horizontal-swipe fallback work if a container ever needs
+       to go wide instead of wrapping (kept opt-in via this utility class). */
+    .h-scroll-mobile{
+      display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px;
+      scrollbar-width:none; -webkit-overflow-scrolling:touch;
+    }
+    .h-scroll-mobile::-webkit-scrollbar{display:none;}
+    .h-scroll-mobile > *{flex:0 0 auto;}
+
+    /* (c) Sticky primary action button — the "smash to roll" Forge button
+       (the game's gacha-style CTA) stays reachable without scrolling back
+       down. Targets the existing #forgeBtn element only; nothing about it
+       (id/onclick/behavior) is changed. */
+    #forgeBtn{
+      position:sticky;
+      bottom:0;
+      z-index:5;
+      box-shadow:0 0 16px #7c5cff88, 0 -6px 14px #0a0a12cc;
+    }
+  }
 </style>
 <script>
 /* PATCH 3.17 — shared admin frame renderer
@@ -1565,6 +1675,10 @@ const ID_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ตัดตัวอ�
 let myPlayer = null; // { id, username }
 let cloudUnsub = null;
 let applyingRemote = false; // กันไม่ให้ snapshot ที่มาจากการ save ของตัวเองย้อนกลับมาเขียนทับ state ระหว่างพิมพ์
+// BUGFIX (ของหายปริศนา): เก็บเวลา updatedAt (server) ล่าสุดที่รู้ว่าตรงกับ state จริงที่ถืออยู่ในเครื่อง
+// ใช้เทียบใน onSnapshot ด้านล่าง กันไม่ให้การเขียนที่ไม่แตะ state เลย (เช่น presence heartbeat) ดันมาทับ
+// state สดในเครื่องด้วยข้อมูลเก่า — ดูรายละเอียดที่จุดใช้งานจริงใน pullCloudStateThenWatch()
+let lastKnownStateUpdatedAtMs = 0;
 
 function genPlayerId(){
   let s = "";
@@ -1708,6 +1822,9 @@ async function pullCloudStateThenWatch(){
       const cloudData = doc.data();
       const localTs = parseInt(localStorage.getItem(SAVE_KEY + "_ts") || "0", 10);
       const cloudTs = (cloudData.updatedAt && typeof cloudData.updatedAt.toMillis === "function") ? cloudData.updatedAt.toMillis() : 0;
+      // BUGFIX (ของหายปริศนา): ไม่ว่าจะเลือกใช้ state ฝั่งไหน (เครื่อง/คลาวด์) ให้ตั้ง baseline ของ
+      // "updatedAt ล่าสุดที่ตรงกับ state ที่ถืออยู่ตอนนี้" ไว้เสมอ — onSnapshot ด้านล่างจะใช้ค่านี้เทียบ
+      lastKnownStateUpdatedAtMs = cloudTs;
       if(localTs > cloudTs){
         // เครื่องนี้มีความคืบหน้าใหม่กว่าที่คลาวด์ (เช่น เพิ่งเก็บไอเทมแล้วรีเฟรชก่อนถึงรอบ sync)
         // ห้ามทับ state สดด้วยของคลาวด์ที่เก่ากว่า -> ดันของในเครื่อง (ของจริงล่าสุด) ขึ้นคลาวด์ก่อน
@@ -1748,11 +1865,24 @@ async function pullCloudStateThenWatch(){
     }
     const data = snap.data();
     if(!data || !data.state) return;
+    // BUGFIX (ของหายปริศนา / root cause): เอกสารผู้เล่นคนนี้ยังถูกเขียนด้วยฟิลด์อื่นที่ไม่เกี่ยวกับ state
+    // เลยด้วย เช่น writePresence() (heartbeat ทุก 20 วิ เขียนแค่ online/lastSeenAt) หรือตอนล็อกอินแอดมิน —
+    // การเขียนพวกนี้ใช้ {merge:true} และไม่แตะ "state" หรือ "updatedAt" เลย แต่ก็ยังทำให้ onSnapshot ยิง
+    // event นี้อยู่ดี (เพราะเอกสารเปลี่ยน) เดิมโค้ดตรงนี้เอา data.state (ซึ่งยังเป็นก้อนเก่าก่อนหน้านี้) มา
+    // ทับ state สดในเครื่องทันที — ถ้าผู้เล่นเพิ่งเก็บไอเทมใหม่ไปแต่ยังไม่ทันถึงรอบ cloud save ครั้งถัดไป
+    // (debounce สูงสุด 20 วิ) ไอเทมที่เพิ่งได้จะโดนทับหายไปเฉยๆ ทั้งที่ไม่ได้ถูกลบจากที่ไหนเลย
+    // วิธีแก้: เทียบ updatedAt ของเอกสารกับ updatedAt ล่าสุดที่รู้ว่าตรงกับ state ที่ถืออยู่ ถ้าไม่ใหม่กว่า
+    // แปลว่าการเขียนรอบนี้ไม่ได้แตะ state จริง ๆ ให้ข้ามไปเลย (ของแอดมินที่แก้ state จริงจะยังผ่านตามปกติ
+    // เพราะทุกจุดที่แก้ state ฝั่งแอดมิน/ตัวเองเซฟ ก็เซ็ต updatedAt: serverTimestamp() คู่กันเสมออยู่แล้ว)
+    const docUpdatedAtMs = (data.updatedAt && typeof data.updatedAt.toMillis === "function") ? data.updatedAt.toMillis() : 0;
+    if(docUpdatedAtMs <= lastKnownStateUpdatedAtMs) return;
+    lastKnownStateUpdatedAtMs = docUpdatedAtMs;
     applyingRemote = true;
     state = Object.assign(state, data.state);
     hydrateStateDefaults();
     applyingRemote = false;
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    localStorage.setItem(SAVE_KEY + "_ts", String(Date.now()));
     renderUI(); renderInventory(); renderMergePanel(); renderShopPanel(); renderFrameShop();
     toast("🛠️ แอดมินอัปเดตข้อมูลของคุณ!");
   });
