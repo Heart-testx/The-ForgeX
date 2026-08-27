@@ -292,6 +292,11 @@
   @keyframes fr-gem-pulse{0%,100%{transform:rotate(45deg) scale(1);filter:brightness(1);}50%{transform:rotate(45deg) scale(1.3);filter:brightness(1.5);}}
 
   .frame-shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px;}
+  /* Patch 3.22: บัตรตัวอักษรสี */
+  .letter-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:10px;}
+  .letter-card-item{background:var(--panel2);border:2px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center;}
+  .letter-card-swatch{width:36px;height:36px;border-radius:8px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;color:#000;font-family:var(--font-display);}
+  .name-color-letter-btn{min-width:34px;padding:6px 8px;font-family:var(--font-display);font-weight:700;}
   .frame-shop-card{background:var(--panel2);border:2px solid var(--border);border-radius:14px;padding:12px;text-align:center;transition:transform .18s var(--ease-pop),box-shadow .18s ease;}
   .frame-shop-card:hover{transform:translateY(-3px);box-shadow:var(--elev-1);}
   .frame-shop-card.owned{border-color:var(--gold);}
@@ -1038,6 +1043,31 @@ function makeAdminLabel(){
     </div>
 
 
+    <!-- Patch 3.22: บัตรเปลี่ยนชื่อ — จ่ายด้วยทอง (คนละสกุลเงินกับของอื่นในร้านค้าที่ใช้ Va Coin ทั้งหมด) -->
+    <hr style="border-color:var(--border); margin:24px 0;">
+    <h2 style="text-align:center; color:var(--gold);">🪧 บัตรเปลี่ยนชื่อ</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:6px;">เก็บเป็นไอเทมในคลัง กดใช้ทีหลังเพื่อเปลี่ยนชื่อผู้เล่นได้ (ต้องไม่ซ้ำกับผู้เล่นคนอื่น)</div>
+    <div class="buff-grid">
+      <div class="buff-card">
+        <h4>🪧 บัตรเปลี่ยนชื่อ</h4>
+        <div class="desc">ซื้อด้วยทอง 1 ใบ ใช้เปลี่ยนชื่อผู้เล่นได้ 1 ครั้ง — ใช้กี่ใบก็ได้ ไม่จำกัด</div>
+        <div class="small-note" style="margin:6px 0;">มีอยู่: <b style="color:var(--gold);" id="shopNameCardCount">0</b> ใบ</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <button class="btn gold" id="buyNameCard">ซื้อ (100,000 🪙)</button>
+          <button class="btn primary" id="useNameCard">✏️ ใช้บัตรเปลี่ยนชื่อ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patch 3.22: บัตรตัวอักษรสี — ซื้อด้วย Va Coin ราคาเดียวกันทุกสี ใช้แต่งสีชื่อผู้เล่นทีละตัวอักษร -->
+    <hr style="border-color:var(--border); margin:24px 0;">
+    <h2 style="text-align:center; color:var(--soul);">🔤 บัตรตัวอักษรสี</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:10px;">ซื้อบัตรสีเก็บไว้ แล้วนำไปแต่งสีชื่อผู้เล่นได้ทีละตัวอักษร (คนละสีกันได้) — ราคาเท่ากันทุกสี</div>
+    <div class="letter-card-grid" id="letterCardShopGrid"></div>
+
+    <div class="small-note" style="text-align:center; margin:16px 0 6px;">🎨 ตั้งค่าสีชื่อของคุณ (แตะตัวอักษรเพื่อเลือกสี)</div>
+    <div id="nameColorEditor" style="text-align:center;"></div>
+
     <hr style="border-color:var(--border); margin:24px 0;">
     <h2 style="text-align:center; color:var(--gold);">🖼️ กรอบโปรไฟล์ (Patch 2.2)</h2>
     <div class="small-note" style="text-align:center; margin-bottom:6px;">กรอบตกแต่งสุดเฟี้ยว มี Motion เคลื่อนไหวรอบตัวละคร ไม่มีผลต่อพลังต่อสู้ ใส่เพื่อความเท่เท่านั้น!</div>
@@ -1125,6 +1155,21 @@ function makeAdminLabel(){
       style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-align:center; margin-bottom:10px;">
     <div class="small-note" id="loginStatus" style="min-height:16px; margin-bottom:8px;"></div>
     <button class="btn gold" id="loginSubmitBtn" style="width:100%;">🚀 เริ่มเล่น</button>
+  </div>
+</div>
+
+<!-- RENAME MODAL (Patch 3.22): ใช้บัตรเปลี่ยนชื่อ เปลี่ยนชื่อผู้เล่นเอง (เช็คชื่อซ้ำก่อนเปลี่ยนเหมือนตอนตั้งชื่อครั้งแรก) -->
+<div class="modal-bg" id="renameModalBg">
+  <div class="modal-box">
+    <h3 style="margin-bottom:10px; color:var(--gold);">🪧 เปลี่ยนชื่อผู้เล่น</h3>
+    <div class="small-note" style="margin-bottom:12px;">ใช้บัตรเปลี่ยนชื่อ 1 ใบ เพื่อตั้งชื่อใหม่ (ต้องไม่ซ้ำกับผู้เล่นคนอื่น) — การเปลี่ยนชื่อจะเคลียร์สีตัวอักษรที่สวมอยู่ (บัตรสีจะคืนกลับเข้าคลังให้)</div>
+    <input type="text" id="renameUsernameInput" maxlength="20" placeholder="ชื่อผู้เล่นใหม่"
+      style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); text-align:center; margin-bottom:10px;">
+    <div class="small-note" id="renameStatus" style="min-height:16px; margin-bottom:8px;"></div>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button class="btn" id="renameCancelBtn">ยกเลิก</button>
+      <button class="btn gold" id="renameSubmitBtn">✅ ยืนยันเปลี่ยนชื่อ</button>
+    </div>
   </div>
 </div>
 
@@ -1364,6 +1409,24 @@ const RARITY_META = {
   // Patch 3.18: Divine — ระดับสูงสุดของเกม เหนือ Mythic ดรอปได้เฉพาะจาก The Forge (0.2%) หรือหลอม 3x Mythic
   divine:    { color:"var(--divine)",    label:"Divine",    basePower:1200,sellBase:900}
 };
+// Patch 3.22: จานสีบัตรตัวอักษร — ราคาเดียวกันทุกสี/ทุกตัวอักษร ซื้อด้วย Va Coin
+const LETTER_COLOR_PALETTE = [
+  { id:"red",    name:"แดง",    hex:"#ff4d4d" },
+  { id:"orange", name:"ส้ม",    hex:"#ff9a3d" },
+  { id:"yellow", name:"เหลือง", hex:"#ffd24a" },
+  { id:"green",  name:"เขียว",  hex:"#4caf50" },
+  { id:"cyan",   name:"ฟ้า",    hex:"#00e5ff" },
+  { id:"blue",   name:"น้ำเงิน", hex:"#3d9bff" },
+  { id:"purple", name:"ม่วง",   hex:"#9d4dff" },
+  { id:"pink",   name:"ชมพู",   hex:"#ff2f8f" },
+  { id:"white",  name:"ขาว",    hex:"#ffffff" },
+  { id:"gold",   name:"ทอง",    hex:"#ffd700" }
+];
+const LETTER_CARD_PRICE = 150; // Va Coin ต่อใบ (ราคาเดียวกันทุกสี/ทุกตัวอักษร)
+const NAME_CHANGE_CARD_PRICE = 100000; // ทอง ต่อใบบัตรเปลี่ยนชื่อ
+function makeDefaultLetterColorOwned(){
+  const o = {}; LETTER_COLOR_PALETTE.forEach(c=>{ o[c.id] = 0; }); return o;
+}
 const SLOT_LIST = ["weapon","armor","pants","shoes"];
 const SLOT_META = { weapon: {label:"อาวุธ", icon:"⚔️"}, armor: {label:"เสื้อ", icon:"👕"}, pants: {label:"กางเกง", icon:"👖"}, shoes: {label:"รองเท้า", icon:"👟"} };
 const BOSS_EMOJIS = ["👺","👹","💀","👽","🐉","🦖","👾","🧛"];
@@ -1957,7 +2020,10 @@ function createDefaultState(){
     vip: { tier: "none", expiresAt: 0, goldBulkAvailable: false, goldBulkMonthKey: "", previousFrameId: "" },
     dailyLogin: { freeClaimed: {}, vipClaimed: {} },
     // Patch 3.8: จำ id ของประกาศแอดมินล่าสุดที่ผู้เล่นเคย "เห็น" แล้ว กันประกาศเก่าเด้งซ้ำทุกครั้งที่รีเฟรชหน้า
-    lastSeenAnnouncementId: null
+    lastSeenAnnouncementId: null,
+    // Patch 3.22: บัตรเปลี่ยนชื่อ (ซื้อด้วยทอง เก็บเป็นจำนวนใบ) + บัตรตัวอักษรสี (ซื้อด้วย Va Coin ราคาเดียวกันทุกสี)
+    nameChangeCards: 0,
+    letterColors: { owned: makeDefaultLetterColorOwned(), equipped: {} }
   };
 }
 let state = createDefaultState();
@@ -2023,6 +2089,12 @@ function hydrateStateDefaults(){
   if(!state.dailyLogin.vipClaimed) state.dailyLogin.vipClaimed = {};
   // Patch 3.8: ประกาศแอดมิน
   if(state.lastSeenAnnouncementId===undefined) state.lastSeenAnnouncementId = null;
+  // Patch 3.22: บัตรเปลี่ยนชื่อ + บัตรตัวอักษรสี — เซฟเก่าที่ยังไม่มีฟิลด์นี้ ให้ default เป็น 0/ว่าง
+  if(state.nameChangeCards===undefined) state.nameChangeCards = 0;
+  if(!state.letterColors) state.letterColors = { owned: makeDefaultLetterColorOwned(), equipped: {} };
+  if(!state.letterColors.owned) state.letterColors.owned = makeDefaultLetterColorOwned();
+  LETTER_COLOR_PALETTE.forEach(c=>{ if(state.letterColors.owned[c.id]===undefined) state.letterColors.owned[c.id] = 0; });
+  if(!state.letterColors.equipped) state.letterColors.equipped = {};
 }
 function loadGame(){
   try{
@@ -2058,6 +2130,21 @@ function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 // ป้องกัน Stored XSS: ใช้ escape ทุกครั้งก่อนแทรกข้อความที่มาจากผู้เล่น (เช่น username) เข้าไปใน innerHTML
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+// Patch 3.22: render ชื่อผู้เล่นเป็น HTML โดยแต่งสีทีละตัวอักษรตาม letterColors.equipped (ถ้ามี) —
+// ใช้ escapeHtml กับทุกตัวอักษรก่อนเสมอ กัน Stored XSS เหมือนจุดอื่นๆ ที่แสดง username
+function usernameColorHTML(username, letterColors){
+  const name = username || "ไม่ทราบชื่อ";
+  const eq = (letterColors && letterColors.equipped) ? letterColors.equipped : {};
+  const chars = Array.from(name);
+  let html = "";
+  chars.forEach((ch,i)=>{
+    const colorId = eq[i];
+    const meta = colorId ? LETTER_COLOR_PALETTE.find(c=>c.id===colorId) : null;
+    const safeCh = escapeHtml(ch);
+    html += meta ? `<span style="color:${meta.hex};">${safeCh}</span>` : safeCh;
+  });
+  return html;
 }
 
 // ป้องกันปัญหาตัวเลขยาวเหยียดอ่านไม่ออกในช่วงปลายเกม
@@ -2373,7 +2460,7 @@ function renderRankTop3(){
         </div>
         <div style="font-size:1.6rem;z-index:2;">${RANK_MEDALS[rank]||"🏅"}</div>
         <div style="flex:1;z-index:2;">
-          <div style="font-weight:bold;">${escapeHtml(d.username||"ไม่ทราบชื่อ")}${isMe?' <span style="color:var(--gold); font-size:.75rem;">(คุณ)</span>':""}</div>
+          <div style="font-weight:bold;">${usernameColorHTML(d.username, d.state && d.state.letterColors)}${isMe?' <span style="color:var(--gold); font-size:.75rem;">(คุณ)</span>':""}</div>
           <div class="small-note">🆔 ${escapeHtml(doc.id)}${frameMeta?` · 🖼️ ${frameMeta.emoji} ${frameMeta.name}`:""}</div>
         </div>
         <div style="text-align:right; font-weight:bold; color:var(--legendary);z-index:2;">${fmt(d.power||0)}</div>`;
@@ -2714,6 +2801,17 @@ function autoForgeTick(){
   renderUI(); renderShopPanel(); saveGame();
 }
 function renderShopPanel(){
+  renderShopTimers();
+  renderNameShop();
+  renderLetterCardShop();
+  renderNameColorEditor();
+}
+// Patch 3.23 BUGFIX: เดิม renderShopPanel() ทั้งก้อน (รวมถึงตัวแก้ไขสีชื่อ/กริดบัตรสี) ถูกเรียกซ้ำทุก 1
+// วินาทีผ่าน setInterval(renderShopPanel,1000) — ทำให้ตอนผู้เล่นกำลังเปิดพาเลตต์เลือกสีตัวอักษรอยู่ พาเลตต์
+// จะถูกเขียนทับ/ปิดไปเองกลางคันทุกๆ 1 วินาที (ดูเหมือนกดสีไม่ติด/บัค) ตอนนี้แยกส่วนที่ต้องอัปเดตแบบ real-time
+// จริงๆ (ยอด Va Coin + นับถอยหลังบัฟต่างๆ) ออกมาเป็น renderShopTimers() ให้ setInterval เรียกแทน ส่วน
+// renderShopPanel() เต็มรูปแบบ (rebuild กริด/ตัวแก้ไขสีชื่อ) ยังคงถูกเรียกเฉพาะตอนมี action จริงๆ เท่านั้น
+function renderShopTimers(){
   const vc = document.getElementById("shopVaCoin"); if(!vc) return;
   vc.textContent = fmt(state.vaCoin);
   const afEnd = state.shop.autoForgeEndTime;
@@ -2726,6 +2824,171 @@ function renderShopPanel(){
     ? `🟢 ใช้งานอยู่ (เหลือ ~${Math.max(0,Math.ceil((state.shop.zoneBoostEndTime-Date.now())/(60000*60*24)))} วัน)` : "🔴 ไม่ได้ใช้งาน";
   const rc = document.getElementById("shopRerollCount"); if(rc) rc.textContent = fmt(state.rerollCharges||0);
   renderRolePanel();
+  // ยอดคงเหลือบัตรตัวอักษรสีในกริดก็เป็นตัวเลขล้วนๆ อัปเดตได้ทุกวินาทีอย่างปลอดภัย โดยไม่ต้อง rebuild
+  // ปุ่ม/พาเลตต์ทั้งกริด (กัน bug เดียวกับด้านบน)
+  LETTER_COLOR_PALETTE.forEach(c=>{
+    const el = document.getElementById("letterCardOwned_"+c.id);
+    if(el) el.textContent = fmt(state.letterColors.owned[c.id]||0);
+    const btn = document.getElementById("buyLetterCard_"+c.id);
+    if(btn) btn.disabled = state.vaCoin < LETTER_CARD_PRICE;
+  });
+}
+
+/* Patch 3.22: บัตรเปลี่ยนชื่อ (100,000 🪙) — เก็บเป็นจำนวนใบในคลัง กดใช้ทีหลังเพื่อเปลี่ยนชื่อ */
+function renderNameShop(){
+  const cnt = document.getElementById("shopNameCardCount"); if(cnt) cnt.textContent = fmt(state.nameChangeCards||0);
+  const useBtn = document.getElementById("useNameCard"); if(useBtn) useBtn.disabled = (state.nameChangeCards||0) < 1;
+}
+document.getElementById("buyNameCard").addEventListener("click", ()=>{
+  if(state.gold < NAME_CHANGE_CARD_PRICE){ toast("🪙 ทองไม่พอ!"); SFX.error(); return; }
+  state.gold -= NAME_CHANGE_CARD_PRICE; state.nameChangeCards = (state.nameChangeCards||0) + 1;
+  toast("🪧 ได้รับบัตรเปลี่ยนชื่อ!"); logMsg("🪧 ซื้อบัตรเปลี่ยนชื่อ จากร้านค้า"); SFX.coin();
+  renderUI(); renderNameShop(); saveGame();
+});
+document.getElementById("useNameCard").addEventListener("click", ()=>{
+  if((state.nameChangeCards||0) < 1){ toast("🪧 ไม่มีบัตรเปลี่ยนชื่อ!"); SFX.error(); return; }
+  openRenameModal();
+});
+// คืนบัตรตัวอักษรสีทั้งหมดที่สวมอยู่กลับเข้าคลัง แล้วเคลียร์การสวมใส่ (ใช้ตอนเปลี่ยนชื่อ เพราะตำแหน่ง
+// ตัวอักษรเดิมจะไม่ตรงกับชื่อใหม่อีกต่อไป) — clamp กัน owned ติดลบเผื่อเซฟเก่าเพี้ยน
+function returnAllEquippedLetterCards(){
+  const eq = (state.letterColors && state.letterColors.equipped) || {};
+  Object.values(eq).forEach(colorId=>{
+    if(state.letterColors.owned[colorId]===undefined) state.letterColors.owned[colorId]=0;
+    state.letterColors.owned[colorId] = Math.max(0,(state.letterColors.owned[colorId]||0)) + 1;
+  });
+  state.letterColors.equipped = {};
+  openLetterColorIdx = null;
+}
+function openRenameModal(){
+  const modal = document.getElementById("renameModalBg");
+  const input = document.getElementById("renameUsernameInput");
+  const status = document.getElementById("renameStatus");
+  const submitBtn = document.getElementById("renameSubmitBtn");
+  const cancelBtn = document.getElementById("renameCancelBtn");
+  input.value = myPlayer ? myPlayer.username : "";
+  status.textContent = ""; submitBtn.disabled = false;
+  modal.classList.add("active");
+  const cleanup = ()=>{ modal.classList.remove("active"); submitBtn.onclick=null; cancelBtn.onclick=null; };
+  cancelBtn.onclick = ()=>{ cleanup(); };
+  submitBtn.onclick = async ()=>{
+    const name = input.value.trim();
+    if(!name){ status.textContent = "⚠️ กรุณาใส่ชื่อผู้เล่น"; return; }
+    if(name === myPlayer.username){ status.textContent = "⚠️ นี่คือชื่อเดิม กรุณาตั้งชื่อใหม่ที่ไม่ซ้ำ"; return; }
+    if((state.nameChangeCards||0) < 1){ status.textContent = "⚠️ ไม่มีบัตรเปลี่ยนชื่อแล้ว"; return; }
+    submitBtn.disabled = true; status.textContent = "⏳ กำลังตรวจสอบชื่อ...";
+    try{
+      if(await isUsernameTaken(name)){
+        status.textContent = "⚠️ ชื่อนี้มีผู้ใช้แล้ว กรุณาตั้งชื่ออื่น";
+        submitBtn.disabled = false; return;
+      }
+    }catch(e){
+      status.textContent = "⚠️ ตรวจสอบชื่อไม่สำเร็จ ลองใหม่อีกครั้ง";
+      submitBtn.disabled = false; return;
+    }
+    const oldName = myPlayer.username;
+    myPlayer.username = name; saveLocalPlayer(myPlayer);
+    state.nameChangeCards -= 1;
+    returnAllEquippedLetterCards();
+    toast("🪧 เปลี่ยนชื่อสำเร็จ!");
+    logMsg(`🪧 เปลี่ยนชื่อผู้เล่นจาก <b>${escapeHtml(oldName)}</b> เป็น <b style="color:var(--gold)">${escapeHtml(name)}</b>`);
+    SFX.coin();
+    cleanup();
+    // Patch 3.23: forceCloudSaveNow() ทันที ไม่รอ debounce ปกติ (สูงสุด 5 นาที) เพื่อให้ชื่อ/สีตัวอักษรใหม่
+    // ไปโผล่ในหน้า Top 3 อันดับ/ผู้เล่นออนไลน์ของคนอื่นได้เร็ว เหมือนกับตอนเปลี่ยนกรอบโปรไฟล์
+    renderUI(); renderShopPanel(); saveGame(); forceCloudSaveNow();
+  };
+}
+
+/* Patch 3.22: บัตรตัวอักษรสี — ซื้อด้วย Va Coin ราคาเดียวกันทุกสี แล้วนำไปแต่งสีชื่อทีละตัวอักษร */
+function renderLetterCardShop(){
+  const grid = document.getElementById("letterCardShopGrid"); if(!grid) return;
+  grid.innerHTML = LETTER_COLOR_PALETTE.map(c=>`
+    <div class="letter-card-item" style="border-color:${c.hex};">
+      <div class="letter-card-swatch" style="background:${c.hex};">Aa</div>
+      <div style="font-size:.78rem; margin:6px 0 2px;">${c.name}</div>
+      <div class="small-note" style="margin-bottom:6px;">มี: <b style="color:${c.hex};" id="letterCardOwned_${c.id}">${fmt(state.letterColors.owned[c.id]||0)}</b></div>
+      <button class="btn gold buyLetterCardBtn" id="buyLetterCard_${c.id}" data-color="${c.id}" ${state.vaCoin<LETTER_CARD_PRICE?"disabled":""} style="font-size:.72rem; padding:5px 8px; width:100%;">ซื้อ (${LETTER_CARD_PRICE} ✨)</button>
+    </div>`).join("");
+  grid.querySelectorAll(".buyLetterCardBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const colorId = btn.dataset.color;
+      if(state.vaCoin < LETTER_CARD_PRICE){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
+      state.vaCoin -= LETTER_CARD_PRICE;
+      state.letterColors.owned[colorId] = (state.letterColors.owned[colorId]||0) + 1;
+      const meta = LETTER_COLOR_PALETTE.find(c=>c.id===colorId);
+      toast(`🔤 ได้รับบัตรตัวอักษรสี${meta.name}!`);
+      logMsg(`🔤 ซื้อบัตรตัวอักษรสี<b style="color:${meta.hex}">${meta.name}</b> จากร้านค้า`);
+      SFX.coin();
+      renderUI(); renderLetterCardShop(); renderNameColorEditor(); saveGame(); forceCloudSaveNow();
+    };
+  });
+}
+// ตัวแก้ไขสีชื่อ: แตะตัวอักษรแต่ละตัวของชื่อผู้เล่นปัจจุบัน เพื่อเลือก/ถอดสีจากบัตรที่มีอยู่
+// Patch 3.23: เก็บ index ของตัวอักษรที่พาเลตต์กำลังเปิดอยู่ไว้ในตัวแปรนี้ (ไม่ใช่แค่ local variable ในฟังก์ชัน)
+// เพื่อให้ rebuild UI รอบไหนๆ ก็เปิดพาเลตต์เดิมค้างไว้ต่อได้ ไม่ปิดหายกลางคัน (ดู renderShopTimers ด้านบน)
+let openLetterColorIdx = null;
+// Patch 3.23 BUGFIX: เดิมวนด้วย name.length/name[i] ซึ่งนับเป็น UTF-16 code unit — ถ้าชื่อมีอิโมจิ/อักขระ
+// นอกช่วง BMP จะถูกตัดกลางตัวเป็น surrogate pair 2 ชิ้น (คนละสีกันได้ ทำให้อิโมจิพัง/เพี้ยน) ตอนนี้ใช้
+// Array.from() ซึ่งรวม surrogate pair ให้เป็นอักขระเดียวกันเสมอ ใช้ตรงกันทั้งตอน render และตอนคำนวณ index
+function getUsernameChars(name){ return Array.from(name || ""); }
+function renderNameColorEditor(){
+  const box = document.getElementById("nameColorEditor"); if(!box || !myPlayer) return;
+  const chars = getUsernameChars(myPlayer.username);
+  const eq = state.letterColors.equipped || {};
+  let html = `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap; margin-bottom:10px;">`;
+  chars.forEach((ch,i)=>{
+    const colorId = eq[i];
+    const meta = colorId ? LETTER_COLOR_PALETTE.find(c=>c.id===colorId) : null;
+    html += `<button class="btn name-color-letter-btn" data-idx="${i}" style="${meta?`color:${meta.hex}; border-color:${meta.hex};`:""}">${escapeHtml(ch)}</button>`;
+  });
+  html += `</div><div id="nameColorPalette"></div>`;
+  box.innerHTML = html;
+  box.querySelectorAll(".name-color-letter-btn").forEach(btn=>{
+    btn.onclick = ()=> openLetterColorPalette(parseInt(btn.dataset.idx));
+  });
+  // เปิดพาเลตต์เดิมกลับมาอีกครั้ง ถ้ายังเปิดค้างอยู่ก่อนหน้านี้ (และ index ยังอยู่ในช่วงความยาวชื่อปัจจุบัน)
+  if(openLetterColorIdx !== null && openLetterColorIdx < chars.length){
+    openLetterColorPalette(openLetterColorIdx);
+  } else {
+    openLetterColorIdx = null;
+  }
+}
+function openLetterColorPalette(idx){
+  const pal = document.getElementById("nameColorPalette"); if(!pal) return;
+  openLetterColorIdx = idx;
+  const currentColor = state.letterColors.equipped[idx];
+  let html = `<div class="small-note" style="margin-bottom:6px;">เลือกสีสำหรับตัวอักษรที่ ${idx+1}:</div><div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">`;
+  html += `<button class="btn" id="letterColorNone" style="padding:6px 12px;">🚫 ไม่มีสี</button>`;
+  LETTER_COLOR_PALETTE.forEach(c=>{
+    const owned = state.letterColors.owned[c.id]||0;
+    const canUse = owned > 0 || currentColor === c.id;
+    html += `<button class="btn letterColorPick" data-color="${c.id}" ${canUse?"":"disabled"} style="background:${c.hex}; color:#000; padding:6px 12px; opacity:${canUse?1:.4}; font-weight:700;">${c.name} (${owned})${currentColor===c.id?" ✓":""}</button>`;
+  });
+  html += `</div><div style="margin-top:8px;"><button class="btn" id="letterColorPaletteClose" style="font-size:.75rem; padding:4px 10px;">✖️ ปิด</button></div>`;
+  pal.innerHTML = html;
+  document.getElementById("letterColorPaletteClose").onclick = ()=>{
+    openLetterColorIdx = null; pal.innerHTML = "";
+  };
+  document.getElementById("letterColorNone").onclick = ()=>{
+    if(currentColor){ state.letterColors.owned[currentColor] = Math.max(0,(state.letterColors.owned[currentColor]||0)) + 1; delete state.letterColors.equipped[idx]; }
+    renderNameColorEditor(); renderLetterCardShop(); renderUI(); saveGame(); forceCloudSaveNow();
+  };
+  pal.querySelectorAll(".letterColorPick").forEach(btn=>{
+    btn.onclick = ()=>{
+      if(btn.disabled) return;
+      const colorId = btn.dataset.color;
+      if(currentColor === colorId) return;
+      if(currentColor){ state.letterColors.owned[currentColor] = Math.max(0,(state.letterColors.owned[currentColor]||0)) + 1; }
+      state.letterColors.owned[colorId] = Math.max(0,(state.letterColors.owned[colorId]||0) - 1);
+      state.letterColors.equipped[idx] = colorId;
+      // Patch 3.23: เปิดพาเลตต์ของตัวอักษรถัดไปต่ออัตโนมัติถ้ามี ช่วยให้แต่งสีทีละตัวรัวๆ ได้ลื่นขึ้น
+      // ไม่ต้องกดตัวอักษรใหม่ทุกครั้ง (ถ้าเป็นตัวสุดท้ายแล้วก็ปิดพาเลตต์ไปเอง)
+      const chars = getUsernameChars(myPlayer.username);
+      openLetterColorIdx = (idx + 1 < chars.length) ? (idx + 1) : null;
+      renderNameColorEditor(); renderLetterCardShop(); renderUI(); saveGame(); forceCloudSaveNow();
+    };
+  });
 }
 // Patch 3.20: อัปเดต text แสดง Role ปัจจุบันของผู้เล่น ทั้งในหัวโปรไฟล์และในร้านค้า (สีตามระดับ rarity ของ Role นั้น)
 function renderRolePanel(){
@@ -3512,7 +3775,7 @@ function renderOnlinePlayersFromSnap(snap){
     const dot=document.createElement("span"); dot.className="online-dot";
     const main=document.createElement("div"); main.className="online-player-main";
     const name=document.createElement("div"); name.className="online-player-name";
-    name.textContent=(p.isAdminAccount?"👑 ":"")+(p.username||"ไม่ทราบชื่อ")+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");
+    name.innerHTML=(p.isAdminAccount?"👑 ":"")+usernameColorHTML(p.username, p.state && p.state.letterColors)+(myPlayer&&p.id===myPlayer.id?" (คุณ)":"");
     const meta=document.createElement("div"); meta.className="online-player-meta";
     meta.textContent=`🆔 ${p.id} · ${p.isAdminAccount?"ADMIN · ":""}พลัง ${fmt(p.power||0)}`;
     const equipRow = buildOnlineEquipRow(p); // Patch 3.23
@@ -4096,7 +4359,7 @@ function doPrestige() {
 
 /* ================= UI RENDERING ================= */
 function renderUI(){
-  if(myPlayer){ document.getElementById("playerIdTag").textContent = `🆔 ${myPlayer.id} · ${myPlayer.username}`; }
+  if(myPlayer){ document.getElementById("playerIdTag").innerHTML = `🆔 ${escapeHtml(myPlayer.id)} · ${usernameColorHTML(myPlayer.username, state.letterColors)}`; }
   document.getElementById("statPower").textContent = fmt(totalPower());
   document.getElementById("statGold").textContent = fmt(state.gold);
   document.getElementById("statIron").textContent = fmt(state.iron);
@@ -4312,6 +4575,9 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     if(btn.dataset.tab === "online") renderOnlinePlayers();
     if(btn.dataset.tab !== "online" && onlinePlayersUnsub){ onlinePlayersUnsub(); onlinePlayersUnsub=null; }
     if(btn.dataset.tab === "daily") renderDailyLoginPanel();
+    // Patch 3.23: rebuild กริดบัตรสี/ตัวแก้ไขสีชื่อให้สดใหม่ทุกครั้งที่เข้าแท็บร้านค้า (เผื่อมีการเปลี่ยนแปลง
+    // เช่น vaCoin/nameChangeCards ตอนไม่ได้เปิดแท็บนี้อยู่ เช่นแอดมินเติมของให้ หรือกด reset save)
+    if(btn.dataset.tab === "shop") renderShopPanel();
   };
 });
 document.getElementById("refreshRankBtn").addEventListener("click", renderRankTop3);
@@ -4347,10 +4613,14 @@ async function resetSaveKeepVaCoinItems(){
   const keptRerollCharges = state.rerollCharges || 0;
   // Patch 3.20: Role ของผู้เล่นได้มาจากการซื้อด้วย Va Coin (หรือดรอปในเกม) เหมือนกัน จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
   const keptPlayerRole = state.playerRole ? JSON.parse(JSON.stringify(state.playerRole)) : { id: null };
+  // Patch 3.22: บัตรเปลี่ยนชื่อ (ทอง) + บัตรตัวอักษรสี (Va Coin) ก็ซื้อด้วยเงินจริงเหมือนกัน จึงไม่ควรถูกรีเซ็ตทิ้งเช่นกัน
+  const keptNameChangeCards = state.nameChangeCards || 0;
+  const keptLetterColors = state.letterColors ? JSON.parse(JSON.stringify(state.letterColors)) : { owned: makeDefaultLetterColorOwned(), equipped: {} };
   state = createDefaultState();
   state.frames = keptFrames; // ยกเว้นของที่ใช้ Va Coin ซื้อ ไม่ต้องรีเซ็ต
   state.vip = keptVip; state.dailyLogin = keptDailyLogin; state.rerollCharges = keptRerollCharges;
   state.playerRole = keptPlayerRole;
+  state.nameChangeCards = keptNameChangeCards; state.letterColors = keptLetterColors;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if(myPlayer){
     try{
@@ -4364,7 +4634,7 @@ async function resetSaveKeepVaCoinItems(){
   location.reload();
 }
 document.getElementById("resetSaveBtn").addEventListener("click", ()=>{
-  showConfirm("ลบเซฟทั้งหมด? (ไอเทมที่ซื้อด้วย Va Coin จะไม่ถูกลบ)", resetSaveKeepVaCoinItems);
+  showConfirm("ลบเซฟทั้งหมด? (ไอเทมที่ซื้อด้วย Va Coin/ทอง เช่น กรอบ, บัตรเปลี่ยนชื่อ, บัตรตัวอักษรสี จะไม่ถูกลบ)", resetSaveKeepVaCoinItems);
 });
 
 // Patch 2.1: ปุ่ม/แถบควบคุมเสียง (SFX + เพลงพื้นหลัง)
@@ -4392,7 +4662,7 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
   renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop(); renderDailyLoginPanel();
-  requestAnimationFrame(afkTick); setInterval(saveGame, 3000); startPresenceHeartbeat(); setInterval(renderEventBanner, 1000); setInterval(renderShopPanel, 1000); setInterval(renderFrameShop, 2000); setInterval(renderDailyLoginPanel, 30000);
+  requestAnimationFrame(afkTick); setInterval(saveGame, 3000); startPresenceHeartbeat(); setInterval(renderEventBanner, 1000); setInterval(renderShopTimers, 1000); setInterval(renderFrameShop, 2000); setInterval(renderDailyLoginPanel, 30000);
 })();
 </script>
 </body>
