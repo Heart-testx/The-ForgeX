@@ -1683,6 +1683,12 @@ let restartingAsNewPlayer = false;
 function restartAsNewPlayer(message, detail){
   if(restartingAsNewPlayer) return; // กันเรียกซ้ำซ้อน (เช่น ถูกเรียกจากทั้ง .get() เริ่มต้นและ onSnapshot พร้อมกัน)
   restartingAsNewPlayer = true;
+  // BUGFIX: หยุด presence heartbeat (setInterval ที่เขียนขึ้นคลาวด์ทุก 20 วิ) ทันที และล้าง myPlayer ในหน่วยความจำ
+  // ทิ้งด้วย (ไม่ใช่แค่ localStorage) กัน callback อื่นๆ ที่อาจยังเห็น myPlayer เป็นของเก่าอยู่แล้วพยายามเขียน
+  // ข้อมูลย้อนกลับไปที่ ID ที่เพิ่งถูกลบ — ร่วมกับ flag restartingAsNewPlayer ด้านบนที่ตอนนี้ saveGame/
+  // doCloudSaveNow/cloudSaveState/forceCloudSaveNow/writePresence ทุกตัวเช็คก่อนเขียนแล้ว
+  stopPresenceHeartbeat();
+  myPlayer = null;
   localStorage.removeItem(PLAYER_KEY);
   localStorage.removeItem(SAVE_KEY);
   localStorage.removeItem(SAVE_KEY + "_ts");
@@ -1836,6 +1842,8 @@ let cloudSavePending = false;
 const CLOUD_SAVE_MIN_GAP_MS = 20000;
 const CLOUD_SAVE_DEBOUNCE_MS = 900;
 function doCloudSaveNow(){
+  // BUGFIX: กันเช่นเดียวกัน — ห้ามเขียนคลาวด์ทับหลังเอกสารถูกแอดมินลบและกำลังจะรีสตาร์ทเป็นผู้เล่นใหม่
+  if(restartingAsNewPlayer) return;
   if(!myPlayer || applyingRemote) return;
   lastCloudSaveAt = Date.now(); cloudSavePending = false;
   db.collection("players").doc(myPlayer.id).set({
@@ -1844,6 +1852,7 @@ function doCloudSaveNow(){
   }, {merge:true}).catch(()=>{ cloudSavePending=true; });
 }
 function cloudSaveState(){
+  if(restartingAsNewPlayer) return;
   if(!myPlayer || applyingRemote) return;
   cloudSavePending=true; clearTimeout(cloudSaveTimer);
   const elapsed=Date.now()-lastCloudSaveAt;
@@ -1857,6 +1866,8 @@ let presenceTimer=null;
 let playerListUnsub=null;
 let onlinePlayersUnsub=null;
 function writePresence(isOnline=true){
+  // BUGFIX: กันเช่นเดียวกับ saveGame/doCloudSaveNow ด้านล่าง — ไม่เขียนอะไรกลับขึ้นคลาวด์อีกหลังถูกลบ
+  if(restartingAsNewPlayer) return;
   if(!myPlayer) return;
   db.collection("players").doc(myPlayer.id).set({username:myPlayer.username,online:isOnline,lastSeenAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
 }
@@ -1904,6 +1915,12 @@ let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
 function saveGame(){
+  // BUGFIX: ถ้าแอดมินลบ ID นี้ไปแล้วและกำลังจะรีสตาร์ทเป็นผู้เล่นใหม่ (restartAsNewPlayer ทำงานอยู่)
+  // ต้องห้ามเขียนอะไรกลับลง localStorage/คลาวด์อีกเด็ดขาด — ไม่งั้น setInterval(saveGame,3000) เดิม
+  // ที่ยังค้างทำงานอยู่ (หรือ pagehide/visibilitychange ด้านล่าง) จะเขียน SAVE_KEY ทับกลับไปด้วยข้อมูลเก่า
+  // (vaCoin/กรอบโปรไฟล์/Role) ที่เพิ่งถูกลบทิ้ง แล้วพอผู้เล่นสมัคร ID ใหม่ โค้ดตอนสร้างบัญชีใหม่จะไปอ่าน
+  // SAVE_KEY เก่านั้นมาเป็นค่าตั้งต้นให้บัญชีใหม่โดยไม่ได้ตั้งใจ ทำให้ของเก่าที่ถูกลบยังค้างอยู่
+  if(restartingAsNewPlayer) return;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   // Patch 3.2: บันทึกเวลาที่เซฟในเครื่องล่าสุด ใช้เทียบกับเวลาบนคลาวด์ตอนโหลดเกมใหม่ (ดู pullCloudStateThenWatch)
   localStorage.setItem(SAVE_KEY + "_ts", String(Date.now()));
@@ -1914,6 +1931,11 @@ function saveGame(){
 // แทนที่จะต้องรอรอบ sync ปกติสูงสุด 5 นาที ใช้แค่ตอนมี "การกระทำของผู้เล่นจริงๆ" เท่านั้น (ไม่ใช่ heartbeat
 // รัวๆ) จึงไม่กระทบโควตา Firestore เหมือนปัญหาที่ Patch 2.7/2.8 เคยแก้ไปแล้ว
 function forceCloudSaveNow(){
+  // BUGFIX: เหตุผลเดียวกับใน saveGame() ด้านบน — ถ้าไม่กันตรงนี้ด้วย pagehide/visibilitychange (บรรทัด
+  // ถัดไปด้านล่าง) จะเรียกฟังก์ชันนี้แบบไม่มีเงื่อนไขตอนผู้เล่นสลับแท็บ/ปิดแท็บระหว่างที่ popup แจ้งเตือน
+  // การถูกลบกำลังค้างอยู่ (ก่อน reload) แล้ว .set({...},{merge:true}) จะ "ชุบชีวิต" เอกสารผู้เล่นที่แอดมิน
+  // เพิ่งลบทิ้งขึ้นมาใหม่บนคลาวด์โดยไม่ได้ตั้งใจ พร้อมข้อมูลเก่าทั้งหมด
+  if(restartingAsNewPlayer) return;
   if(!myPlayer || applyingRemote) return;
   clearTimeout(cloudSaveTimer);
   doCloudSaveNow();
