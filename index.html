@@ -3735,27 +3735,24 @@ function playEntranceFx(rowEl, playerId, vipTier, frameId, shownSet){
 function renderFrameShop(){
   const grid = document.getElementById("frameShopGrid"); if(!grid) return;
   grid.innerHTML = "";
-  FRAME_LIST.filter(f=>!f.vipOnly && (!f.adminOnly || isAdminUser())).forEach(f=>{
+  // Patch 3.30: ของที่หมุนได้จากกาชาแฟชั่นแล้ว (ยังไม่ได้เป็นเจ้าของ) จะไม่โชว์เป็นการ์ดล็อกซ้ำในร้านค้าอีก
+  // ต่อไป — ตัดออกจากรายการไปเลย กันของซ้ำกับในกาชา (ของที่เป็นเจ้าของแล้วยังโชว์ตามปกติเพื่อสวมใส่/ถอดได้)
+  FRAME_LIST.filter(f=>!f.vipOnly && (!f.adminOnly || isAdminUser())).filter(f=>isFrameOwned(f.id) || !isObtainableViaGacha("frame", f.id)).forEach(f=>{
     const owned = isFrameOwned(f.id);
     const equipped = state.frames.equipped === f.id;
-    const gachaOnly = !owned && isObtainableViaGacha("frame", f.id);
     const card = document.createElement("div");
-    card.className = "frame-shop-card" + (owned?" owned":"") + (equipped?" equipped":"") + (gachaOnly?" locked-gacha":"");
+    card.className = "frame-shop-card" + (owned?" owned":"") + (equipped?" equipped":"");
     const previewHtml = f.id==="admin_ultimate"
       ? `<div class="frame-preview"><div class="admin-ultimate-frame" style="transform:scale(.82);"><div class="admin-ray"></div><div class="admin-sweep"></div><div class="admin-core">👑</div><div class="admin-label">ADMIN • ULTIMATE</div></div></div>`
       : `<div class="frame-preview${frameMotionClasses(f.id)}"><div class="frame-ring fr-${f.id}${frameRingExtraClasses(f.id)}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>`;
     card.innerHTML = `
       ${previewHtml}
       <div class="fname">${f.emoji} ${f.name}</div>
-      <div class="fprice"${gachaOnly?` style="color:var(--epic);"`:""}>${owned ? (equipped?"✅ สวมอยู่":"เป็นเจ้าของแล้ว") : (f.adminOnly?"🔒 เฉพาะแอดมิน":(gachaOnly?"🎰 ได้จากกาชาแฟชั่นเท่านั้น":fmt(f.price)+" ✨"))}</div>
+      <div class="fprice">${owned ? (equipped?"✅ สวมอยู่":"เป็นเจ้าของแล้ว") : (f.adminOnly?"🔒 เฉพาะแอดมิน":fmt(f.price)+" ✨")}</div>
       <div class="fdesc">${f.desc}</div>
     `;
     const btn = document.createElement("button");
-    if(gachaOnly){
-      btn.className = "btn";
-      btn.textContent = "🎰 ไปที่กาชาแฟชั่น";
-      btn.onclick = goToFashionGachaTab;
-    } else if(!owned){
+    if(!owned){
       btn.className = "btn gold";
       btn.textContent = "ซื้อ ("+fmt(f.price)+" ✨)";
       btn.disabled = state.vaCoin < f.price;
@@ -3865,26 +3862,23 @@ function bannerMotionClasses(id){
 function renderBannerShop(){
   const grid = document.getElementById("bannerShopGrid"); if(!grid) return;
   grid.innerHTML = "";
-  BANNER_LIST.forEach(b=>{
+  // Patch 3.30: ของที่หมุนได้จากกาชาแฟชั่นแล้ว (ยังไม่ได้เป็นเจ้าของ) จะไม่โชว์เป็นการ์ดล็อกซ้ำในร้านค้าอีก
+  // ต่อไป — ตัดออกจากรายการไปเลย กันของซ้ำกับในกาชา (ของที่เป็นเจ้าของแล้วยังโชว์ตามปกติเพื่อสวมใส่/ถอดได้)
+  BANNER_LIST.filter(b=>isBannerOwned(b.id) || !isObtainableViaGacha("banner", b.id)).forEach(b=>{
     const owned = isBannerOwned(b.id);
     const equipped = state.banners.equipped === b.id;
-    const gachaOnly = !owned && isObtainableViaGacha("banner", b.id);
     const tier = BANNER_TIER[b.id] || 1;
     const dustCfg = BANNER_DUST[b.id];
     const card = document.createElement("div");
-    card.className = "banner-shop-card" + (owned?" owned":"") + (equipped?" equipped":"") + (gachaOnly?" locked-gacha":"");
+    card.className = "banner-shop-card" + (owned?" owned":"") + (equipped?" equipped":"");
     card.innerHTML = `
       <div class="banner-preview hb-${b.id}${bannerPreviewExtraClasses(b.id)}${bannerMotionClasses(b.id)}" style="--banner-shine-opacity:${Math.min(0.75,0.2+tier*0.09).toFixed(2)};--banner-glow:${dustCfg?dustCfg.color:"#ffffff"};"></div>
       <div class="bname">${b.name}</div>
-      <div class="bprice"${gachaOnly?` style="color:var(--epic);"`:""}>${owned ? (equipped?"✅ ใช้งานอยู่":"เป็นเจ้าของแล้ว") : (gachaOnly?"🎰 ได้จากกาชาแฟชั่นเท่านั้น":fmt(b.price)+" ✨")}</div>
+      <div class="bprice">${owned ? (equipped?"✅ ใช้งานอยู่":"เป็นเจ้าของแล้ว") : fmt(b.price)+" ✨"}</div>
       <div class="bdesc">${b.desc}</div>
     `;
     const btn = document.createElement("button");
-    if(gachaOnly){
-      btn.className = "btn";
-      btn.textContent = "🎰 ไปที่กาชาแฟชั่น";
-      btn.onclick = goToFashionGachaTab;
-    } else if(!owned){
+    if(!owned){
       btn.className = "btn gold";
       btn.textContent = "ซื้อ ("+fmt(b.price)+" ✨)";
       btn.disabled = state.vaCoin < b.price;
@@ -5590,9 +5584,22 @@ async function resetSaveKeepVaCoinItems(){
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   if(myPlayer){
     try{
+      // Patch 3.30 BUGFIX (ข้อมูลผี/ฟื้นคืนหลังถูกลบ): เดิม .set() ตรงนี้เรียกทันทีแบบไม่เช็คก่อนว่าเอกสาร
+      // ผู้เล่นยังมีอยู่จริงไหม — ถ้าแอดมินเพิ่งกด "ลบถาวร" ID นี้ไปเสี้ยววินาทีก่อนผู้เล่นกด Reset Save,
+      // .set() จะ "สร้างเอกสารใหม่" ทับที่ว่างที่แอดมินเพิ่งลบไปทันที (คนละพฤติกรรมกับ .update() ที่จุดอื่นๆ
+      // ในไฟล์นี้ใช้กันเพื่อป้องกันเคสนี้โดยเฉพาะ) ทำให้ข้อมูลเก่า (Va Coin/กรอบ/แบนเนอร์ ฯลฯ) ฟื้นคืนชีพกลับมา
+      // เองทั้งที่แอดมินตั้งใจลบทิ้งแล้ว — ตอนนี้เช็คก่อนว่าเอกสารยังอยู่จริง ถ้าไม่อยู่แล้วให้เข้า flow เดียวกับ
+      // ตอนถูกลบตามปกติแทน ไม่ set() สร้างใหม่ทับ
+      const ref = db.collection("players").doc(myPlayer.id);
+      const doc = await ref.get();
+      if(!doc.exists){
+        const detail = await fetchDeleteReason(myPlayer.id);
+        restartAsNewPlayer("⚠️ ไม่พบ Player ID ของคุณในระบบ บัญชีของคุณถูกลบโดยแอดมิน", detail);
+        return;
+      }
       // ไม่ใช้ {merge:true} เพราะต้องการให้ state บนคลาวด์ถูกแทนที่ทั้งก้อนด้วยของที่รีเซ็ตแล้ว
       // ถ้า merge จะมีความเสี่ยงที่ field เก่าที่ merge แบบ deep ไม่ครบจะหลงเหลืออยู่
-      await db.collection("players").doc(myPlayer.id).set({
+      await ref.set({
         username: myPlayer.username, state, power: totalPower(), isAdminAccount: isAdminUser(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }catch(e){ /* ออฟไลน์ - รีเซ็ตในเครื่องสำเร็จอยู่ดี พอกลับมาออนไลน์ค่อย sync ขึ้นคลาวด์รอบถัดไป */ }
