@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>AFK Relic Master - End Game Edition (Patch 3.27)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.29)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -327,6 +327,7 @@
   .frame-shop-card:hover{transform:translateY(-3px);box-shadow:var(--elev-1);}
   .frame-shop-card.owned{border-color:var(--gold);}
   .frame-shop-card.equipped{border-color:var(--soul);box-shadow:0 0 12px #00e5ff55;}
+  .frame-shop-card.locked-gacha{border-color:var(--epic);opacity:.88;}
   .frame-preview{position:relative;width:74px;height:74px;margin:0 auto 8px;}
   .frame-preview .frame-ring{inset:-7px;border-radius:20px;}
   .frame-preview-avatar{position:relative;z-index:2;width:74px;height:74px;border-radius:16px;background:#1a1a28;border:3px solid #444;display:flex;align-items:center;justify-content:center;font-size:32px;}
@@ -406,6 +407,7 @@
   .banner-shop-card:hover{transform:translateY(-3px);box-shadow:var(--elev-1);}
   .banner-shop-card.owned{border-color:var(--gold);}
   .banner-shop-card.equipped{border-color:var(--soul);box-shadow:0 0 12px #00e5ff55;}
+  .banner-shop-card.locked-gacha{border-color:var(--epic);opacity:.88;}
   .banner-preview{position:relative;width:100%;height:56px;border-radius:10px;margin:0 auto 8px;border:2px solid var(--border);background-size:220% 220%;}
   .banner-shop-card .bname{font-size:.82rem;font-weight:bold;margin-bottom:2px;}
   .banner-shop-card .bprice{font-size:.75rem;color:var(--gold);margin-bottom:8px;}
@@ -1178,10 +1180,11 @@ function makeAdminLabel(){
       </div>
     </div>
 
-    <!-- Patch 3.22: บัตรตัวอักษรสี — ซื้อด้วย Va Coin ราคาเดียวกันทุกสี ใช้แต่งสีชื่อผู้เล่นทีละตัวอักษร -->
+    <!-- Patch 3.22: บัตรตัวอักษรสี — ใช้แต่งสีชื่อผู้เล่นทีละตัวอักษร
+         Patch 3.28: ย้ายไปหมุนได้จากกาชาแฟชั่นเท่านั้น เลิกขายตรงในร้านค้า -->
     <hr style="border-color:var(--border); margin:24px 0;">
     <h2 style="text-align:center; color:var(--soul);">🔤 บัตรตัวอักษรสี</h2>
-    <div class="small-note" style="text-align:center; margin-bottom:10px;">ซื้อบัตรสีเก็บไว้ แล้วนำไปแต่งสีชื่อผู้เล่นได้ทีละตัวอักษร (คนละสีกันได้) — ราคาเท่ากันทุกสี</div>
+    <div class="small-note" style="text-align:center; margin-bottom:10px;">นำไปแต่งสีชื่อผู้เล่นได้ทีละตัวอักษร (คนละสีกันได้) — 🎰 รับได้จากการหมุนกาชาแฟชั่นเท่านั้น</div>
     <div class="letter-card-grid" id="letterCardShopGrid"></div>
 
     <div class="small-note" style="text-align:center; margin:16px 0 6px;">🎨 ตั้งค่าสีชื่อของคุณ (แตะตัวอักษรเพื่อเลือกสี)</div>
@@ -1189,14 +1192,14 @@ function makeAdminLabel(){
 
     <hr style="border-color:var(--border); margin:24px 0;">
     <h2 style="text-align:center; color:var(--gold);">🖼️ กรอบโปรไฟล์ (Patch 2.2)</h2>
-    <div class="small-note" style="text-align:center; margin-bottom:6px;">กรอบตกแต่งสุดเฟี้ยว มี Motion เคลื่อนไหวรอบตัวละคร ไม่มีผลต่อพลังต่อสู้ ใส่เพื่อความเท่เท่านั้น!</div>
+    <div class="small-note" style="text-align:center; margin-bottom:6px;">กรอบตกแต่งสุดเฟี้ยว มี Motion เคลื่อนไหวรอบตัวละคร ไม่มีผลต่อพลังต่อสู้ ใส่เพื่อความเท่เท่านั้น! — 🎰 รับได้จากการหมุนกาชาแฟชั่นเท่านั้น</div>
     <div class="frame-shop-grid" id="frameShopGrid"></div>
 
     <!-- Patch 3.24: พื้นหลังโปรไฟล์ (Banner) — แยกจากกรอบด้านบนโดยสิ้นเชิง กรอบล้อมรอบ avatar
          ส่วน banner คือฉากหลังของการ์ดโปรไฟล์ทั้งใบ ใส่คู่กับกรอบได้พร้อมกันเพื่อความหรูหราอีกชั้น -->
     <hr style="border-color:var(--border); margin:24px 0;">
     <h2 style="text-align:center; color:var(--gold);">🖼️ พื้นหลังโปรไฟล์ (Banner)</h2>
-    <div class="small-note" style="text-align:center; margin-bottom:6px;">ฉากหลังสวยๆ ของการ์ดโปรไฟล์ทั้งใบ แยกอิสระจากกรอบด้านบน ใส่พร้อมกันได้ทั้งคู่ ไม่มีผลต่อพลังต่อสู้ เพื่อความหรูหราอีกชั้นเท่านั้น!</div>
+    <div class="small-note" style="text-align:center; margin-bottom:6px;">ฉากหลังสวยๆ ของการ์ดโปรไฟล์ทั้งใบ แยกอิสระจากกรอบด้านบน ใส่พร้อมกันได้ทั้งคู่ ไม่มีผลต่อพลังต่อสู้ เพื่อความหรูหราอีกชั้นเท่านั้น! — 🎰 รับได้จากการหมุนกาชาแฟชั่นเท่านั้น</div>
     <div class="banner-shop-grid" id="bannerShopGrid"></div>
   </div>
 
@@ -1478,6 +1481,14 @@ function makeAdminLabel(){
             <option value="stardust">🌟 Stardust</option>
             <option value="vaCoin">✨ Va Coin</option>
             <option value="rerollCharges">🎲 Rerole (จำนวนครั้ง)</option>
+            <!-- Patch 3.29: เพิ่มทรัพยากร/สกุลเงินที่เหลือทั้งหมดในเกม ให้ครบทุกอย่างที่มี -->
+            <option value="fashionMats.common">🧵 เศษผ้าแฟชั่น</option>
+            <option value="fashionMats.rare">🪡 ด้ายเวทมนตร์</option>
+            <option value="fashionMats.epic">💎 อัญมณีแฟชั่น</option>
+            <option value="fashionMats.legendary">🌟 แสงศักดิ์สิทธิ์</option>
+            <option value="gachaTickets">🎫 ตั๋วกาชาแฟชั่น</option>
+            <option value="fashionDust">♻️ เศษทองแฟชั่น</option>
+            <option value="nameChangeCards">🪧 บัตรเปลี่ยนชื่อ</option>
           </select>
           <input type="number" id="adminResourceAmount" value="1000" style="width:110px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
           <button class="btn gold" id="adminAddResourceBtn">➕ เพิ่ม</button>
@@ -1500,16 +1511,17 @@ function makeAdminLabel(){
     </details>
 
     <!-- Patch 3.27: แอดมินแจกไอเทมแฟชั่น (กรอบโปรไฟล์ / แบนเนอร์ / บัตรตัวอักษรสี) ตรงๆ ให้ผู้เล่น
-         แยกหมวดชัดเจนกันของซ้ำ: "กรอบโปรไฟล์"/"แบนเนอร์" คือแคตตาล็อกร้านค้า (รายการเดียวกับที่กาชาแฟชั่น
-         สุ่มออกมาได้ จึงมีแค่รายการเดียวไม่มีสำเนาซ้ำ) ส่วน "บัตรตัวอักษรสี" คือของกาชาล้วนๆ ไม่มีขายในร้านค้า
-         เลยแยกเป็นอีกหมวดต่างหาก — เมื่อแจกกรอบ/แบนเนอร์ ระบบจะติ๊ก ownedFashionIds ให้ด้วยเสมอ กันไม่ให้
-         หมุนกาชาซ้ำได้ของเดิมแบบไม่มีประโยชน์ (จะแปลงเป็นเศษทองแฟชั่นแทนแบบเดียวกับของซ้ำปกติ) -->
+         Patch 3.28: ร้านค้าเลิกขายไอเทมเหล่านี้ตรงๆ แล้ว (ต้องหมุนจากกาชาแฟชั่นเท่านั้น กันคนเติมเงินข้าม
+         ระบบกาชาไปได้) เมนูนี้จึงเป็นช่องทางเดียวที่แอดมินแจกให้ผู้เล่นตรงๆ ได้แบบไม่ผ่านการสุ่ม แบ่งเป็น
+         3 หมวดตาม "ชนิดไอเทม" (กรอบ/แบนเนอร์/บัตรสี) แต่ละหมวดมีรายการเดียว ไม่สร้างสำเนาซ้ำ — เมื่อแจก
+         กรอบ/แบนเนอร์ ระบบจะติ๊ก ownedFashionIds ให้ด้วยเสมอ กันไม่ให้หมุนกาชาซ้ำได้ของเดิมแบบไม่มีประโยชน์
+         (จะแปลงเป็นเศษทองแฟชั่นแทนแบบเดียวกับของซ้ำปกติ) -->
     <details class="admin-section">
       <summary style="color:var(--gold);">🎨 เพิ่มไอเทมแฟชั่น (Admin Only)</summary>
       <div class="admin-body">
         <div class="small-note" style="margin-bottom:8px;">
-          รายการไอเทมทั้งหมดที่มีในเกม แยกหมวดกันไม่ให้ซ้ำ: 🖼️ กรอบโปรไฟล์ และ 🎴 แบนเนอร์ คือของร้านค้า
-          (รายการเดียวกับที่กาชาแฟชั่นสุ่มออกมาได้ ไม่มีการซ้ำรายการ) ส่วน 🔤 บัตรตัวอักษรสี เป็นของกาชาเท่านั้น ไม่ขายในร้านค้า
+          รายการไอเทมทั้งหมดที่มีในเกม แยกหมวดตามชนิด: 🖼️ กรอบโปรไฟล์ / 🎴 แบนเนอร์ / 🔤 บัตรตัวอักษรสี —
+          ทั้ง 3 ชนิดนี้ไม่ขายตรงในร้านค้าแล้ว (ต้องหมุนจากกาชาแฟชั่นเท่านั้น) เมนูนี้ให้แอดมินแจกตรงได้โดยไม่ผ่านการสุ่ม
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <select id="adminFashionCategorySelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
@@ -3211,19 +3223,29 @@ function openRenameModal(){
   };
 }
 
-/* Patch 3.22: บัตรตัวอักษรสี — ซื้อด้วย Va Coin ราคาเดียวกันทุกสี แล้วนำไปแต่งสีชื่อทีละตัวอักษร */
+/* Patch 3.22: บัตรตัวอักษรสี — เดิมซื้อด้วย Va Coin ได้ตรงในร้านค้า
+   Patch 3.28: บัตรทุกสีเป็นของที่กาชาแฟชั่นสุ่มออกมาได้ด้วย จึงปิดการซื้อตรงในร้านค้าทั้งหมด
+   (กันคนเติมเงินซื้อทีเดียวจบข้ามระบบกาชา) เหลือแค่แสดงจำนวนที่มีอยู่ + ปุ่มพาไปกาชาแฟชั่น */
 function renderLetterCardShop(){
   const grid = document.getElementById("letterCardShopGrid"); if(!grid) return;
-  grid.innerHTML = LETTER_COLOR_PALETTE.map(c=>`
+  grid.innerHTML = LETTER_COLOR_PALETTE.map(c=>{
+    const gachaOnly = isObtainableViaGacha("letter", c.id);
+    return `
     <div class="letter-card-item" style="border-color:${c.hex};">
       <div class="letter-card-swatch" style="background:${c.hex};">Aa</div>
       <div style="font-size:.78rem; margin:6px 0 2px;">${c.name}</div>
       <div class="small-note" style="margin-bottom:6px;">มี: <b style="color:${c.hex};" id="letterCardOwned_${c.id}">${fmt(state.letterColors.owned[c.id]||0)}</b></div>
-      <button class="btn gold buyLetterCardBtn" id="buyLetterCard_${c.id}" data-color="${c.id}" ${state.vaCoin<LETTER_CARD_PRICE?"disabled":""} style="font-size:.72rem; padding:5px 8px; width:100%;">ซื้อ (${LETTER_CARD_PRICE} ✨)</button>
-    </div>`).join("");
+      ${gachaOnly
+        ? `<div class="small-note" style="color:var(--epic); margin-bottom:6px;">🎰 ได้จากกาชาแฟชั่นเท่านั้น</div>
+           <button class="btn goToGachaFromLetterBtn" style="font-size:.72rem; padding:5px 8px; width:100%;">🎰 ไปที่กาชาแฟชั่น</button>`
+        : `<button class="btn gold buyLetterCardBtn" id="buyLetterCard_${c.id}" data-color="${c.id}" ${state.vaCoin<LETTER_CARD_PRICE?"disabled":""} style="font-size:.72rem; padding:5px 8px; width:100%;">ซื้อ (${LETTER_CARD_PRICE} ✨)</button>`}
+    </div>`;
+  }).join("");
+  grid.querySelectorAll(".goToGachaFromLetterBtn").forEach(btn=>{ btn.onclick = goToFashionGachaTab; });
   grid.querySelectorAll(".buyLetterCardBtn").forEach(btn=>{
     btn.onclick = ()=>{
       const colorId = btn.dataset.color;
+      if(isObtainableViaGacha("letter", colorId)){ toast("🎰 บัตรสีนี้ต้องหมุนจากกาชาแฟชั่นเท่านั้น ไม่ขายตรงในร้านค้า!"); SFX.error(); return; }
       if(state.vaCoin < LETTER_CARD_PRICE){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
       state.vaCoin -= LETTER_CARD_PRICE;
       state.letterColors.owned[colorId] = (state.letterColors.owned[colorId]||0) + 1;
@@ -3716,19 +3738,24 @@ function renderFrameShop(){
   FRAME_LIST.filter(f=>!f.vipOnly && (!f.adminOnly || isAdminUser())).forEach(f=>{
     const owned = isFrameOwned(f.id);
     const equipped = state.frames.equipped === f.id;
+    const gachaOnly = !owned && isObtainableViaGacha("frame", f.id);
     const card = document.createElement("div");
-    card.className = "frame-shop-card" + (owned?" owned":"") + (equipped?" equipped":"");
+    card.className = "frame-shop-card" + (owned?" owned":"") + (equipped?" equipped":"") + (gachaOnly?" locked-gacha":"");
     const previewHtml = f.id==="admin_ultimate"
       ? `<div class="frame-preview"><div class="admin-ultimate-frame" style="transform:scale(.82);"><div class="admin-ray"></div><div class="admin-sweep"></div><div class="admin-core">👑</div><div class="admin-label">ADMIN • ULTIMATE</div></div></div>`
       : `<div class="frame-preview${frameMotionClasses(f.id)}"><div class="frame-ring fr-${f.id}${frameRingExtraClasses(f.id)}"></div><div class="frame-preview-avatar">${f.emoji}</div></div>`;
     card.innerHTML = `
       ${previewHtml}
       <div class="fname">${f.emoji} ${f.name}</div>
-      <div class="fprice">${owned ? (equipped?"✅ สวมอยู่":"เป็นเจ้าของแล้ว") : (f.adminOnly?"🔒 เฉพาะแอดมิน":fmt(f.price)+" ✨")}</div>
+      <div class="fprice"${gachaOnly?` style="color:var(--epic);"`:""}>${owned ? (equipped?"✅ สวมอยู่":"เป็นเจ้าของแล้ว") : (f.adminOnly?"🔒 เฉพาะแอดมิน":(gachaOnly?"🎰 ได้จากกาชาแฟชั่นเท่านั้น":fmt(f.price)+" ✨"))}</div>
       <div class="fdesc">${f.desc}</div>
     `;
     const btn = document.createElement("button");
-    if(!owned){
+    if(gachaOnly){
+      btn.className = "btn";
+      btn.textContent = "🎰 ไปที่กาชาแฟชั่น";
+      btn.onclick = goToFashionGachaTab;
+    } else if(!owned){
       btn.className = "btn gold";
       btn.textContent = "ซื้อ ("+fmt(f.price)+" ✨)";
       btn.disabled = state.vaCoin < f.price;
@@ -3748,6 +3775,7 @@ function renderFrameShop(){
 }
 function buyFrame(id){
   const f = FRAME_LIST.find(x=>x.id===id); if(!f || isFrameOwned(id) || f.adminOnly || f.vipOnly) return;
+  if(isObtainableViaGacha("frame", id)){ toast("🎰 กรอบนี้ต้องหมุนจากกาชาแฟชั่นเท่านั้น ไม่ขายตรงในร้านค้า!"); SFX.error(); return; }
   if(state.vaCoin < f.price){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
   state.vaCoin -= f.price; state.frames.owned.push(id); state.frames.equipped = id;
   toast(`🖼️ ปลดล็อกกรอบ "${f.name}" สำเร็จ!`); logMsg(`🖼️ ซื้อกรอบโปรไฟล์ "${f.name}" (${fmt(f.price)} ✨) จากร้านค้า`); SFX.coin();
@@ -3840,18 +3868,23 @@ function renderBannerShop(){
   BANNER_LIST.forEach(b=>{
     const owned = isBannerOwned(b.id);
     const equipped = state.banners.equipped === b.id;
+    const gachaOnly = !owned && isObtainableViaGacha("banner", b.id);
     const tier = BANNER_TIER[b.id] || 1;
     const dustCfg = BANNER_DUST[b.id];
     const card = document.createElement("div");
-    card.className = "banner-shop-card" + (owned?" owned":"") + (equipped?" equipped":"");
+    card.className = "banner-shop-card" + (owned?" owned":"") + (equipped?" equipped":"") + (gachaOnly?" locked-gacha":"");
     card.innerHTML = `
       <div class="banner-preview hb-${b.id}${bannerPreviewExtraClasses(b.id)}${bannerMotionClasses(b.id)}" style="--banner-shine-opacity:${Math.min(0.75,0.2+tier*0.09).toFixed(2)};--banner-glow:${dustCfg?dustCfg.color:"#ffffff"};"></div>
       <div class="bname">${b.name}</div>
-      <div class="bprice">${owned ? (equipped?"✅ ใช้งานอยู่":"เป็นเจ้าของแล้ว") : fmt(b.price)+" ✨"}</div>
+      <div class="bprice"${gachaOnly?` style="color:var(--epic);"`:""}>${owned ? (equipped?"✅ ใช้งานอยู่":"เป็นเจ้าของแล้ว") : (gachaOnly?"🎰 ได้จากกาชาแฟชั่นเท่านั้น":fmt(b.price)+" ✨")}</div>
       <div class="bdesc">${b.desc}</div>
     `;
     const btn = document.createElement("button");
-    if(!owned){
+    if(gachaOnly){
+      btn.className = "btn";
+      btn.textContent = "🎰 ไปที่กาชาแฟชั่น";
+      btn.onclick = goToFashionGachaTab;
+    } else if(!owned){
       btn.className = "btn gold";
       btn.textContent = "ซื้อ ("+fmt(b.price)+" ✨)";
       btn.disabled = state.vaCoin < b.price;
@@ -3871,6 +3904,7 @@ function renderBannerShop(){
 }
 function buyBanner(id){
   const b = BANNER_LIST.find(x=>x.id===id); if(!b || isBannerOwned(id)) return;
+  if(isObtainableViaGacha("banner", id)){ toast("🎰 แบนเนอร์นี้ต้องหมุนจากกาชาแฟชั่นเท่านั้น ไม่ขายตรงในร้านค้า!"); SFX.error(); return; }
   if(state.vaCoin < b.price){ toast("✨ Va Coin ไม่พอ!"); SFX.error(); return; }
   state.vaCoin -= b.price; state.banners.owned.push(id); state.banners.equipped = id;
   toast(`🖼️ ปลดล็อกพื้นหลังโปรไฟล์ "${b.name}" สำเร็จ!`); logMsg(`🖼️ ซื้อพื้นหลังโปรไฟล์ "${b.name}" (${fmt(b.price)} ✨) จากร้านค้า`); SFX.coin();
@@ -3963,7 +3997,15 @@ const FASHION_GACHA_POOL = [
 ];
 
 function isFashionExclusiveOwned(gachaId){ return state.gacha.ownedFashionIds.includes(gachaId); }
-
+// Patch 3.28: ของแฟชั่นทุกชิ้น (กรอบ/แบนเนอร์/บัตรสี) ที่หมุนได้จากกาชาแฟชั่นแล้ว จะไม่ขายตรงในร้านค้าอีกต่อไป
+// เพื่อไม่ให้คนที่เติมเงินซื้อ Va Coin กดซื้อทีเดียวจบได้เลยโดยไม่ต้องผ่านระบบกาชา/ฟาร์มวัสดุเหมือนคนอื่น —
+// ให้ทุกคนต้องหมุนกาชาเพื่อรับไอเทมเหล่านี้เท่าเทียมกัน ร้านค้าจะเหลือแค่ปุ่ม "สวมใส่/ถอด" สำหรับของที่มีอยู่แล้ว
+function isObtainableViaGacha(kind, refId){
+  return FASHION_GACHA_POOL.some(x=>x.kind===kind && x.refId===refId);
+}
+function goToFashionGachaTab(){
+  document.querySelector('.tab-btn[data-tab="gacha"]')?.click();
+}
 function canCraftGachaTicket(){
   return state.fashionMats.common >= GACHA_CRAFT_RECIPE.common
     && state.fashionMats.rare >= GACHA_CRAFT_RECIPE.rare
@@ -4748,15 +4790,36 @@ document.getElementById("redeemCodeBtn").addEventListener("click", async ()=>{
 });
 document.getElementById("redeemCodeInput").addEventListener("keydown", (e)=>{ if(e.key==="Enter") document.getElementById("redeemCodeBtn").click(); });
 
+// Patch 3.29: label ที่อ่านง่ายสำหรับ toast/log ของทรัพยากรที่เพิ่มผ่านแอดมิน (ต้อง sync กับ <option> ด้านบน)
+const ADMIN_RESOURCE_LABELS = {
+  gold:"🪙 ทอง", iron:"⛓️ เหล็ก", souls:"💎 หินวิญญาณ", stardust:"🌟 Stardust", vaCoin:"✨ Va Coin",
+  rerollCharges:"🎲 Rerole (จำนวนครั้ง)",
+  "fashionMats.common":"🧵 เศษผ้าแฟชั่น", "fashionMats.rare":"🪡 ด้ายเวทมนตร์",
+  "fashionMats.epic":"💎 อัญมณีแฟชั่น", "fashionMats.legendary":"🌟 แสงศักดิ์สิทธิ์",
+  gachaTickets:"🎫 ตั๋วกาชาแฟชั่น", fashionDust:"♻️ เศษทองแฟชั่น", nameChangeCards:"🪧 บัตรเปลี่ยนชื่อ"
+};
+// รองรับ key แบบ "a.b" (nested field เช่น fashionMats.common) นอกเหนือจาก key แบบ flat เดิม
+function addToStatePath(path, amt){
+  const parts = path.split(".");
+  let obj = state;
+  for(let i=0;i<parts.length-1;i++){
+    if(!obj[parts[i]] || typeof obj[parts[i]] !== "object") obj[parts[i]] = {};
+    obj = obj[parts[i]];
+  }
+  const last = parts[parts.length-1];
+  obj[last] = (obj[last]||0) + amt;
+}
 document.getElementById("adminAddResourceBtn").addEventListener("click", async ()=>{
   const key = document.getElementById("adminResourceSelect").value;
   const amt = parseInt(document.getElementById("adminResourceAmount").value) || 0;
   const targetId = getAdminTargetId();
   const statusEl = document.getElementById("adminTargetStatus");
+  const label = ADMIN_RESOURCE_LABELS[key] || key;
 
   if(!targetId || (myPlayer && targetId === myPlayer.id)){
-    state[key] = (state[key]||0) + amt;
-    toast(`✅ เพิ่ม ${key} +${fmt(amt)}`); SFX.coin(); renderUI(); renderShopPanel(); saveGame();
+    addToStatePath(key, amt);
+    toast(`✅ เพิ่ม ${label} +${fmt(amt)}`); SFX.coin();
+    renderUI(); renderShopPanel(); renderFashionGachaPanel(); saveGame();
     return;
   }
 
@@ -4769,12 +4832,13 @@ document.getElementById("adminAddResourceBtn").addEventListener("click", async (
       [`state.${key}`]: firebase.firestore.FieldValue.increment(amt),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    statusEl.textContent = `✅ เพิ่ม ${key} +${fmt(amt)} ให้ผู้เล่น ${targetId} แล้ว`;
+    statusEl.textContent = `✅ เพิ่ม ${label} +${fmt(amt)} ให้ผู้เล่น ${targetId} แล้ว`;
     toast(`✅ ส่งทรัพยากรให้ ${targetId} แล้ว`); SFX.coin();
   }catch(e){
     statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
   }
 });
+
 
 /* ================= ADMIN: เพิ่มอุปกรณ์ / อาวุธ (Patch 2.0) ================= */
 // เติม dropdown ช่องอุปกรณ์ (อาวุธ/เสื้อ/กางเกง/รองเท้า)
@@ -4853,13 +4917,13 @@ document.getElementById("adminAddItemBtn").addEventListener("click", async ()=>{
 });
 
 /* ================= ADMIN: เพิ่มไอเทมแฟชั่น — กรอบ/แบนเนอร์/บัตรตัวอักษรสี (Patch 3.27) =================
-   หมวดกันซ้ำ: "frame"/"banner" = แคตตาล็อกร้านค้า (รายการเดียวกับที่ FASHION_GACHA_POOL อ้างอิงมาจาก
-   FRAME_LIST/BANNER_LIST อยู่แล้ว จึงมีรายการเดียว ไม่สร้างสำเนาซ้ำสำหรับ "ของกาชา" vs "ของร้านค้า")
-   "letter" = LETTER_COLOR_PALETTE ซึ่งเป็นของกาชาล้วนๆ ไม่มีขายในร้านค้าเลย เลยแยกหมวดต่างหากให้ชัดเจน */
+   ทั้ง 3 ชนิดนี้ขายในร้านค้าและสุ่มได้จากกาชาแฟชั่นพร้อมกันทั้งคู่ (FASHION_GACHA_POOL อ้างอิงมาจาก
+   FRAME_LIST/BANNER_LIST/LETTER_COLOR_PALETTE ชุดเดียวกับที่ร้านค้าใช้) หมวดด้านล่างจึงแบ่งตาม "ชนิดไอเทม"
+   ไม่ใช่ตามแหล่งที่มา — แต่ละหมวดมีรายการเดียว ไม่สร้างสำเนาซ้ำเป็น "ของร้านค้า" กับ "ของกาชา" สองรายการ */
 const ADMIN_FASHION_CATEGORIES = [
-  { id:"frame",  label:"🖼️ กรอบโปรไฟล์ (ร้านค้า)" },
-  { id:"banner", label:"🎴 แบนเนอร์ (ร้านค้า)" },
-  { id:"letter", label:"🔤 บัตรตัวอักษรสี (กาชาเท่านั้น — ไม่ขายในร้านค้า)" },
+  { id:"frame",  label:"🖼️ กรอบโปรไฟล์" },
+  { id:"banner", label:"🎴 แบนเนอร์" },
+  { id:"letter", label:"🔤 บัตรตัวอักษรสี" },
 ];
 function populateAdminFashionCategories(){
   const sel = document.getElementById("adminFashionCategorySelect"); if(!sel) return; sel.innerHTML = "";
