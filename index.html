@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>AFK Relic Master - End Game Edition (Patch 3.19)</title>
+<title>AFK Relic Master - End Game Edition (Patch 3.27)</title>
 <!-- Patch 2.3: Firebase (Firestore) สำหรับระบบ Player ID กลาง + แอดมินแก้ไขผู้เล่นจากระยะไกล -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
@@ -1496,6 +1496,30 @@ function makeAdminLabel(){
           <button class="btn gold" id="adminAddItemBtn">➕ เพิ่มไอเทม</button>
         </div>
         <div class="small-note" style="margin-top:6px;">เพิ่มไอเทมเข้ากระเป๋าโดยตรง ไม่ผ่านระบบสุ่มดรอป (ไม่รับ Auto-Sell)</div>
+      </div>
+    </details>
+
+    <!-- Patch 3.27: แอดมินแจกไอเทมแฟชั่น (กรอบโปรไฟล์ / แบนเนอร์ / บัตรตัวอักษรสี) ตรงๆ ให้ผู้เล่น
+         แยกหมวดชัดเจนกันของซ้ำ: "กรอบโปรไฟล์"/"แบนเนอร์" คือแคตตาล็อกร้านค้า (รายการเดียวกับที่กาชาแฟชั่น
+         สุ่มออกมาได้ จึงมีแค่รายการเดียวไม่มีสำเนาซ้ำ) ส่วน "บัตรตัวอักษรสี" คือของกาชาล้วนๆ ไม่มีขายในร้านค้า
+         เลยแยกเป็นอีกหมวดต่างหาก — เมื่อแจกกรอบ/แบนเนอร์ ระบบจะติ๊ก ownedFashionIds ให้ด้วยเสมอ กันไม่ให้
+         หมุนกาชาซ้ำได้ของเดิมแบบไม่มีประโยชน์ (จะแปลงเป็นเศษทองแฟชั่นแทนแบบเดียวกับของซ้ำปกติ) -->
+    <details class="admin-section">
+      <summary style="color:var(--gold);">🎨 เพิ่มไอเทมแฟชั่น (Admin Only)</summary>
+      <div class="admin-body">
+        <div class="small-note" style="margin-bottom:8px;">
+          รายการไอเทมทั้งหมดที่มีในเกม แยกหมวดกันไม่ให้ซ้ำ: 🖼️ กรอบโปรไฟล์ และ 🎴 แบนเนอร์ คือของร้านค้า
+          (รายการเดียวกับที่กาชาแฟชั่นสุ่มออกมาได้ ไม่มีการซ้ำรายการ) ส่วน 🔤 บัตรตัวอักษรสี เป็นของกาชาเท่านั้น ไม่ขายในร้านค้า
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <select id="adminFashionCategorySelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);"></select>
+          <select id="adminFashionItemSelect" style="padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); min-width:200px;"></select>
+          <span id="adminFashionQtyWrap" style="display:none;">
+            <input type="number" id="adminFashionQty" value="1" min="1" max="60" style="width:70px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text);">
+          </span>
+          <button class="btn gold" id="adminAddFashionBtn">➕ เพิ่มไอเทมแฟชั่น</button>
+        </div>
+        <div class="small-note" style="margin-top:6px;">กรอบ/แบนเนอร์: แจกแบบเป็นเจ้าของถาวร 1 ชิ้น (ไม่มีจำนวน) — บัตรตัวอักษรสี: แจกได้ตามจำนวนที่ระบุ</div>
       </div>
     </details>
 
@@ -4823,6 +4847,117 @@ document.getElementById("adminAddItemBtn").addEventListener("click", async ()=>{
     });
     statusEl.textContent = `✅ ส่ง ${d.emoji} ${d.name} x${qty} ให้ผู้เล่น ${targetId} แล้ว`;
     toast(`✅ ส่งไอเทมให้ ${targetId} แล้ว`); SFX.dropByRarity(rarity);
+  }catch(e){
+    statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
+  }
+});
+
+/* ================= ADMIN: เพิ่มไอเทมแฟชั่น — กรอบ/แบนเนอร์/บัตรตัวอักษรสี (Patch 3.27) =================
+   หมวดกันซ้ำ: "frame"/"banner" = แคตตาล็อกร้านค้า (รายการเดียวกับที่ FASHION_GACHA_POOL อ้างอิงมาจาก
+   FRAME_LIST/BANNER_LIST อยู่แล้ว จึงมีรายการเดียว ไม่สร้างสำเนาซ้ำสำหรับ "ของกาชา" vs "ของร้านค้า")
+   "letter" = LETTER_COLOR_PALETTE ซึ่งเป็นของกาชาล้วนๆ ไม่มีขายในร้านค้าเลย เลยแยกหมวดต่างหากให้ชัดเจน */
+const ADMIN_FASHION_CATEGORIES = [
+  { id:"frame",  label:"🖼️ กรอบโปรไฟล์ (ร้านค้า)" },
+  { id:"banner", label:"🎴 แบนเนอร์ (ร้านค้า)" },
+  { id:"letter", label:"🔤 บัตรตัวอักษรสี (กาชาเท่านั้น — ไม่ขายในร้านค้า)" },
+];
+function populateAdminFashionCategories(){
+  const sel = document.getElementById("adminFashionCategorySelect"); if(!sel) return; sel.innerHTML = "";
+  ADMIN_FASHION_CATEGORIES.forEach(c=>{
+    const opt = document.createElement("option"); opt.value = c.id; opt.textContent = c.label;
+    sel.appendChild(opt);
+  });
+}
+function populateAdminFashionItems(){
+  const catSel = document.getElementById("adminFashionCategorySelect"); if(!catSel) return;
+  const cat = catSel.value;
+  const sel = document.getElementById("adminFashionItemSelect"); if(!sel) return; sel.innerHTML = "";
+  const qtyWrap = document.getElementById("adminFashionQtyWrap");
+  if(cat === "frame"){
+    FRAME_LIST.forEach(f=>{
+      const opt = document.createElement("option"); opt.value = f.id;
+      const tag = f.adminOnly ? " [เฉพาะแอดมิน]" : (f.vipOnly ? " [เฉพาะ VIP]" : "");
+      opt.textContent = `${f.emoji} ${f.name}${tag}`;
+      sel.appendChild(opt);
+    });
+    if(qtyWrap) qtyWrap.style.display = "none";
+  } else if(cat === "banner"){
+    BANNER_LIST.forEach(b=>{
+      const opt = document.createElement("option"); opt.value = b.id;
+      opt.textContent = `🎴 ${b.name}`;
+      sel.appendChild(opt);
+    });
+    if(qtyWrap) qtyWrap.style.display = "none";
+  } else if(cat === "letter"){
+    LETTER_COLOR_PALETTE.forEach(c=>{
+      const opt = document.createElement("option"); opt.value = c.id;
+      opt.textContent = `🔤 บัตรตัวอักษรสี${c.name}`;
+      sel.appendChild(opt);
+    });
+    if(qtyWrap) qtyWrap.style.display = "";
+  }
+}
+document.getElementById("adminFashionCategorySelect")?.addEventListener("change", populateAdminFashionItems);
+populateAdminFashionCategories(); populateAdminFashionItems();
+
+document.getElementById("adminAddFashionBtn")?.addEventListener("click", async ()=>{
+  const cat = document.getElementById("adminFashionCategorySelect").value;
+  const itemId = document.getElementById("adminFashionItemSelect").value;
+  const qty = Math.max(1, Math.min(60, parseInt(document.getElementById("adminFashionQty").value) || 1));
+  const targetId = getAdminTargetId();
+  const statusEl = document.getElementById("adminTargetStatus");
+  if(!itemId){ toast("⚠️ ไม่พบไอเทมนี้"); SFX.error(); return; }
+
+  let label = itemId;
+  if(cat === "frame"){ const f = FRAME_LIST.find(x=>x.id===itemId); if(f) label = `${f.emoji} ${f.name}`; }
+  else if(cat === "banner"){ const b = BANNER_LIST.find(x=>x.id===itemId); if(b) label = `🎴 ${b.name}`; }
+  else if(cat === "letter"){ const c = LETTER_COLOR_PALETTE.find(x=>x.id===itemId); if(c) label = `🔤 บัตรตัวอักษรสี${c.name}`; }
+  const qtySuffix = cat === "letter" ? ` x${qty}` : "";
+
+  if(!targetId || (myPlayer && targetId === myPlayer.id)){
+    if(cat === "frame"){
+      if(!state.frames.owned.includes(itemId)) state.frames.owned.push(itemId);
+      const gachaId = "frame:"+itemId;
+      if(!state.gacha.ownedFashionIds.includes(gachaId)) state.gacha.ownedFashionIds.push(gachaId);
+    } else if(cat === "banner"){
+      if(!state.banners.owned.includes(itemId)) state.banners.owned.push(itemId);
+      const gachaId = "banner:"+itemId;
+      if(!state.gacha.ownedFashionIds.includes(gachaId)) state.gacha.ownedFashionIds.push(gachaId);
+    } else if(cat === "letter"){
+      state.letterColors.owned[itemId] = (state.letterColors.owned[itemId]||0) + qty;
+    }
+    toast(`✅ เพิ่ม ${label}${qtySuffix} แล้ว`);
+    logMsg(`🛠️ <span style="color:var(--gold)">Admin</span> เพิ่มไอเทมแฟชั่น <b>${label}</b>${qtySuffix}`);
+    SFX.coin();
+    renderUI(); renderFrameShop(); renderBannerShop(); renderTrophyRoom(); saveGame(); forceCloudSaveNow();
+    return;
+  }
+
+  statusEl.textContent = "⏳ กำลังส่ง...";
+  try{
+    const ref = db.collection("players").doc(targetId);
+    const doc = await ref.get();
+    if(!doc.exists){ statusEl.textContent = "⚠️ ไม่พบ Player ID นี้"; SFX.error(); return; }
+    const targetState = doc.data().state || {};
+    const update = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if(cat === "frame"){
+      const owned = (targetState.frames && targetState.frames.owned) || [];
+      if(!owned.includes(itemId)) update["state.frames.owned"] = firebase.firestore.FieldValue.arrayUnion(itemId);
+      const ownedFashionIds = (targetState.gacha && targetState.gacha.ownedFashionIds) || [];
+      const gachaId = "frame:"+itemId;
+      if(!ownedFashionIds.includes(gachaId)) update["state.gacha.ownedFashionIds"] = firebase.firestore.FieldValue.arrayUnion(gachaId);
+    } else if(cat === "banner"){
+      const owned = (targetState.banners && targetState.banners.owned) || [];
+      if(!owned.includes(itemId)) update["state.banners.owned"] = firebase.firestore.FieldValue.arrayUnion(itemId);
+      const ownedFashionIds = (targetState.gacha && targetState.gacha.ownedFashionIds) || [];
+      const gachaId = "banner:"+itemId;
+      if(!ownedFashionIds.includes(gachaId)) update["state.gacha.ownedFashionIds"] = firebase.firestore.FieldValue.arrayUnion(gachaId);
+    } else if(cat === "letter"){
+      update[`state.letterColors.owned.${itemId}`] = firebase.firestore.FieldValue.increment(qty);
+    }
+    await ref.update(update);
+    statusEl.textContent = `✅ ส่ง ${label}${qtySuffix} ให้ผู้เล่น ${targetId} แล้ว`;
+    toast(`✅ ส่งไอเทมแฟชั่นให้ ${targetId} แล้ว`); SFX.coin();
   }catch(e){
     statusEl.textContent = "⚠️ เกิดข้อผิดพลาด"; SFX.error();
   }
