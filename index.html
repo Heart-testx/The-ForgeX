@@ -1997,6 +1997,10 @@ function saveLocalPlayer(p){ localStorage.setItem(PLAYER_KEY, JSON.stringify(p))
 // ล้างทั้ง Player ID และเซฟในเครื่องนี้ทิ้งแล้วรีโหลดหน้า initPlayer() จะไม่เจอ PLAYER_KEY เดิมอีก
 // จึงเด้งหน้าตั้งชื่อผู้เล่นใหม่ให้อัตโนมัติ เหมือนเข้าเกมครั้งแรกทุกอย่าง (เริ่มใหม่หมดจริงๆ)
 let restartingAsNewPlayer = false;
+// Patch 3.31: เก็บ id ของ requestAnimationFrame(afkTick) และ setInterval(saveGame,3000) ไว้ เพื่อให้
+// stopAllCloudSyncForDeletedAccount() ยกเลิกทั้งคู่ได้จริง (ดูรายละเอียดที่ saveGame() คอมเมนต์ Patch 3.31 BUGFIX)
+let afkTickRafId = null;
+let saveGameIntervalId = null;
 // Patch 3.10: เดิมแค่ toast() ข้อความสั้นๆ 1.8 วิแล้ว reload ทันที ผู้เล่นแทบไม่ทันเห็นเหตุผลที่โดนลบเลย
 // ตอนนี้เปลี่ยนมาโชว์ popup ค้างไว้ (#banNoticeModalBg) พร้อมเหตุผล/รายละเอียดที่แอดมินกรอกไว้ตอนลบ
 // (ถ้ามี — อ่านจาก collection "deletedPlayers" ที่แยกไว้ต่างหาก เพราะตอนนี้เอกสารผู้เล่นจริงถูกลบไปแล้ว
@@ -2010,6 +2014,12 @@ function stopAllCloudSyncForDeletedAccount(){
   if(typeof presenceTimer !== "undefined") stopPresenceHeartbeat();
   if(typeof cloudSaveTimer !== "undefined") clearTimeout(cloudSaveTimer);
   cloudSavePending = false;
+  // Patch 3.31: หยุด loop ค้างสองตัวที่ยังไม่เคยถูกอ้างอิงไว้เพื่อยกเลิกได้ (setInterval(saveGame,3000) กับ
+  // requestAnimationFrame(afkTick) ที่ boot ไว้ตอนท้ายไฟล์) — เดิมสอง loop นี้วิ่งต่อไปเรื่อยๆ ไม่หยุดแม้จะ
+  // เรียกจุดนี้แล้ว เป็นสาเหตุหลักที่ localStorage(SAVE_KEY) ถูกเขียนทับกลับมาใหม่หลังถูกลบ (ดูรายละเอียดที่
+  // saveGame() คอมเมนต์ Patch 3.31 BUGFIX)
+  if(saveGameIntervalId){ clearInterval(saveGameIntervalId); saveGameIntervalId = null; }
+  if(afkTickRafId){ cancelAnimationFrame(afkTickRafId); afkTickRafId = null; }
 }
 function restartAsNewPlayer(message, detail){
   if(restartingAsNewPlayer) return; // กันเรียกซ้ำซ้อน (เช่น ถูกเรียกจากทั้ง .get() เริ่มต้นและ onSnapshot พร้อมกัน)
@@ -2293,6 +2303,17 @@ let currentFilter = "all";
 const SAVE_KEY = "afk_relic_v5_th_patch13";
 
 function saveGame(){
+  // Patch 3.31 BUGFIX (ข้อมูลผี/ฟื้นคืนหลังถูกลบ — root cause): เดิม saveGame() ไม่เช็ค restartingAsNewPlayer
+  // เลย ในขณะที่ตัวเรียกมันสองจุด คือ setInterval(saveGame,3000) และ requestAnimationFrame(afkTick) เป็น
+  // "loop ค้าง" ที่ทำงานต่อเนื่องตลอดตั้งแต่ boot และไม่เคยถูกอ้างอิง/ยกเลิกไว้ที่ไหนเลย — พอแอดมินลบเอกสาร
+  // ผู้เล่นนี้ทิ้งขณะเปิดเกมค้างอยู่ restartAsNewPlayer() จะ localStorage.removeItem(SAVE_KEY) ไปแล้ว แต่
+  // ภายใน 3 วิถัดมา (หรือทุกรอบ AFK ที่ครบ 100%) loop ทั้งสองนี้ก็ยังเรียก saveGame() ต่อไปเรื่อยๆ ซึ่งเขียน
+  // localStorage.setItem(SAVE_KEY, ...) ด้วย state เก่าในเครื่อง (ที่ยังมี Role/กรอบโปรไฟล์/Va Coin ครบ) ทับ
+  // ที่ว่างที่เพิ่งลบไปกลับขึ้นมาใหม่ทันที — พอผู้เล่นตั้งชื่อสร้าง ID ใหม่ (initPlayer() สร้างผู้เล่นใหม่)
+  // โค้ดตรงนั้นจะอ่าน SAVE_KEY เดิมจาก localStorage มาเป็น "ข้อมูลตั้งต้น" ของบัญชีใหม่ (ออกแบบไว้สำหรับ
+  // ย้ายเซฟผู้เล่นเก่าก่อนมีระบบ ID) ผลคือ Role/กรอบ/Va Coin ของบัญชีที่แอดมินเพิ่งลบ "ฟื้นคืนชีพ" กลับมาใน
+  // บัญชีใหม่โดยไม่ตั้งใจ ตอนนี้ปิดจุดรั่วนี้ตรง ๆ ด้วยการเช็ค restartingAsNewPlayer ก่อนเขียน localStorage ทุกครั้ง
+  if(restartingAsNewPlayer) return;
   localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   // Patch 3.2: บันทึกเวลาที่เซฟในเครื่องล่าสุด ใช้เทียบกับเวลาบนคลาวด์ตอนโหลดเกมใหม่ (ดู pullCloudStateThenWatch)
   localStorage.setItem(SAVE_KEY + "_ts", String(Date.now()));
@@ -2921,6 +2942,7 @@ function handleItemDrop(type, rarity, silent = false, fromForge = false){
 /* AFK LOOP */
 let lastFrame=null;
 function afkTick(ts){
+  if(restartingAsNewPlayer) return; // Patch 3.31: หยุด loop นี้ทันทีที่รู้ว่าบัญชีถูกลบ ไม่ต้องขยับ progress/DOM ต่อ
   if(!lastFrame) lastFrame=ts; const delta=ts-lastFrame; lastFrame=ts;
   // Patch 3.18: Divine ascendance ลดเวลา AFK เพิ่มอีก 10% (คูณแยกจาก afk_speed ปกติ)
   let cycle = 4000 * (1 - Math.min(85, getSkillTotal("afk_speed")+getSkillTotal("afk_speed_35"))/100) * (hasSkill("divine_ascendance")?0.9:1) * (1 - roleBonus("afkSpeed")/100);
@@ -2949,7 +2971,7 @@ function afkTick(ts){
   }
   document.getElementById("afkBar").style.width = state.afkProgress+"%";
   document.getElementById("afkLabel").textContent = Math.floor(state.afkProgress)+"%";
-  requestAnimationFrame(afkTick);
+  afkTickRafId = requestAnimationFrame(afkTick);
 }
 
 /* FORGE */
@@ -5635,7 +5657,7 @@ document.getElementById("playerIdTag").addEventListener("click", ()=>{
   document.getElementById("autoCommonChk").checked = state.autoSellCommon;
   document.getElementById("autoUncommonChk").checked = state.autoSellUncommon;
   renderFilter(); renderUI(); renderInventory(); renderMergePanel(); setupForge(); forgeAnim(); renderEventBanner(); renderShopPanel(); renderFrameShop(); renderBannerShop(); renderDailyLoginPanel();
-  requestAnimationFrame(afkTick); setInterval(saveGame, 3000); startPresenceHeartbeat(); setInterval(renderEventBanner, 1000); setInterval(renderShopTimers, 1000); setInterval(renderFrameShop, 2000); setInterval(renderDailyLoginPanel, 30000);
+  afkTickRafId = requestAnimationFrame(afkTick); saveGameIntervalId = setInterval(saveGame, 3000); startPresenceHeartbeat(); setInterval(renderEventBanner, 1000); setInterval(renderShopTimers, 1000); setInterval(renderFrameShop, 2000); setInterval(renderDailyLoginPanel, 30000);
 })();
 </script>
 </body>
