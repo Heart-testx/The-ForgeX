@@ -334,6 +334,24 @@
   .frame-shop-card .fprice{font-size:.75rem;color:var(--gold);margin-bottom:8px;}
   .frame-shop-card .fdesc{font-size:.66rem;color:var(--muted);margin-bottom:8px;min-height:2.6em;line-height:1.3;}
   .frame-shop-card .btn{width:100%;}
+  /* Fashion Gacha System */
+  .pity-box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:12px;font-size:.8rem;}
+  .pity-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .pity-row:last-child{margin-bottom:0;}
+  .pity-track{flex:1;height:10px;background:#0d0d16;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .pity-fill{height:100%;border-radius:6px;transition:width .3s ease;}
+  .pity-fill.leg{background:linear-gradient(90deg,#7c5cff,var(--legendary));}
+  .pity-fill.myth{background:linear-gradient(90deg,#7c5cff,var(--mythic));}
+  .gacha-result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:16px;}
+  .gacha-result-card{background:var(--panel2);border:2px solid var(--border);border-radius:12px;padding:10px 8px;text-align:center;animation:gachaPop .35s var(--ease-pop);}
+  @keyframes gachaPop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .gacha-result-card .grc-emoji{font-size:26px;}
+  .gacha-result-card .grc-name{font-size:.68rem;font-weight:bold;margin-top:4px;min-height:2.4em;line-height:1.25;}
+  .gacha-result-card .grc-rarity{font-size:.68rem;font-weight:bold;margin-top:4px;}
+  .gacha-result-card .grc-dust{font-size:.62rem;color:var(--muted);margin-top:2px;}
+  .gacha-rates-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:10px;}
+  .gacha-rates-table th,.gacha-rates-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;}
+  .mat-stat .val{font-size:1.1rem;}
 
   /* Patch 3.24: พื้นหลังโปรไฟล์ (Banner) — แยกอิสระจากกรอบ (frame) ที่ล้อมรอบ avatar โดยสิ้นเชิง
      กรอบยังคงล้อมรอบตัว avatar เหมือนเดิมทุกประการ ส่วน banner คือฉากหลังของการ์ดโปรไฟล์ทั้งใบ
@@ -977,6 +995,7 @@ function makeAdminLabel(){
       <button class="tab-btn" data-tab="merge">🔮 หลอมรวม</button>
       <button class="tab-btn" data-tab="tower" style="color:var(--soul); border-color:var(--soul);">⚔️ หอคอยบอส</button>
       <button class="tab-btn" data-tab="shop" style="color:var(--gold); border-color:var(--gold);">🛒 ร้านค้า</button>
+      <button class="tab-btn" data-tab="gacha" style="color:var(--epic); border-color:var(--epic);">🎰 กาชาแฟชั่น</button>
       <button class="tab-btn" data-tab="daily" style="color:var(--soul); border-color:var(--soul);">📅 Daily Login</button>
       <button class="tab-btn" data-tab="rank" style="color:var(--legendary); border-color:var(--legendary);">🏆 อันดับ</button>
       <button class="tab-btn" data-tab="online" style="color:#58f58a; border-color:#58f58a;">🟢 ผู้เล่นออนไลน์ <span id="onlineCountBadge" style="font-size:.72rem;">(0)</span></button>
@@ -1179,6 +1198,37 @@ function makeAdminLabel(){
     <h2 style="text-align:center; color:var(--gold);">🖼️ พื้นหลังโปรไฟล์ (Banner)</h2>
     <div class="small-note" style="text-align:center; margin-bottom:6px;">ฉากหลังสวยๆ ของการ์ดโปรไฟล์ทั้งใบ แยกอิสระจากกรอบด้านบน ใส่พร้อมกันได้ทั้งคู่ ไม่มีผลต่อพลังต่อสู้ เพื่อความหรูหราอีกชั้นเท่านั้น!</div>
     <div class="banner-shop-grid" id="bannerShopGrid"></div>
+  </div>
+
+  <!-- PANEL: FASHION GACHA (ฟาร์มวัสดุ → คราฟกาชาแฟชั่น) -->
+  <div class="panel" id="panel-gacha">
+    <h2 style="text-align:center; color:var(--epic);">🧵 วัสดุแฟชั่น</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:10px;">ได้จากฟาร์ม AFK / ทุบ The Forge / ปราบบอสหอคอย — นำมาคราฟเป็น "ตั๋วกาชาแฟชั่น" เพื่อลุ้นของแต่งตัวหายาก</div>
+    <div class="stats-grid" id="fashionMatsGrid"></div>
+
+    <div style="text-align:center; margin-top:16px;">
+      <div class="small-note" id="craftPreview" style="margin-bottom:8px;"></div>
+      <button class="btn primary" id="craftTicketBtn">🧵 คราฟตั๋วกาชา (Common 20 + Rare 5 + Epic 1)</button>
+    </div>
+
+    <hr style="border-color:var(--border); margin:24px 0;">
+    <h2 style="text-align:center; color:var(--epic);">🎰 กาชาแฟชั่น</h2>
+    <div class="small-note" style="text-align:center;">มีตั๋ว: <b style="color:var(--gold);" id="gachaTicketCount">0</b> ใบ &nbsp;|&nbsp; เศษทองแฟชั่น: <b style="color:var(--gold);" id="fashionDustCount">0</b> ✨</div>
+
+    <div class="pity-box" id="pityBox"></div>
+
+    <div style="text-align:center; margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <button class="btn gold" id="gachaRoll1Btn">🎰 หมุน x1 (ตั๋ว 1)</button>
+      <button class="btn gold" id="gachaRoll10Btn">🎰 หมุน x10 (ตั๋ว 10)</button>
+      <button class="btn" id="gachaRatesBtn">📊 ดูอัตราโดยละเอียด</button>
+    </div>
+
+    <div id="gachaResultBox" class="gacha-result-grid"></div>
+
+    <hr style="border-color:var(--border); margin:24px 0;">
+    <h2 style="text-align:center; color:var(--legendary);">🏆 ห้องสะสม (Trophy Room)</h2>
+    <div class="small-note" style="text-align:center; margin-bottom:10px;">ของแต่งตัวทั้งหมดในเกม — ทั้งที่ดรอปตรงจากบอส และที่ได้จากกาชา</div>
+    <div class="frame-shop-grid" id="trophyRoomGrid"></div>
   </div>
 
   <!-- PANEL: DAILY LOGIN & VIP (Patch 3.1) -->
@@ -1485,6 +1535,15 @@ function makeAdminLabel(){
     </div>
     <div class="small-note" id="modalUpgradeCost" style="margin-top:8px;"></div>
     <div class="small-note" id="modalRerollNote" style="margin-top:4px;"></div>
+  </div>
+</div>
+
+<!-- GACHA RATES MODAL: โปร่งใสแสดง % ทุกเรตทุกเกรด -->
+<div class="modal-bg" id="gachaRatesModalBg">
+  <div class="modal-box wide">
+    <span class="modal-close" onclick="document.getElementById('gachaRatesModalBg').classList.remove('active')">✕</span>
+    <h2 style="text-align:center; margin-top:0;">📊 อัตรากาชาแฟชั่นโดยละเอียด</h2>
+    <div id="gachaRatesTableBox"></div>
   </div>
 </div>
 
@@ -2185,7 +2244,12 @@ function createDefaultState(){
     lastSeenAnnouncementId: null,
     // Patch 3.22: บัตรเปลี่ยนชื่อ (ซื้อด้วยทอง เก็บเป็นจำนวนใบ) + บัตรตัวอักษรสี (ซื้อด้วย Va Coin ราคาเดียวกันทุกสี)
     nameChangeCards: 0,
-    letterColors: { owned: makeDefaultLetterColorOwned(), equipped: {} }
+    letterColors: { owned: makeDefaultLetterColorOwned(), equipped: {} },
+    // ระบบ "ฟาร์มวัสดุ → คราฟกาชาแฟชั่น": วัสดุ 4 เกรด, ตั๋วกาชา, สถานะ pity, เศษทองแฟชั่น (dust)
+    fashionMats: { common:0, rare:0, epic:0, legendary:0 },
+    gachaTickets: 0,
+    gacha: { pityLegendary: 0, pityMythicDivine: 0, ownedFashionIds: [] },
+    fashionDust: 0
   };
 }
 let state = createDefaultState();
@@ -2257,6 +2321,15 @@ function hydrateStateDefaults(){
   if(state.lastSeenAnnouncementId===undefined) state.lastSeenAnnouncementId = null;
   // Patch 3.22: บัตรเปลี่ยนชื่อ + บัตรตัวอักษรสี — เซฟเก่าที่ยังไม่มีฟิลด์นี้ ให้ default เป็น 0/ว่าง
   if(state.nameChangeCards===undefined) state.nameChangeCards = 0;
+  // ระบบฟาร์มวัสดุ → กาชาแฟชั่น: เซฟเก่าที่ยังไม่มีฟิลด์นี้ ให้ default เป็นค่าว่าง/ศูนย์
+  if(!state.fashionMats) state.fashionMats = { common:0, rare:0, epic:0, legendary:0 };
+  ["common","rare","epic","legendary"].forEach(k=>{ if(state.fashionMats[k]===undefined) state.fashionMats[k]=0; });
+  if(state.gachaTickets===undefined) state.gachaTickets = 0;
+  if(!state.gacha) state.gacha = { pityLegendary:0, pityMythicDivine:0, ownedFashionIds:[] };
+  if(state.gacha.pityLegendary===undefined) state.gacha.pityLegendary = 0;
+  if(state.gacha.pityMythicDivine===undefined) state.gacha.pityMythicDivine = 0;
+  if(!state.gacha.ownedFashionIds) state.gacha.ownedFashionIds = [];
+  if(state.fashionDust===undefined) state.fashionDust = 0;
   if(!state.letterColors) state.letterColors = { owned: makeDefaultLetterColorOwned(), equipped: {} };
   if(!state.letterColors.owned) state.letterColors.owned = makeDefaultLetterColorOwned();
   LETTER_COLOR_PALETTE.forEach(c=>{ if(state.letterColors.owned[c.id]===undefined) state.letterColors.owned[c.id] = 0; });
@@ -2831,6 +2904,11 @@ function afkTick(ts){
       if(it) msg += ` <br>✨ ดรอป <b style="color:${RARITY_META[rarity].color}">${it.emoji} ${it.name}</b>`;
       renderInventory(); renderMergePanel();
     }
+    // ระบบฟาร์มวัสดุแฟชั่น: Common ("เศษผ้าแฟชั่น") ดรอปได้บ่อยจากฟาร์ม AFK ปกติ
+    if(Math.random() < FASHION_MAT_DROP_CHANCE.common){
+      state.fashionMats.common++;
+      msg += ` <br>🧵 เศษผ้าแฟชั่น +1`;
+    }
     logMsg(msg); renderUI(); saveGame();
   }
   document.getElementById("afkBar").style.width = state.afkProgress+"%";
@@ -2904,6 +2982,11 @@ document.getElementById("forgeBtn").addEventListener("click", (e)=>{
       const eventTag = isEventActive() ? ` 🎉 <b style="color:var(--gold)">EVENT!</b> <span style="font-size:.75rem">(โอกาสของหายาก +${EVENT_LUCK_BONUS_PCT}%)</span>` : "";
       logMsg(`⚒️ <b>${res.textContent}</b> ได้ <span style="color:${RARITY_META[it.rarity].color}">${it.name}</span>${eventTag}`);
       renderInventory(); renderMergePanel();
+    }
+    // ระบบฟาร์มวัสดุแฟชั่น: Rare ("ด้ายเวทมนตร์") ดรอปได้จากทุบ The Forge สำเร็จ (Perfect มีโอกาสสูงกว่า Good)
+    if(Math.random() < (t==="perfect" ? FASHION_MAT_DROP_CHANCE.rarePerfect : FASHION_MAT_DROP_CHANCE.rareGood)){
+      state.fashionMats.rare++;
+      logMsg(`🧵 <span style="color:var(--rare)">ด้ายเวทมนตร์ +1</span> (จาก The Forge)`);
     }
     // Patch 3.20: ทุบ The Forge สำเร็จ (ไม่ใช่ miss) มีโอกาส 0.5% ได้ Role ใหม่แบบสุ่ม (ทับของเดิม)
     if(Math.random() < ROLE_FORGE_DROP_CHANCE){
@@ -3796,6 +3879,253 @@ function applyBannerVisual(){
     startBannerParticles(eq);
   }
 }
+/* ================= FASHION GACHA SYSTEM =================
+   "ฟาร์มวัสดุ → คราฟกาชาแฟชั่น": เปลี่ยนแกนหลักของเกมจาก "ฟาร์มของ → แรงขึ้น" ให้มีอีกเส้นทางคือ
+   "ฟาร์ม/ตีบอส → ได้วัสดุ → คราฟตั๋วกาชา → หมุนสุ่มของแต่งตัว (กรอบ/แบนเนอร์/บัตรสีตัวอักษร)"
+   ทุกค่าตัวเลข (อัตราดรอปวัสดุ, สูตรคราฟ, อัตรากาชา, pity) แยกเป็น constant ต้นไฟล์ เพื่อ balance ทีหลังง่าย */
+
+// ---- วัสดุ: อัตราดรอปโดยประมาณ (เกรดสูงหายากกว่าเกรดต่ำแบบ exponential ~5-10 เท่า) ----
+const FASHION_MAT_DROP_CHANCE = {
+  common: 0.10,        // ต่อรอบฟาร์ม AFK ปกติ
+  rareGood: 0.05,       // ต่อการทุบ The Forge สำเร็จระดับ Good
+  rarePerfect: 0.14,     // ต่อการทุบ The Forge สำเร็จระดับ Perfect
+  epicBoss: 0.16,        // ต่อการปราบบอสหอคอยสำเร็จ (บอสหลักประจำโซน)
+  legendaryBoss: 0.08     // ต่อการปราบ Spike Boss (ทุก 10 ชั้น หรือชั้น 15 ขึ้นไป) เท่านั้น
+};
+const FASHION_MAT_META = {
+  common:    { name:"เศษผ้าแฟชั่น",  emoji:"🧵", color:"var(--common)" },
+  rare:      { name:"ด้ายเวทมนตร์",  emoji:"🪡", color:"var(--rare)" },
+  epic:      { name:"อัญมณีแฟชั่น",  emoji:"💎", color:"var(--epic)" },
+  legendary: { name:"แสงศักดิ์สิทธิ์", emoji:"🌟", color:"var(--legendary)" }
+};
+
+// ---- สูตรคราฟตั๋วกาชา 1 ใบ ----
+const GACHA_CRAFT_RECIPE = { common:20, rare:5, epic:1 };
+
+// ---- อัตรากาชา (รวม 100%) ----
+const GACHA_RATES = { common:55, rare:28, epic:12, legendary:4, mythic:0.8, divine:0.2 };
+const GACHA_SOFT_PITY_START = 40;   // เริ่มค่อยๆ เพิ่มโอกาส Legendary+ ตั้งแต่หมุนที่ 40
+const GACHA_SOFT_PITY_STEP = 6;     // % ที่เพิ่มขึ้นต่อการหมุน 1 ครั้งหลัง soft pity (สะสมทุกครั้งที่ไม่โดน)
+const GACHA_HARD_PITY = 50;         // หมุนครบ 50 โดยไม่เคยได้ Legendary+ → การันตีทันที
+const GACHA_MYTHIC_HARD_PITY = 175; // pity แยกสำหรับ Mythic/Divine โดยเฉพาะ (หายากกว่ามาก)
+// เศษทองแฟชั่น (Dust) ที่ได้รับเมื่อหมุนซ้ำของที่มีอยู่แล้ว (กันเสียของ)
+const FASHION_DUST_VALUE = { common:2, rare:5, epic:15, legendary:40, mythic:100, divine:250 };
+
+// ---- ของ Exclusive ระดับ Divine (หายากที่สุด ไม่ได้มาจาก tier ราคาปกติ) ----
+const GACHA_DIVINE_FRAME_IDS = ["divine_phoenix"];
+const GACHA_DIVINE_BANNER_IDS = ["void_throne"];
+function fashionTierToRarity(id, tierMap, divineIds){
+  if(divineIds.includes(id)) return "divine";
+  const tier = tierMap[id] || 1;
+  return { 1:"common", 2:"rare", 3:"epic", 4:"legendary", 5:"mythic" }[tier] || "common";
+}
+
+// ---- พูลของแต่งตัวที่เข้าไปอยู่ในกาชา: กรอบ + แบนเนอร์ (ไม่รวม VIP/Admin only) + บัตรตัวอักษรสี ----
+// หมายเหตุ: กรอบ/แบนเนอร์กันซ้ำด้วย ownedFashionIds (หมุนซ้ำ = แปลงเป็น dust) ส่วนบัตรตัวอักษรสีเป็นไอเทม
+// สะสมได้อยู่แล้วในเกม (ใช้แต่งได้หลายตัวอักษร) จึงหมุนซ้ำได้ตามปกติเหมือนซื้อบัตรเพิ่ม ไม่แปลงเป็น dust
+const FASHION_GACHA_POOL = [
+  ...FRAME_LIST.filter(f=>!f.vipOnly && !f.adminOnly).map(f=>({
+    gachaId:"frame:"+f.id, kind:"frame", refId:f.id, name:f.name, emoji:f.emoji,
+    rarity: fashionTierToRarity(f.id, FRAME_TIER, GACHA_DIVINE_FRAME_IDS)
+  })),
+  ...BANNER_LIST.map(b=>({
+    gachaId:"banner:"+b.id, kind:"banner", refId:b.id, name:b.name, emoji:"🖼️",
+    rarity: fashionTierToRarity(b.id, BANNER_TIER, GACHA_DIVINE_BANNER_IDS)
+  })),
+  ...LETTER_COLOR_PALETTE.map(c=>({
+    gachaId:"letter:"+c.id, kind:"letter", refId:c.id, name:"บัตรตัวอักษรสี"+c.name, emoji:"🔤",
+    rarity:"common"
+  }))
+];
+
+function isFashionExclusiveOwned(gachaId){ return state.gacha.ownedFashionIds.includes(gachaId); }
+
+function canCraftGachaTicket(){
+  return state.fashionMats.common >= GACHA_CRAFT_RECIPE.common
+    && state.fashionMats.rare >= GACHA_CRAFT_RECIPE.rare
+    && state.fashionMats.epic >= GACHA_CRAFT_RECIPE.epic;
+}
+function craftGachaTicket(){
+  if(!canCraftGachaTicket()){ toast("🧵 วัสดุไม่พอสำหรับคราฟตั๋วกาชา!"); SFX.error(); return; }
+  state.fashionMats.common -= GACHA_CRAFT_RECIPE.common;
+  state.fashionMats.rare -= GACHA_CRAFT_RECIPE.rare;
+  state.fashionMats.epic -= GACHA_CRAFT_RECIPE.epic;
+  state.gachaTickets++;
+  toast("🎫 คราฟตั๋วกาชาแฟชั่นสำเร็จ!");
+  logMsg(`🧵 คราฟ <b>ตั๋วกาชาแฟชั่น</b> สำเร็จ! (มีตั๋วรวม: ${state.gachaTickets} ใบ)`);
+  SFX.coin();
+  renderFashionGachaPanel(); renderUI(); saveGame(); forceCloudSaveNow();
+}
+
+function weightedPick(rateObj){
+  const total = Object.values(rateObj).reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(const k of Object.keys(rateObj)){ if(r < rateObj[k]) return k; r -= rateObj[k]; }
+  return Object.keys(rateObj)[0];
+}
+// หมุน 1 ครั้ง: คืนค่า rarity ที่สุ่มได้ พร้อมจัดการ soft/hard pity ทั้งสองชุด
+function rollGachaRarityOnce(){
+  state.gacha.pityLegendary++;
+  state.gacha.pityMythicDivine++;
+
+  // Hard pity แยกสำหรับ Mythic/Divine (เลขสูงกว่ามาก) เช็คก่อนเพราะเข้มงวดกว่า
+  if(state.gacha.pityMythicDivine >= GACHA_MYTHIC_HARD_PITY){
+    state.gacha.pityMythicDivine = 0; state.gacha.pityLegendary = 0;
+    return weightedPick({ mythic:GACHA_RATES.mythic, divine:GACHA_RATES.divine });
+  }
+  // Hard pity ปกติ: หมุนครบ 50 ครั้งโดยไม่เคยได้ Legendary ขึ้นไปเลย → การันตีทันที
+  if(state.gacha.pityLegendary >= GACHA_HARD_PITY){
+    state.gacha.pityLegendary = 0;
+    const rarity = weightedPick({ legendary:GACHA_RATES.legendary, mythic:GACHA_RATES.mythic, divine:GACHA_RATES.divine });
+    if(rarity==="mythic" || rarity==="divine") state.gacha.pityMythicDivine = 0;
+    return rarity;
+  }
+
+  // Soft pity: ตั้งแต่การหมุนที่ 40 เป็นต้นไป ค่อยๆ เพิ่มอัตรา Legendary+ ขึ้นทุกครั้งที่ไม่โดน
+  const rates = Object.assign({}, GACHA_RATES);
+  if(state.gacha.pityLegendary >= GACHA_SOFT_PITY_START){
+    rates.legendary += (state.gacha.pityLegendary - GACHA_SOFT_PITY_START + 1) * GACHA_SOFT_PITY_STEP;
+  }
+  const rarity = weightedPick(rates);
+  if(rarity==="legendary" || rarity==="mythic" || rarity==="divine") state.gacha.pityLegendary = 0;
+  if(rarity==="mythic" || rarity==="divine") state.gacha.pityMythicDivine = 0;
+  return rarity;
+}
+
+function rollFashionGacha(count){
+  if(state.gachaTickets < count){ toast("🎫 ตั๋วกาชาไม่พอ!"); SFX.error(); return; }
+  state.gachaTickets -= count;
+  const results = [];
+  for(let i=0;i<count;i++){
+    const rarity = rollGachaRarityOnce();
+    let pool = FASHION_GACHA_POOL.filter(x=>x.rarity===rarity);
+    if(pool.length===0) pool = FASHION_GACHA_POOL; // เผื่อบางเรตยังไม่มีของ (กันเกมพัง)
+    const picked = pick(pool);
+    let dusted = false;
+    if(picked.kind==="frame" || picked.kind==="banner"){
+      if(isFashionExclusiveOwned(picked.gachaId)){
+        state.fashionDust += FASHION_DUST_VALUE[rarity]; dusted = true;
+      } else {
+        state.gacha.ownedFashionIds.push(picked.gachaId);
+        if(picked.kind==="frame") state.frames.owned.push(picked.refId);
+        else state.banners.owned.push(picked.refId);
+      }
+    } else if(picked.kind==="letter"){
+      state.letterColors.owned[picked.refId] = (state.letterColors.owned[picked.refId]||0) + 1;
+    }
+    results.push(Object.assign({dusted, rarity}, picked));
+  }
+  const best = results.reduce((a,b)=> RARITY_ORDER.indexOf(b.rarity) > RARITY_ORDER.indexOf(a.rarity) ? b : a);
+  SFX.dropByRarity(best.rarity==="divine" ? "mythic" : best.rarity);
+  const summary = results.map(r=>`${r.emoji} ${r.name} [${GACHA_RARITY_LABEL[r.rarity]}]${r.dusted?" (แปลงเป็นเศษทอง)":""}`).join(", ");
+  logMsg(`🎰 <b>หมุนกาชาแฟชั่น x${count}:</b> ${summary}`);
+  renderFashionGachaPanel(); renderTrophyRoom(); renderFrameShop(); renderBannerShop(); renderShopPanel(); renderUI();
+  saveGame(); forceCloudSaveNow();
+  return results;
+}
+
+const GACHA_RARITY_LABEL = { common:"Common", rare:"Rare", epic:"Epic", legendary:"Legendary", mythic:"Mythic", divine:"Divine" };
+const GACHA_RARITY_COLOR_VAR = { common:"var(--common)", rare:"var(--rare)", epic:"var(--epic)", legendary:"var(--legendary)", mythic:"var(--mythic)", divine:"var(--divine)" };
+
+function renderFashionGachaPanel(){
+  const grid = document.getElementById("fashionMatsGrid"); if(!grid) return;
+  grid.innerHTML = "";
+  Object.keys(FASHION_MAT_META).forEach(k=>{
+    const m = FASHION_MAT_META[k];
+    const box = document.createElement("div");
+    box.className = "stat-box mat-stat";
+    box.innerHTML = `<div class="val" style="color:${m.color};">${m.emoji} ${fmt(state.fashionMats[k])}</div><div class="lbl">${m.name}</div>`;
+    grid.appendChild(box);
+  });
+
+  const need = GACHA_CRAFT_RECIPE;
+  const have = state.fashionMats;
+  const previewParts = [
+    `${FASHION_MAT_META.common.emoji} ${have.common}/${need.common}`,
+    `${FASHION_MAT_META.rare.emoji} ${have.rare}/${need.rare}`,
+    `${FASHION_MAT_META.epic.emoji} ${have.epic}/${need.epic}`
+  ];
+  const preview = document.getElementById("craftPreview");
+  if(preview) preview.innerHTML = "ต้องใช้: " + previewParts.join(" &nbsp;|&nbsp; ") + (canCraftGachaTicket() ? ` <span style="color:var(--uncommon)">✔️ คราฟได้แล้ว!</span>` : "");
+  const craftBtn = document.getElementById("craftTicketBtn");
+  if(craftBtn) craftBtn.disabled = !canCraftGachaTicket();
+
+  const ticketEl = document.getElementById("gachaTicketCount"); if(ticketEl) ticketEl.textContent = fmt(state.gachaTickets);
+  const dustEl = document.getElementById("fashionDustCount"); if(dustEl) dustEl.textContent = fmt(state.fashionDust);
+  const roll1 = document.getElementById("gachaRoll1Btn"); if(roll1) roll1.disabled = state.gachaTickets < 1;
+  const roll10 = document.getElementById("gachaRoll10Btn"); if(roll10) roll10.disabled = state.gachaTickets < 10;
+
+  const pityBox = document.getElementById("pityBox");
+  if(pityBox){
+    const toHard = Math.max(0, GACHA_HARD_PITY - state.gacha.pityLegendary);
+    const toMythHard = Math.max(0, GACHA_MYTHIC_HARD_PITY - state.gacha.pityMythicDivine);
+    const legPct = Math.min(100, (state.gacha.pityLegendary/GACHA_HARD_PITY)*100);
+    const mythPct = Math.min(100, (state.gacha.pityMythicDivine/GACHA_MYTHIC_HARD_PITY)*100);
+    pityBox.innerHTML = `
+      <div class="pity-row"><span>🌟 Legendary+ (อีก <b>${toHard}</b> ครั้งการันตี)</span></div>
+      <div class="pity-row"><div class="pity-track"><div class="pity-fill leg" style="width:${legPct}%;"></div></div></div>
+      <div class="pity-row" style="margin-top:6px;"><span>💫 Mythic/Divine (อีก <b>${toMythHard}</b> ครั้งการันตี)</span></div>
+      <div class="pity-row"><div class="pity-track"><div class="pity-fill myth" style="width:${mythPct}%;"></div></div></div>
+    `;
+  }
+}
+
+function renderGachaResults(results){
+  const box = document.getElementById("gachaResultBox"); if(!box) return;
+  box.innerHTML = "";
+  results.forEach(r=>{
+    const card = document.createElement("div");
+    card.className = "gacha-result-card";
+    card.style.borderColor = GACHA_RARITY_COLOR_VAR[r.rarity];
+    card.innerHTML = `
+      <div class="grc-emoji">${r.emoji}</div>
+      <div class="grc-name">${r.name}</div>
+      <div class="grc-rarity" style="color:${GACHA_RARITY_COLOR_VAR[r.rarity]};">${GACHA_RARITY_LABEL[r.rarity]}</div>
+      ${r.dusted ? `<div class="grc-dust">♻️ ซ้ำ → แปลงเป็นเศษทอง</div>` : ""}
+    `;
+    box.appendChild(card);
+  });
+}
+
+function renderGachaRatesModal(){
+  const box = document.getElementById("gachaRatesTableBox"); if(!box) return;
+  let rows = Object.keys(GACHA_RATES).map(k=>`<tr><td style="color:${GACHA_RARITY_COLOR_VAR[k]};">${GACHA_RARITY_LABEL[k]}</td><td>${GACHA_RATES[k]}%</td></tr>`).join("");
+  box.innerHTML = `
+    <table class="gacha-rates-table">
+      <tr><th>เกรด</th><th>อัตราเริ่มต้น</th></tr>
+      ${rows}
+    </table>
+    <div class="small-note" style="margin-top:10px;">
+      • Soft Pity: ตั้งแต่การหมุนที่ ${GACHA_SOFT_PITY_START} เป็นต้นไป อัตรา Legendary+ จะค่อยๆ เพิ่มขึ้นทีละ ${GACHA_SOFT_PITY_STEP}% ทุกครั้งที่ไม่โดน<br>
+      • Hard Pity: หมุนครบ ${GACHA_HARD_PITY} ครั้งโดยไม่เคยได้ Legendary ขึ้นไป → การันตีทันที<br>
+      • Mythic/Divine มี Pity แยกต่างหาก การันตีที่การหมุนครบ ${GACHA_MYTHIC_HARD_PITY} ครั้ง<br>
+      • หมุนได้ของที่มีอยู่แล้ว (กรอบ/แบนเนอร์) → แปลงเป็นเศษทองแฟชั่นแทนการเสียเปล่า
+    </div>
+  `;
+}
+
+function renderTrophyRoom(){
+  const grid = document.getElementById("trophyRoomGrid"); if(!grid) return;
+  grid.innerHTML = "";
+  FASHION_GACHA_POOL.filter(x=>x.kind!=="letter").forEach(entry=>{
+    const owned = entry.kind==="frame" ? isFrameOwned(entry.refId) : state.banners.owned.includes(entry.refId);
+    const card = document.createElement("div");
+    card.className = "frame-shop-card" + (owned ? " owned" : "");
+    card.innerHTML = `
+      <div class="frame-preview"><div class="frame-preview-avatar">${entry.emoji}</div></div>
+      <div class="fname">${entry.emoji} ${entry.name}</div>
+      <div class="fprice" style="color:${GACHA_RARITY_COLOR_VAR[entry.rarity]};">${GACHA_RARITY_LABEL[entry.rarity]}</div>
+      <div class="fdesc">${entry.kind==="frame" ? "🖼️ กรอบโปรไฟล์" : "🖼️ พื้นหลังโปรไฟล์"} • ${owned ? "✅ มีแล้ว" : "🔒 ยังไม่มี"}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById("craftTicketBtn")?.addEventListener("click", craftGachaTicket);
+document.getElementById("gachaRoll1Btn")?.addEventListener("click", ()=>{ const r = rollFashionGacha(1); if(r) renderGachaResults(r); });
+document.getElementById("gachaRoll10Btn")?.addEventListener("click", ()=>{ const r = rollFashionGacha(10); if(r) renderGachaResults(r); });
+document.getElementById("gachaRatesBtn")?.addEventListener("click", ()=>{ renderGachaRatesModal(); document.getElementById("gachaRatesModalBg").classList.add("active"); });
+
 let frameParticleTimers = [];
 function stopFrameParticles(){
   frameParticleTimers.forEach(t=>clearInterval(t));
@@ -4724,11 +5054,24 @@ document.getElementById("fightBossBtn").addEventListener("click", ()=>{
     SFX.dropByRarity(guaranteedRarity);
     const lootLine = `✨ อุปกรณ์บอส: <b style="color:${RARITY_META[firstIt.rarity].color}">${firstIt.emoji} ${firstIt.name}</b>`;
 
+    // ระบบฟาร์มวัสดุแฟชั่น: Epic ("อัญมณีแฟชั่น") ดรอปจากบอสหลักประจำโซน, Legendary ("แสงศักดิ์สิทธิ์")
+    // ดรอปได้เฉพาะบอสยาก (Spike Boss ทุก 10 ชั้น หรือชั้น 15 ขึ้นไป) เท่านั้น — หายากตามสเปค
+    let fashionMatLine = "";
+    if(Math.random() < FASHION_MAT_DROP_CHANCE.epicBoss){
+      state.fashionMats.epic++;
+      fashionMatLine += `<br>💎 <span style="color:var(--epic)">อัญมณีแฟชั่น +1</span>`;
+    }
+    const isSpikeBoss = (state.towerFloor % 10 === 0) || state.towerFloor >= 15;
+    if(isSpikeBoss && Math.random() < FASHION_MAT_DROP_CHANCE.legendaryBoss){
+      state.fashionMats.legendary++;
+      fashionMatLine += `<br>🌟 <span style="color:var(--legendary)">แสงศักดิ์สิทธิ์ +1</span>`;
+    }
+
     logMsg(`<div style="background:#1a1030; padding:8px; border-radius:8px; border:1px solid var(--soul);">
       👑 <b>ปราบบอสชั้นที่ ${state.towerFloor} สำเร็จ!</b><br>
       💎 ได้รับหินวิญญาณ <b>x${reward}</b>${rewardMult>1?` <span style="color:var(--legendary)">(EVENT x${rewardMult}!)</span>`:""}<br>
       🎁 โบนัสกล่องบอส: 🪙 <b>${fmt(bonusGold)}</b>, ⛓️ <b>${fmt(bonusIron)}</b>${rewardMult>1?` <span style="color:var(--legendary)">(EVENT x${rewardMult}!)</span>`:""}<br>
-      ${lootLine}
+      ${lootLine}${fashionMatLine}
     </div>`);
     toast(`ชนะบอส! หินวิญญาณ +${reward}`); state.towerFloor++;
     SFX.bossWin();
@@ -4995,6 +5338,7 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     // Patch 3.23: rebuild กริดบัตรสี/ตัวแก้ไขสีชื่อให้สดใหม่ทุกครั้งที่เข้าแท็บร้านค้า (เผื่อมีการเปลี่ยนแปลง
     // เช่น vaCoin/nameChangeCards ตอนไม่ได้เปิดแท็บนี้อยู่ เช่นแอดมินเติมของให้ หรือกด reset save)
     if(btn.dataset.tab === "shop") renderShopPanel();
+    if(btn.dataset.tab === "gacha"){ renderFashionGachaPanel(); renderTrophyRoom(); }
   };
 });
 document.getElementById("refreshRankBtn").addEventListener("click", renderRankTop3);
