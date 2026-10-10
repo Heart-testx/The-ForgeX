@@ -16,7 +16,7 @@ body{margin:0;background:#1d2b4a;font-family:Tahoma,"Noto Sans Thai",sans-serif;
 #expb{background:linear-gradient(#ffe36a,#e5a800)}#enb{background:linear-gradient(#6fe08a,#1f9a45)}
 canvas{width:100%;display:block;border:3px solid #3d5a99;border-radius:6px;background:#5fb04a;touch-action:none;image-rendering:pixelated}
 #tools,#menu,#menu2{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
-button,select{font:bold 13px Tahoma,sans-serif;color:#2b3b5e;background:linear-gradient(#fff,#cfd8ef);border:2px solid #3d5a99;border-radius:5px;padding:7px 8px;flex:1;cursor:pointer}
+button,select{touch-action:manipulation;transition:filter .08s;font:bold 13px Tahoma,sans-serif;color:#2b3b5e;background:linear-gradient(#fff,#cfd8ef);border:2px solid #3d5a99;border-radius:5px;padding:7px 8px;flex:1;cursor:pointer}
 button.on{background:linear-gradient(#ffe98a,#f0b429);border-color:#8a5a00}
 button:active{filter:brightness(.9)}button:disabled{opacity:.5}
 #msg{height:18px;font-size:12px;text-align:center;margin-top:4px;color:#dfe8ff}
@@ -120,8 +120,12 @@ const TAX=.08;
 const infl=()=>1+.04*(S.lv-1)+.03*Object.keys(S.dec).length;
 const P=c=>Math.max(5,Math.round(c*infl()/5)*5);
 let SAVE_LOCK=false; // [PATCH 1.4] true while the page is about to reload (admin import/restore/reset): nothing may overwrite the save then
-const save=()=>{if(SAVE_LOCK)return;try{localStorage.setItem("rmr_save",JSON.stringify(S))}catch(e){}};
-setInterval(save,4000);addEventListener("beforeunload",save);
+/* [PATCH 1.5] save() is now debounced: many taps in a row = ONE JSON.stringify + localStorage write (was one per tap).
+   saveNow() writes immediately and is used when the page is hidden/closed. */
+let saveTm=0;
+const saveNow=()=>{if(saveTm){clearTimeout(saveTm);saveTm=0}if(SAVE_LOCK)return;try{localStorage.setItem("rmr_save",JSON.stringify(S))}catch(e){}};
+const save=()=>{if(SAVE_LOCK||saveTm)return;saveTm=setTimeout(saveNow,350)};
+setInterval(saveNow,4000);addEventListener("beforeunload",saveNow);
 const maxEn=()=>100+(S.lv-1)*5+has("chimney")*10, needExp=()=>30+S.lv*25;
 const add=(k,n=1)=>{S.inv[k]=(S.inv[k]||0)+n;if(S.inv[k]<=0)delete S.inv[k]};
 
@@ -148,10 +152,12 @@ const SFX={
 const $=id=>document.getElementById(id);
 let tool="hoe",msgT=0;
 function say(t){$("msg").textContent=t;msgT=3000}
+const setSty=(id,w)=>{const e=$(id);if(e.style.width!==w)e.style.width=w};
 function ui(){
-  $("lv").textContent="Lv "+S.lv;$("zeny").textContent=S.z+"z";$("bGacha").textContent="🎰 Gacha ("+(S.inv.coin||0)+")";
-  $("expb").style.width=S.exp/needExp()*100+"%";$("enb").style.width=S.en/maxEn()*100+"%";
-  $("top").title="EXP "+S.exp+"/"+needExp()+"  Energy "+Math.floor(S.en)+"/"+maxEn();
+  /* [PATCH 1.5] cached DOM writes */
+  setTxt("lv","Lv "+S.lv);setTxt("zeny",S.z+"z");setTxt("bGacha","🎰 Gacha ("+(S.inv.coin||0)+")");
+  setSty("expb",(S.exp/needExp()*100).toFixed(1)+"%");setSty("enb",(S.en/maxEn()*100).toFixed(1)+"%");
+  const tt="EXP "+S.exp+"/"+needExp()+"  Energy "+Math.floor(S.en)+"/"+maxEn();if($("top").title!==tt)$("top").title=tt;
   hud(); // [PATCH 1.1] expand/quest/fert labels + buff chips
 }
 function refreshSeeds(){
@@ -242,7 +248,7 @@ function die(m){
 }
 
 /* ===== MODULE: Modals (Inventory / Shop / Stats) ===== */
-function modal(html){$("mbox").innerHTML=html+'<button style="width:100%;margin-top:8px" onclick="closeM()">Close</button>';$("modal").style.display="flex"}
+function modal(html){const mb=$("mbox"),keep=$("modal").style.display=="flex"?mb.scrollTop:0;mb.innerHTML=html+'<button style="width:100%;margin-top:8px" onclick="closeM()">Close</button>';$("modal").style.display="flex";mb.scrollTop=keep}
 function closeM(){$("modal").style.display="none";refreshSeeds();ui();save()}
 $("modal").onclick=e=>{if(e.target.id=="modal")closeM()};
 function bag(){
@@ -323,10 +329,16 @@ C.addEventListener("pointerdown",e=>{
 /* ===== MODULE: Rendering (all sprites drawn with Canvas API) ===== */
 const ell=(x,y,rx,ry,c)=>{g.fillStyle=c;g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill()};
 const rect=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h)};
+let _gk="",_gc;
+function grassBG(){
+  const e=SE(),k=e.g1+e.g2+e.g3;if(k===_gk)return _gc;
+  _gk=k;_gc=_gc||document.createElement("canvas");_gc.width=_gc.height=W;const c=_gc.getContext("2d");
+  for(let y=0;y<W/32;y++)for(let x=0;x<W/32;x++){c.fillStyle=(x+y)%2?e.g1:e.g2;c.fillRect(x*32,y*32,32,32)}
+  c.fillStyle=e.g3;for(let i=0;i<40;i++)c.fillRect((i*97)%W,(i*53)%W,3,3);return _gc;
+}
 function scene(now){
   // Prontera grass
-  for(let y=0;y<W/32;y++)for(let x=0;x<W/32;x++)rect(x*32,y*32,32,32,(x+y)%2?SE().g1:SE().g2);
-  g.fillStyle=SE().g3;for(let i=0;i<40;i++)g.fillRect((i*97)%W,(i*53)%W,3,3);
+  g.drawImage(grassBG(),0,0); // [PATCH 1.5] cached background
   // house with red roof
   rect(10,8,90,56,"#e8d3a0");rect(10,8,90,4,"#c9b27c");rect(40,32,20,32,"#7a4a21");rect(18,28,14,14,"#8ad0ff");
   g.fillStyle="#c9302c";g.beginPath();g.moveTo(2,20);g.lineTo(55,-6);g.lineTo(108,20);g.fill();
@@ -881,15 +893,15 @@ function noteErr(src,e){ // called by the frame guard, window.onerror and the ad
 }
 /* admReload(write): lock saving, run write() (localStorage change), tell other tabs, reload. If the reload never happens, unlock again. */
 function admReload(write){
-  SAVE_LOCK=true;removeEventListener("beforeunload",save);
-  try{if(write){write();lsSet(ADM_EPOCHK,Date.now())}location.reload()}catch(e){SAVE_LOCK=false;addEventListener("beforeunload",save);throw e}
-  setTimeout(()=>{SAVE_LOCK=false;addEventListener("beforeunload",save);say("⚠ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง (ปลดล็อกการบันทึกแล้ว)");if(ADMIN){admNote("✗ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง",0);adminUI()}},ADM_RELOAD_MS);
+  SAVE_LOCK=true;removeEventListener("beforeunload",saveNow);
+  try{if(write){write();lsSet(ADM_EPOCHK,Date.now())}location.reload()}catch(e){SAVE_LOCK=false;addEventListener("beforeunload",saveNow);throw e}
+  setTimeout(()=>{SAVE_LOCK=false;addEventListener("beforeunload",saveNow);say("⚠ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง (ปลดล็อกการบันทึกแล้ว)");if(ADMIN){admNote("✗ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง",0);adminUI()}},ADM_RELOAD_MS);
 }
 function stabilityInit(){
   addEventListener("error",ev=>noteErr("window",ev.error||ev.message));
   addEventListener("unhandledrejection",ev=>noteErr("promise",ev.reason));
-  document.addEventListener("visibilitychange",()=>{if(document.hidden)save()}); // mobile browsers often skip beforeunload
-  addEventListener("pagehide",save);
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)saveNow()}); // mobile browsers often skip beforeunload
+  addEventListener("pagehide",saveNow);
   addEventListener("storage",e=>{if(e.key===ADM_EPOCHK&&e.newValue&&!SAVE_LOCK)admReload(null)}); // another tab changed the save via Admin -> reload, never overwrite it
 }
 
@@ -1069,7 +1081,7 @@ function admSaveInputs(){const b=$("mbox");if(!b)return;b.querySelectorAll("inpu
 function admClick(e){ // one delegated listener instead of inline onclick strings (no quoting bugs)
   const b=e.target.closest&&e.target.closest("[data-adm]");if(!b||!ADMIN)return;
   const ids=(b.dataset.in||"").split(",").filter(Boolean);let a=b.dataset.a;
-  if(ids.length)a=ids.length>1?ids.map(i=>($(i)||{}).value):($(i=ids[0])||{}).value;
+  if(ids.length)a=ids.length>1?ids.map(x=>($(x)||{}).value):($(ids[0])||{}).value;
   adm(b.dataset.adm,a);
 }
 
