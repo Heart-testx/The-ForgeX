@@ -843,7 +843,7 @@ function craftUI(){
 const GARDENER_MS=150000, GARDENER_STEP=350;      // 2m30s, one plot handled every 0.35s
 let gdAcc=0,gdCur=0,gx=50,gy=84,gtx=50,gty=84,gdWarn=0,gdMove=0;
 FX.gardener=()=>{S.gd=(S.gd||0)+GARDENER_MS;flo(240,200,"🧑‍🌾 ชาวสวนมาแล้ว!","#7dffb0");say("🧑‍🌾 ชาวสวนทำฟาร์มให้ อีก "+Math.ceil(S.gd/1000)+" วินาที");return true};
-function gSeed(){ // selected seed first, otherwise the most valuable seed the player owns
+function gSeed(){ // seeds ALWAYS come from the Inventory (S.inv["s_<id>"]): selected seed first, otherwise the most valuable seed still in the bag
   if(S.inv["s_"+S.seed]>0)return S.seed;
   let b=-1;CROPS.forEach((c,i)=>{if(S.inv["s_"+i]>0&&(b<0||c.sell>CROPS[b].sell))b=i});return b;
 }
@@ -851,8 +851,9 @@ function gAct(i){ // returns true if the gardener did something on plot i
   const t=S.tiles[i],cx=tcx(i),cy=tcy(i);if(!t)return false;
   if(t.st==0){t.st=1;flo(cx,cy,"พรวนดิน","#e8c28a");return true}
   if(t.st==1){
-    const k=gSeed();if(k<0){if(Date.now()-gdWarn>8000){gdWarn=Date.now();say("🧑‍🌾 ชาวสวน: เมล็ดพันธุ์หมด!")}return false}
-    add("s_"+k,-1);Object.assign(t,{st:2,k,g:0,w:!!(has("well")&&Math.random()<.3),rar:rollRar(),f:0});refreshSeeds();flo(cx,cy,"🌱","#9dff7a");return true;
+    const k=gSeed();if(k<0){if(Date.now()-gdWarn>8000){gdWarn=Date.now();say("🧑‍🌾 ชาวสวน: เมล็ดใน Inventory หมด! ซื้อที่ Kafra Shop")}return false}
+    if(k!==S.seed&&Date.now()-gdWarn>8000){gdWarn=Date.now();say("🧑‍🌾 เมล็ดที่เลือกหมด ใช้ "+CROPS[k].n+" จาก Inventory แทน")}
+    add("s_"+k,-1);Object.assign(t,{st:2,k,g:0,w:!!(has("well")&&Math.random()<.3),rar:rollRar(),f:0});refreshSeeds();flo(cx,cy,"🌱 เหลือ "+(S.inv["s_"+k]||0),"#9dff7a");return true;
   }
   if(t.st==2){
     if(!t.w){t.w=true;flo(cx,cy,"💧","#9cf");return true}
