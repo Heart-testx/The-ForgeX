@@ -76,7 +76,14 @@ const CROPS=[ // t = seconds to full growth
  {n:"Apple Tree",    t:80, sell:250, cost:150, exp:45, c:"#d93a2b"},
  {n:"Yggdrasil Berry",t:160,sell:800,cost:500, exp:120,c:"#a45cff"},
  {n:"Blue Herb",t:65,sell:190,cost:105,exp:35,c:"#3a7bff",lv:6},
- {n:"Mastela Fruit",t:120,sell:450,cost:260,exp:70,c:"#ff8c1a",lv:12}];
+ {n:"Mastela Fruit",t:120,sell:450,cost:260,exp:70,c:"#ff8c1a",lv:12},
+ /* [PATCH 1.13] seasonal crops: se = home season (0 spring, 1 summer, 2 autumn, 3 winter). In season they grow x1.4 and IGNORE the season's own
+    growth modifier (so winter's -40% does not hurt them); out of season they grow at 60% of the normal speed. */
+ {n:"Sakura Bud",t:70,sell:280,cost:160,exp:48,c:"#ffb7d5",lv:4,se:0},
+ {n:"Sun Melon",t:80,sell:340,cost:190,exp:56,c:"#6fd04a",lv:4,se:1},
+ {n:"Harvest Pumpkin",t:85,sell:360,cost:200,exp:60,c:"#e07a1f",lv:4,se:2},
+ {n:"Frost Berry",t:75,sell:330,cost:185,exp:54,c:"#7fd4ff",lv:4,se:3}];
+const SE_HOME=1.4, SE_AWAY=.6;
 const DROPS={jelopy:{n:"Jelopy",sell:8,d:"วัตถุดิบสำหรับ Craft / Cook หลายสูตร • ขาย 8z"},clover:{n:"Clover",sell:50,d:"ใบโคลเวอร์ ใช้ทำ Lucky Tea ได้ • ขาย 50z"},apple:{n:"Apple",sell:20,heal:30,d:"ฟื้น Energy +30 • ใช้ทำ Herbal Stew ได้ • ขาย 20z"},potion:{n:"Red Potion",sell:0,heal:50,d:"ฟื้น Energy +50"},
  coin:{n:"Gacha Coin",sell:0,d:"ใช้หมุนที่ Gachapon"},
  sprinkler:{n:"Sprinkler Scroll",sell:0,fx:1,d:"รดน้ำพืชทุกต้นทันที"},
@@ -92,6 +99,10 @@ const DROPS={jelopy:{n:"Jelopy",sell:8,d:"วัตถุดิบสำหร�
  stew:{n:"Herbal Stew",sell:0,fx:1,buff:"feast",d:"EXP +30% นาน 90 วินาที"},
  gardener:{n:"Gardener Contract",sell:0,fx:1,d:"จ้างชาวสวน 1 คน ทำฟาร์มให้อัตโนมัติ 2 นาทีครึ่ง (พรวน→ปลูก→รดน้ำ→เก็บเกี่ยว) • จ้างพร้อมกันได้สูงสุด 5 คน แบ่งงานกันไม่ซ้ำแปลง • ใช้เมล็ดจาก Inventory"},
  golem:{n:"Golem Contract",sell:0,fx:1,d:"จ้างโกเลม 1 ตัว ตีมอนสเตอร์ให้อัตโนมัติ 2 นาทีครึ่ง • จ้างพร้อมกันได้สูงสุด 5 ตัว แบ่งเป้าหมายกัน • ไม่ใช้ Energy ได้ Zeny/EXP/ดรอปเหมือนผู้เล่นฆ่าเอง"},
+ mochi:{n:"Sakura Mochi",sell:0,fx:1,buff:"mochi",d:"🌸 ทำได้เฉพาะฤดูใบไม้ผลิ • โอกาสต้นทอง/รุ้ง x2 นาน 90 วินาที"},
+ soda:{n:"Melon Soda",sell:0,fx:1,buff:"soda",d:"☀️ ทำได้เฉพาะฤดูร้อน • ราคาขาย +20% นาน 90 วินาที"},
+ pie:{n:"Pumpkin Pie",sell:0,fx:1,buff:"pie",d:"🍂 ทำได้เฉพาะฤดูใบไม้ร่วง • EXP +60% นาน 90 วินาที"},
+ cocoa:{n:"Warm Berry Cocoa",sell:0,fx:1,buff:"cocoa",d:"❄️ ทำได้เฉพาะฤดูหนาว • พืชทุกชนิดโต x1.6 นาน 120 วินาที (ชดเชยโทษหน้าหนาว)"},
  egg:{n:"Egg",sell:70,d:"จากไก่ • ใช้ทำอาหารได้"},
  duckegg:{n:"Duck Egg",sell:130,d:"จากเป็ด • ใช้ทำขนมได้"},
  honey:{n:"Honey",sell:600,d:"จาก Bee Hive • ขาย 600z"},
@@ -199,6 +210,7 @@ S.stats=Object.assign({h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0,an:0,qc:0,ze:0},S.stat
 S.rk={c:Math.min(RANKS.length-1,Math.max(0,(S.rk&&Number.isInteger(S.rk.c)?S.rk.c:0)))};
 S.ss=S.ss&&typeof S.ss=="object"?S.ss:null;
 S.sh=(Array.isArray(S.sh)?S.sh:[]).filter(h=>h&&GRADES.some(x=>x.g===h.g)&&Number.isFinite(h.sp)&&Number.isInteger(h.s)&&h.s>=0&&h.s<4).slice(0,12);
+S.sq=S.sq&&typeof S.sq=="object"&&Array.isArray(S.sq.list)?S.sq:null; // [PATCH 1.13]
 S.sb=S.sb&&Number.isFinite(S.sb.sp)&&GRADES.some(x=>x.g===S.sb.g)?S.sb:null;
 S.ach=S.ach||{};S.bf=S.bf||{};S.gl=(Array.isArray(S.gl)?S.gl:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.8] time left (ms) of each hired golem, max 5
 S.gd=(Array.isArray(S.gd)?S.gd:S.gd>0?[S.gd]:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.7] time left (ms) of each hired gardener, max 5 (old single-number saves are converted)
@@ -250,7 +262,7 @@ function ui(){
 }
 function refreshSeeds(){
   const sel=$("seed");sel.innerHTML="";
-  CROPS.map((c,i)=>({c,i})).sort((a,b)=>a.c.t-b.c.t).forEach(({c,i})=>{const o=document.createElement("option");o.value=i;o.textContent=c.n+" x"+(S.inv["s_"+i]||0);sel.appendChild(o)});
+  CROPS.map((c,i)=>({c,i})).sort((a,b)=>a.c.t-b.c.t).forEach(({c,i})=>{const o=document.createElement("option");o.value=i;o.textContent=(c.se!==undefined?SEASONS[c.se].ic+" ":"")+c.n+" x"+(S.inv["s_"+i]||0);sel.appendChild(o)});
   sel.value=S.seed;
 }
 $("seed").onchange=e=>{S.seed=+e.target.value;tool="plant";markTool()};
@@ -268,6 +280,10 @@ function useEn(n){n=Math.ceil(n*SE().cost);if(S.en<n){SFX.bad();say("Energy ไ�
 
 /* ===== MODULE: Farming ===== */
 const need=k=>CROPS[k].t*1000;
+function cropGrow(k){ // growth speed multiplier of crop k right now (season + event + decor + rank + buffs; seasonal crops follow their own rule)
+  const se=CROPS[k].se;if(se===undefined)return SE().grow;
+  const si=seasonIdx();return si===se?SE().grow/SEASONS[si].grow*SE_HOME:SE().grow*SE_AWAY;
+}
 const stageOf=t=>t.g>=need(t.k)?3:t.g>need(t.k)*.5?2:1;
 /* Crop rarity roll: 0 Normal, 1 Golden (x5), 2 Rainbow (x15). LUK raises both chances. */
 function rollRar(){
@@ -348,7 +364,7 @@ function bag(){
 function eat(k){const d=DROPS[k];if(d.fx){const r=FX[k]();if(!r){SFX.bad();return}if(r==="tool")return /* [PATCH 1.1] fertilizer is consumed by the tool, not here */}else S.en=Math.min(maxEn(),S.en+Math.round(d.heal*(1+.3*has("bench"))));add(k,-1);SFX.coin();bag()}
 function shop(){
   let h=`<h3>🏪 Kafra / Tool Dealer</h3><div class="row"><b>Zeny: ${S.z}z</b></div><div style="font-size:12px;text-align:center;margin:4px 0">📈 เงินเฟ้อ: ราคาร้านค้า x${infl().toFixed(2)} (ขึ้นตามเลเวลและของตกแต่ง)</div>`;
-  CROPS.map((c,i)=>({c,i})).sort((a,b)=>a.c.t-b.c.t).forEach(({c,i})=>h+=`<div class="row"><span>${c.n} (${P(c.cost)}z)${c.lv?` <small>[Lv ${c.lv}]</small>`:""}<br><small>โต ${c.t}s • ขาย ${c.sell}z</small></span>${S.lv<(c.lv||0)?`<button disabled>🔒 Lv ${c.lv}</button>`:`<button onclick="buy('s_${i}',${P(c.cost)})">Buy</button>`}</div>`);
+  CROPS.map((c,i)=>({c,i})).sort((a,b)=>a.c.t-b.c.t).forEach(({c,i})=>h+=`<div class="row"><span>${c.n} (${P(c.cost)}z)${c.lv?` <small>[Lv ${c.lv}]</small>`:""}<br><small>โต ${c.t}s • ขาย ${c.sell}z</small>${c.se!==undefined?`<br><small style="color:${seasonIdx()==c.se?"#1f7a3a":"#c0182b"}">${SEASONS[c.se].ic} พืชประจำ${SEASONS[c.se].n}: ในฤดู x${SE_HOME} • นอกฤดู x${SE_AWAY}${seasonIdx()==c.se?" ✓ ตอนนี้โตดี":""}</small>`:""}</span>${S.lv<(c.lv||0)?`<button disabled>🔒 Lv ${c.lv}</button>`:`<button onclick="buy('s_${i}',${P(c.cost)})">Buy</button>`}</div>`);
   h+=`<div class="row"><span>Red Potion +50 Energy (${P(40)}z)</span><button onclick="buy('potion',${P(40)})">Buy</button></div>`;
   h+=`<div class="row"><span>Yggdrasil Dew (โต 100% ทันที) (${P(1500).toLocaleString()}z)</span><button onclick="buy('ygg_dew',${P(1500)})">Buy</button></div>`;
   h+=`<div class="row"><span>🧑‍🌾 Gardener Contract (ชาวสวน 1 คน 2:30 นาที สูงสุด 5 คน) (${P(2500).toLocaleString()}z)</span><button onclick="buy('gardener',${P(2500)})">Buy</button></div>`;
@@ -525,10 +541,12 @@ const SEASONS=[
  {n:"ฤดูร้อน",ic:"☀️",grow:1,sell:1.25,regen:.6,exp:1,dbl:0,rare:1,coin:0,sp:.7,g1:"#74b83c",g2:"#6aad34",g3:"#a8d655",tint:"rgba(255,190,40,.07)",
   s:"ขายได้แพงขึ้น +25%",fx:["ราคาขาย +25%","Energy ฟื้นช้าลง 40%","มอนสเตอร์มาถี่ขึ้น"],ev:"🐷 Poring Parade ฝูง Poring บุกฟาร์ม"},
  {n:"ฤดูใบไม้ร่วง",ic:"🍂",grow:1,sell:1,regen:1,exp:1.25,dbl:.15,rare:1,coin:.1,sp:1,g1:"#a9a447",g2:"#9e9a3f",g3:"#d9a441",pc:"#e8832a",ps:5,
-  s:"EXP +25% และผลผลิตคูณสองง่ายขึ้น",fx:["EXP +25%","ผลผลิตคูณสอง +15%","เหรียญกาชา +10%"],ev:"🎃 Harvest Festival EXP x2 นาน 30 วินาที"},
+  s:"EXP +25% และผลผลิตคูณสองง่ายขึ้น",fx:["EXP +25%","ผลผลิตคูณสอง +15%","เหรียญกาชา +10%","สัตว์ในคอกผลิตเร็ว +10%"],ev:"🎃 Harvest Festival EXP x2 นาน 30 วินาที"},
  {n:"ฤดูหนาว",ic:"❄️",grow:.6,sell:1,regen:1,exp:1,dbl:0,rare:1.3,coin:.25,sp:1.6,g1:"#d6e9dc",g2:"#cbe0d2",g3:"#ffffff",tint:"rgba(190,220,255,.14)",pc:"#ffffff",ps:3,
-  s:"พืชโตช้าแต่ได้เหรียญกาชาเยอะ",fx:["พืชโต -40%","เหรียญกาชา +25%","ต้นทอง/รุ้ง x1.3","มอนสเตอร์น้อยลง"],ev:"🎅 Santa Poring แจก Gacha Coin x2 + Red Potion"}];
+  s:"พืชโตช้าแต่ได้เหรียญกาชาเยอะ",fx:["พืชโต -40%","เหรียญกาชา +25%","ต้นทอง/รุ้ง x1.3","มอนสเตอร์น้อยลง","สัตว์ในคอกผลิตเร็ว +30%"],ev:"🎅 Santa Poring แจก Gacha Coin x2 + Red Potion"}];
 const seasonIdx=()=>((S.sx||0)/SEASON_MS|0)%4;
+SEASONS[2].barn=1.1;SEASONS[3].barn=1.3; // [PATCH 1.13] animals produce faster in autumn / winter
+const seasonN=()=>Math.floor((S.sx||0)/SEASON_MS);
 let curSe=seasonIdx();
 const PT=Array.from({length:40},()=>({x:Math.random()*W,y:Math.random()*W,v:.2+Math.random()*.5,p:Math.random()*6}));
 function drawFx(now,dt){ // seasonal particles, tint, event visuals and HUD banner
@@ -772,7 +790,11 @@ const BUFFS={
  feast:{n:"Herbal Feast",ic:"🍲",dur:90000,m:{exp:1.3}},
  lucky:{n:"Lucky Tea",ic:"🍀",dur:90000,m:{rare:1.5}},
  hearty:{n:"Hearty Soup",ic:"🥛",dur:120000,m:{exp:1.5}},
- cozy:{n:"Wool Scarf",ic:"🧣",dur:120000,m:{regen:2}}};
+ cozy:{n:"Wool Scarf",ic:"🧣",dur:120000,m:{regen:2}},
+ mochi:{n:"Sakura Mochi",ic:"🍡",dur:90000,m:{rare:2}},
+ soda:{n:"Melon Soda",ic:"🍈",dur:90000,m:{sell:1.2}},
+ pie:{n:"Pumpkin Pie",ic:"🥧",dur:90000,m:{exp:1.6}},
+ cocoa:{n:"Warm Berry Cocoa",ic:"☕",dur:120000,m:{grow:1.6}}};
 function applyBuffMods(){SEC.dmg=1;for(const id in S.bf){const b=BUFFS[id];if(!b){delete S.bf[id];continue}for(const k in b.m)SEC[k]=(SEC[k]||1)*b.m[k]}}
 function startBuff(id){const b=BUFFS[id];S.bf[id]=b.dur;rebuildSE();flo(240,200,b.ic+" "+b.n+"!","#7dffb0");say(b.ic+" "+b.n+" นาน "+b.dur/1000+" วินาที");return true}
 function tickBuffs(dt){let ch=0;for(const id in S.bf){if((S.bf[id]-=dt)<=0){const b=BUFFS[id];delete S.bf[id];ch=1;say((b?b.ic+" "+b.n:"Buff")+" หมดเวลา")}}if(ch)rebuildSE()}
@@ -824,7 +846,42 @@ function genQuest(taken){
 const dayKey=()=>{const d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
 function newDay(){S.q={d:dayKey(),rr:1,list:[]};for(let i=0;i<3;i++)S.q.list.push(genQuest(S.q.list.map(qKey)))}
 function ensureQuests(){if(!S.q||S.q.d!==dayKey()||!Array.isArray(S.q.list)||S.q.list.length!=3||!S.q.list.every(qValid)){newDay();say("📜 มีเควสต์ประจำวันใหม่แล้ว!");save()}}
-let qDayT=0;const tickQuestDay=dt=>{if((qDayT+=dt)>5000){qDayT=0;ensureQuests()}}; // check for midnight rollover every 5s
+/* ===== [PATCH 1.13] Season quests: 2 quests per season (renewed every season, bigger rewards than daily ones; finished ones are paid out automatically when the season ends)
+   S.sq = {n: season serial number, list: [quest, quest]}   */
+function makeSeasonQuests(si){
+  const sc=Math.min(3,1+.05*(S.lv-1)),Z=v=>Math.round(v*sc/10)*10,ci=CROPS.findIndex(c=>c.se===si),c=CROPS[ci],out=[];
+  if(c&&S.lv>=(c.lv||0)){const n=Math.max(5,Math.min(10,Math.round(2000/c.sell)));out.push({type:"harvest",tg:ci,need:n,rw:[["z",Math.round(n*c.sell*.9/10)*10],["coin",1],["fert",1]]})}
+  else out.push({type:"harvestAny",tg:null,need:12,rw:[["z",Z(600)],["coin",1]]});
+  out.push([
+   {type:"harvestRar",tg:1,need:2,rw:[["z",Z(900)],["coin",2]]},                                 // spring: golden crops are more likely
+   {type:"killAny",tg:null,need:12,rw:[["z",Z(800)],["coin",1],["scare",1]]},                     // summer: more monsters
+   {type:"harvestAny",tg:null,need:25,rw:[["z",Z(900)],["coin",1],["golden",1]]},                // autumn: double harvest
+   S.lv>=3?{type:"craft",tg:null,need:2,rw:[["z",Z(800)],["coin",2]]}:{type:"harvestAny",tg:null,need:10,rw:[["z",Z(700)],["coin",2]]} // winter: stay in the kitchen
+  ][si]);
+  return out.map(q=>Object.assign(q,{p:0,cl:0,sn:1}));
+}
+function ensureSeasonQuests(){
+  const n=seasonN(),ok=S.sq&&Number.isInteger(S.sq.n)&&Array.isArray(S.sq.list)&&S.sq.list.length==2&&S.sq.list.every(qValid);
+  if(ok&&S.sq.n===n)return;
+  let paid=0,tot=[];
+  if(ok)S.sq.list.forEach(q=>{if(!q.cl&&q.p>=q.need){giveReward(q.rw);q.cl=1;S.stats.qc++;paid++;tot=tot.concat(q.rw)}}); // never lose a finished quest
+  S.sq={n,list:makeSeasonQuests(seasonIdx())};
+  say(paid?"🌤 เควสต์ประจำฤดูที่ทำสำเร็จถูกจ่ายให้อัตโนมัติ ("+paid+" ข้อ) • เควสต์ประจำฤดูใหม่มาแล้ว!":"🌤 เควสต์ประจำฤดูใหม่มาแล้ว! ดูที่เมนู Quests");save();
+}
+function claimSeasonQuest(i){
+  const q=S.sq&&S.sq.list[i];if(!q||q.cl||q.p<q.need)return;
+  giveReward(q.rw);q.cl=1;S.stats.qc++;SFX.lvl();flo(240,210,"🎁 "+rwText(q.rw),"#ffe36a");save();questUI();
+}
+function seasonQHTML(){
+  ensureSeasonQuests();
+  const si=seasonIdx(),E=SEASONS[si],left=Math.ceil((SEASON_MS-(S.sx||0)%SEASON_MS)/1000),cr=CROPS.find(c=>c.se===si),rc=RECIPES.find(r=>r.se===si);
+  return `<div class="row" style="display:block;background:#ffe98a;border-radius:4px;padding:5px"><b>${E.ic} ${E.n}</b> • เหลืออีก ${left} วิ<br><small>เควสต์จะรีเซ็ตทุกฤดู • ที่ทำสำเร็จแต่ยังไม่รับ จะถูกจ่ายให้อัตโนมัติเมื่อจบฤดู</small></div>`+
+  S.sq.list.map((q,i)=>{const ok=q.p>=q.need;
+    return `<div class="row" style="${q.cl?"opacity:.55":""}"><span style="flex:1"><b>🌤 ${qText(q)}</b>${pbar(q.p,q.need,ok)}<small>${q.p}/${q.need} • 🎁 ${rwText(q.rw)}</small></span>
+    <button ${ok&&!q.cl?"":"disabled"} onclick="claimSeasonQuest(${i})">${q.cl?"✓":"Claim"}</button></div>`}).join("")+
+  `<div style="font-size:12px;margin-top:6px">${cr?`🌾 พืชประจำฤดู: <b>${cr.n}</b> โต x${SE_HOME} (ไม่โดนโทษฤดู) ขาย ${cr.sell}z`+(S.lv<cr.lv?` <small>[ปลดล็อก Lv ${cr.lv}]</small>`:""):""}<br>${rc?`🍳 สูตรพิเศษฤดูนี้: <b>${DROPS[rc.out[0]].n}</b> — ${DROPS[rc.out[0]].d.split(" • ").slice(1).join(" • ")}`:""}</div>`;
+}
+let qDayT=0;const tickQuestDay=dt=>{if((qDayT+=dt)>5000){qDayT=0;ensureQuests();ensureSeasonQuests()}}; // check for midnight rollover every 5s
 
 /* track(): single entry point called from the harvest / monster-kill / craft code. Updates lifetime stats + today's quests. */
 function track(ev,d){
@@ -834,7 +891,7 @@ function track(ev,d){
   else if(ev=="kill"){st.k++;st.kc[d.ty]=(st.kc[d.ty]||0)+1}
   else if(ev=="craft")st.cr+=n;
   else if(ev=="barn")st.an+=n;
-  S.q.list.forEach(q=>{
+  S.q.list.concat(S.sq?S.sq.list:[]).forEach(q=>{
     if(q.cl||q.p>=q.need||!qMatch(q,ev,d))return;
     q.p=Math.min(q.need,q.p+n);
     if(q.p>=q.need){flo(240,170,"📜 เควสต์สำเร็จ!","#7dffb0");say("📜 เควสต์สำเร็จ: "+qText(q)+" • กดรับรางวัลที่เมนู Quests");SFX.coin()}
@@ -871,7 +928,7 @@ const ACH=[
   tiers:GRID.ups.map((u,i)=>[u.size,[["coin",i+1],["z",Math.round(u.cost*.1/100)*100]]])}]; // auto-grows with GRID.ups
 const achTier=a=>a.tiers[S.ach[a.id]||0];
 const achReady=()=>ACH.filter(a=>{const t=achTier(a);return t&&a.val()>=t[0]});
-const claimable=()=>S.q.list.filter(q=>!q.cl&&q.p>=q.need).length+achReady().length+(S.rk.c<rankIdx()?1:0);
+const claimable=()=>S.q.list.concat(S.sq?S.sq.list:[]).filter(q=>!q.cl&&q.p>=q.need).length+achReady().length+(S.rk.c<rankIdx()?1:0);
 const annc=new Set();                                  // announce each ready achievement only once per session
 function checkAch(){achReady().forEach(a=>{const k=a.id+(S.ach[a.id]||0);if(!annc.has(k)){annc.add(k);flo(240,185,"🏆 "+a.n+" ✓","#ffd84a");say("🏆 Achievement พร้อมรับรางวัล: "+a.n)}})}
 function claimAch(id){
@@ -899,7 +956,7 @@ function achHTML(){
 }
 function questUI(tab){
   if(tab)qTab=tab;ensureQuests();
-  modal(`<h3>📜 Quests</h3><div style="display:flex;gap:4px;margin-bottom:6px"><button class="${qTab=="d"?"on":""}" onclick="questUI('d')">📜 Daily</button><button class="${qTab=="a"?"on":""}" onclick="questUI('a')">🏆 Achievements</button></div>`+(qTab=="d"?dailyHTML():achHTML()));
+  modal(`<h3>📜 Quests</h3><div style="display:flex;gap:4px;margin-bottom:6px"><button class="${qTab=="d"?"on":""}" onclick="questUI('d')">📜 Daily</button><button class="${qTab=="s"?"on":""}" onclick="questUI('s')">🌤 Season</button><button class="${qTab=="a"?"on":""}" onclick="questUI('a')">🏆 Achievements</button></div>`+(qTab=="d"?dailyHTML():qTab=="s"?seasonQHTML():achHTML()));
 }
 
 /* ===== [PATCH 1.1] MODULE 4: Crafting & Cooking =====
@@ -915,6 +972,11 @@ const RECIPES=[
  {id:"omelet",cat:"cook",ic:"🍳",lv:3,out:["omelet",1],ing:[["egg",2],["c_1",1]]},                     // Egg x2 + Red Herb          -> Herb Omelet (+80 Energy)
  {id:"soup",cat:"cook",ic:"🥛",lv:6,out:["soup",1],ing:[["milk",1],["egg",1],["c_2",1]]},          // Milk + Egg + Yellow Herb   -> Hearty Soup (EXP +50%)
  {id:"scarf",cat:"craft",ic:"🧣",lv:8,out:["scarf",1],ing:[["wool",2],["jelopy",2]]},              // Wool x2 + Jelopy x2        -> Wool Scarf (Energy regen x2)
+ /* [PATCH 1.13] seasonal dishes: se = season index in which it can be cooked (cheap, but only that season) */
+ {id:"mochi",cat:"cook",ic:"🍡",lv:4,se:0,out:["mochi",1],ing:[["c_7",2],["jelopy",1]]},          // Sakura Bud x2 + Jelopy      (spring only)
+ {id:"soda",cat:"cook",ic:"🍈",lv:4,se:1,out:["soda",1],ing:[["c_8",2],["jelopy",1]]},            // Sun Melon x2 + Jelopy       (summer only)
+ {id:"pie",cat:"cook",ic:"🥧",lv:4,se:2,out:["pie",1],ing:[["c_9",2],["jelopy",2]]},              // Harvest Pumpkin x2 + Jelopy x2 (autumn only)
+ {id:"cocoa",cat:"cook",ic:"☕",lv:4,se:3,out:["cocoa",1],ing:[["c_10",2],["jelopy",2]]},          // Frost Berry x2 + Jelopy x2  (winter only)
  {id:"cheese",cat:"cook",ic:"🧀",lv:10,out:["cheese",1],ing:[["milk",2]]},                          // Milk x2                 -> Cheese (sell 1,100)
  {id:"cake",cat:"cook",ic:"🍰",lv:8,out:["cake",1],ing:[["egg",2],["duckegg",1],["milk",1]]},        // Egg x2 + Duck Egg + Milk -> Sunny Cake (sell 900)
  {id:"cloth",cat:"craft",ic:"🧵",lv:9,out:["cloth",1],ing:[["wool",3]]},                              // Wool x3                 -> Wool Cloth (sell 750)
@@ -923,14 +985,15 @@ const RCAT={craft:"⚗ Crafting",cook:"🍳 Cooking"};
 const craftMax=r=>Math.min(99,...r.ing.map(([k,q])=>Math.floor((S.inv[k]||0)/q)));
 function craft(id,n){
   const r=RECIPES.find(x=>x.id==id);if(!r||S.lv<(r.lv||0))return;
+  if(r.se!==undefined&&seasonIdx()!==r.se){SFX.bad();say("🗓 สูตรนี้ทำได้เฉพาะ"+SEASONS[r.se].n+"เท่านั้น");return}
   n=Math.min(n,craftMax(r));if(n<1){SFX.bad();return}
   r.ing.forEach(([k,q])=>add(k,-q*n));add(r.out[0],r.out[1]*n);       // deduct ingredients, add product
   track("craft",{n});SFX.craft();flo(240,240,"+"+DROPS[r.out[0]].n+" x"+r.out[1]*n,"#b8f0ff");save();craftUI();
 }
 function recipeRow(r){
-  const [ok,oq]=r.out,o=DROPS[ok],mx=craftMax(r),lock=S.lv<(r.lv||0);
+  const [ok,oq]=r.out,o=DROPS[ok],lock=S.lv<(r.lv||0),off=r.se!==undefined&&seasonIdx()!==r.se,mx=off?0:craftMax(r);
   const ing=r.ing.map(([k,q])=>{const h=S.inv[k]||0;return `<small style="color:${h>=q?"#1f7a3a":"#c0182b"}">${nm2(k)} ${h}/${q}</small>`}).join(" + ");
-  return `<div class="row" style="${lock?"opacity:.6":""}"><span style="flex:1">${r.ic} <b>${o.n}</b>${oq>1?" x"+oq:""}<br><small>${o.d}</small><br>${ing}</span>
+  return `<div class="row" style="${lock?"opacity:.6":""}"><span style="flex:1">${r.ic} <b>${o.n}</b>${oq>1?" x"+oq:""}${r.se!==undefined?` <small style="color:${off?"#c0182b":"#1f7a3a"}">[${SEASONS[r.se].ic} เฉพาะ${SEASONS[r.se].n}${off?" • ตอนนี้ทำไม่ได้":""}]</small>`:""}<br><small>${o.d}</small><br>${ing}</span>
   <span style="display:flex;flex-direction:column;gap:3px">${lock?`<button disabled>🔒 Lv ${r.lv}</button>`:`<button ${mx?"":"disabled"} onclick="craft('${r.id}',1)">Craft</button>`+(mx>1?`<button onclick="craft('${r.id}',${mx})">Max ×${mx}</button>`:"")}</span></div>`;
 }
 function craftUI(){
@@ -1227,6 +1290,11 @@ function drawBarn(now){ // little barn in the right margin; tap it to open the B
   if(rd){const p=Math.sin(now/180)*2;ell(x+40,y-2+p,9,9,"#ffd84a");g.fillStyle="#6b3a00";g.font="bold 12px Tahoma,sans-serif";g.textAlign="center";g.fillText(rd,x+40,y+2+p);g.textAlign="left"}
 }
 
+SEASONS.forEach((e,i)=>{ // [PATCH 1.13] advertise the season crop + dish in the Seasons panel
+  const c=CROPS.find(x=>x.se===i),r=RECIPES.find(x=>x.se===i);
+  if(c)e.fx.push(e.ic+" "+c.n+" โต x"+SE_HOME+" (ไม่โดนโทษฤดู)");if(r)e.fx.push("สูตรพิเศษ: "+DROPS[r.out[0]].n);
+});
+
 /* ===== [PATCH 1.11] MODULE 8: Rank (Ranch Points + career ranks + season grades) ===== */
 const rankPts=()=>Math.floor(RP_W.reduce((t,r)=>t+r[2]*Math.max(0,r[3]()||0),0));
 const rankIdx=()=>{const p=rankPts();let r=0;RANKS.forEach((x,i)=>{if(p>=x.at)r=i});return r};
@@ -1234,7 +1302,7 @@ const trackTier=t=>{const v=Math.max(0,t.val()||0);let r=0;t.tiers.forEach((x,i)
 const tkTier=id=>trackTier(TRACKS.find(t=>t.id==id));
 function applyRankPerks(){ // permanent bonuses; called at the end of rebuildSE()
   SEC.grow*=1+.015*tkTier("farmer");SEC.dmg*=1+.05*tkTier("hunter");SEC.exp*=1+.02*tkTier("chef");
-  SEC.barn=1+.05*tkTier("rancher");SEC.sell*=1+.01*S.rk.c;
+  SEC.barn=(SEC.barn||1)*(1+.05*tkTier("rancher"));SEC.sell*=1+.01*S.rk.c;
 }
 let rkTiers=[],rkSig="";
 const rkSigNow=()=>TRACKS.map(trackTier).join(",")+"|"+S.rk.c;
@@ -1323,7 +1391,7 @@ function hud(){ // called from ui() every frame; throttled to 4x/sec and only to
 }
 function initPatch(){
   if(!S.ss)S.ss=ssNow();rkTiers=TRACKS.map(trackTier);rkSig=rkSigNow();
-  ensureQuests();achReady().forEach(a=>annc.add(a.id+(S.ach[a.id]||0))); // don't announce achievements earned before this patch
+  ensureQuests();ensureSeasonQuests();achReady().forEach(a=>annc.add(a.id+(S.ach[a.id]||0))); // don't announce achievements earned before this patch
   adminInit(); // [PATCH 1.3] hidden admin entry + listeners
   stabilityInit(); // [PATCH 1.4]
   $("bExpand").onclick=expandUI;$("bQuest").onclick=()=>questUI();$("bCraft").onclick=craftUI;$("bBarn").onclick=barnUI;$("bRank").onclick=()=>rankUI();
@@ -1499,6 +1567,7 @@ const ADMCMD={
  rp:a=>{const n=num(a,-1e6,1e6);S.stats.h=Math.max(0,S.stats.h+n);return "แต้มฟาร์ม "+(n>=0?"+":"")+n+" (ปรับจากสถิติเก็บเกี่ยว)"},
  rkreset:()=>{S.rk.c=0;annc.forEach(k=>{if(String(k).startsWith("rk"))annc.delete(k)});rebuildSE();return "รีเซ็ตรางวัลแรงก์ที่รับแล้ว"},
  grade:()=>{const t=gradeSeason(seasonIdx());return t||"สร้างสแนปช็อตฤดูกาลแล้ว"},
+ sqreset:()=>{S.sq=null;ensureSeasonQuests();return "สร้างเควสต์ประจำฤดูใหม่"},
  nobuff:()=>{S.bf={};S.gd=[];GW.length=0;S.gl=[];GL.length=0;rebuildSE();return "ล้างบัฟทั้งหมด"},
  /* farm */
  expand:()=>{const u=nextGrid();if(!u)throw new Error("ไม่มีขั้นถัดไปใน GRID.ups (ใช้ 'ขยายเป็น' แทน)");applyExpand(u);return "ขยายฟาร์มเป็น "+u.size+"×"+u.size+" (ฟรี)"},
@@ -1609,7 +1678,7 @@ function admRender(resetScroll){
      H("เควสต์วันนี้")+S.q.list.map((q,i)=>`<div class="row"><span style="flex:1;font-size:12px">${i+1}. ${qText(q)} <b>${q.p}/${q.need}</b>${q.cl?" ✓รับแล้ว":""}</span>${B("สำเร็จ","qone",i)}${B("เปลี่ยน","qrep",i)}</div>`).join("")+
      G(B("สุ่มใหม่ทั้งหมด","qnew")+B("ทำครบทุกข้อ","qdone")+B("รีเซ็ต Stats/Achv","resetstats"));
   }else if(admTab=="w"){
-    h+=H("ฤดูกาล")+G(SEASONS.map((e,i)=>B(e.ic+" "+e.n,"season",i)).join("")+B("+30s","skip",30)+B("+120s","skip",120)+B("🏅 ตัดเกรดตอนนี้","grade"))+
+    h+=H("ฤดูกาล")+G(SEASONS.map((e,i)=>B(e.ic+" "+e.n,"season",i)).join("")+B("+30s","skip",30)+B("+120s","skip",120)+B("🏅 ตัดเกรดตอนนี้","grade")+B("🌤 รีเซ็ตเควสต์ฤดู","sqreset"))+
      H("อีเวนต์")+G(Object.keys(EVENTS).map(k=>{const E=EVENTS[k];return B((E.h?"⚠ ":"")+E.ic+" "+E.n,"ev",k)}).join("")+B("⏹ จบอีเวนต์","endev"))+
      H("มอนสเตอร์")+G(Object.keys(MON).map(k=>B("เสก "+MON[k].n,"mon",k)).join("")+B("ลบทั้งหมด","clearmon"));
   }else{
@@ -1651,7 +1720,7 @@ function frameBody(now){
   tickBuffs(dt);tickGardener(dt);tickGolem(dt);tickBarn(dt);tickQuestDay(dt); // [PATCH 1.1]
   if(S.ev){const e=EVENTS[S.ev.id];S.ev.l-=dt;e.tk&&e.tk(dt);if(S.ev.l<=0)endEv()}
   else if((evT-=dt)<=0)startEv(pickEv(si));
-  S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*SE().grow*(t.f?2:1))});
+  S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*cropGrow(t.k)*(t.f?2:1))});
   spawnT-=dt;if(spawnT<=0){spawn();spawnT=(10000+Math.random()*12000)*SE().sp}
   mons.forEach(m=>updMon(m,dt));
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.l-=dt;f.y-=dt*.03;if(f.l<=0)floats.splice(i,1)}
