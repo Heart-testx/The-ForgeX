@@ -103,7 +103,9 @@ const itemSell=k=>k[1]=="_"?CROPS[+k.slice(2)].sell*CR[k[0]].m:DROPS[k].sell;
 const fresh=()=>({z:200,exp:0,lv:1,pt:0,str:1,dex:1,luk:1,en:100,inv:{s_0:5},seed:0,
   gs:GRID.start, // [PATCH 1.1] grid size saved in state
   tiles:Array.from({length:GRID.start**2},()=>({st:0}))});
-let S;try{S=JSON.parse(localStorage.getItem("rmr_save"))||fresh()}catch(e){S=fresh()}
+let S;try{S=JSON.parse(localStorage.getItem("rmr_save"))}catch(e){S=null}
+/* [PATCH 1.4] an unreadable/invalid save is never silently overwritten: the raw text is kept in rmr_save_corrupt (Admin > Data can show it) */
+if(!S||!Array.isArray(S.tiles)||!S.tiles.length||typeof S.z!="number"||typeof S.lv!="number"||!S.inv){try{const raw=localStorage.getItem("rmr_save");if(raw)localStorage.setItem("rmr_save_corrupt",raw)}catch(e){}S=fresh()}
 S.tiles.forEach(t=>{if(t.shiny&&t.rar===undefined)t.rar=1}); // migrate old saves
 S.dec=S.dec||{}; // owned decorations {key:1}
 /* [PATCH 1.1] new state fields + migration for old saves
@@ -111,13 +113,14 @@ S.dec=S.dec||{}; // owned decorations {key:1}
    q = today's quests, ach = claimed achievement tiers, bf = active buffs {id:msLeft} */
 S.gs=S.gs||Math.round(Math.sqrt(S.tiles.length))||GRID.start;setGrid(S.gs);
 S.stats=Object.assign({h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0},S.stats);
-S.ach=S.ach||{};S.bf=S.bf||{};S.golem=S.golem||0; // [PATCH 1.3] golem ms left
+S.ach=S.ach||{};S.bf=S.bf||{};
 const has=k=>S.dec[k]?1:0;
 // Money sinks: shop prices inflate with level and owned decorations; Sell All is taxed; decorations cost upkeep each season
 const TAX=.08;
 const infl=()=>1+.04*(S.lv-1)+.03*Object.keys(S.dec).length;
 const P=c=>Math.max(5,Math.round(c*infl()/5)*5);
-const save=()=>{try{localStorage.setItem("rmr_save",JSON.stringify(S))}catch(e){}};
+let SAVE_LOCK=false; // [PATCH 1.4] true while the page is about to reload (admin import/restore/reset): nothing may overwrite the save then
+const save=()=>{if(SAVE_LOCK)return;try{localStorage.setItem("rmr_save",JSON.stringify(S))}catch(e){}};
 setInterval(save,4000);addEventListener("beforeunload",save);
 const maxEn=()=>100+(S.lv-1)*5+has("chimney")*10, needExp=()=>30+S.lv*25;
 const add=(k,n=1)=>{S.inv[k]=(S.inv[k]||0)+n;if(S.inv[k]<=0)delete S.inv[k]};
@@ -692,6 +695,8 @@ const QUEST_POOL=[
  {w:1.5,ok:()=>S.lv>=4,make:()=>({type:"harvestRar",tg:1,need:1,rw:[["z",400],["coin",1]]})},                       // Golden or better
  {w:.7,ok:()=>S.lv>=8,make:()=>({type:"harvestRar",tg:2,need:1,rw:[["coin",2],["golden",1],["z",800]]})}];          // Rainbow
 const qKey=q=>q.type+":"+q.tg;
+const qValid=q=>!!q&&Number.isFinite(q.p)&&Number.isFinite(q.need)&&q.need>0&&Array.isArray(q.rw)&&q.rw.every(r=>r[0]=="z"||!!DROPS[r[0]])&&
+ (q.type=="harvest"?!!CROPS[q.tg]:q.type=="kill"?!!MON[q.tg]:["harvestAny","harvestRar","killAny","craft"].includes(q.type)); // [PATCH 1.4]
 const qText=q=>({ // lazy functions: only the entry for q.type is evaluated
  harvest:()=>`เก็บเกี่ยว ${crn(q.tg)} ${q.need} ชิ้น`,
  harvestAny:()=>`เก็บเกี่ยวผลผลิตอะไรก็ได้ ${q.need} ชิ้น`,
@@ -711,7 +716,7 @@ function genQuest(taken){
 }
 const dayKey=()=>{const d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
 function newDay(){S.q={d:dayKey(),rr:1,list:[]};for(let i=0;i<3;i++)S.q.list.push(genQuest(S.q.list.map(qKey)))}
-function ensureQuests(){if(!S.q||S.q.d!==dayKey()||!S.q.list||S.q.list.length!=3){newDay();say("📜 มีเควสต์ประจำวันใหม่แล้ว!");save()}}
+function ensureQuests(){if(!S.q||S.q.d!==dayKey()||!Array.isArray(S.q.list)||S.q.list.length!=3||!S.q.list.every(qValid)){newDay();say("📜 มีเควสต์ประจำวันใหม่แล้ว!");save()}}
 let qDayT=0;const tickQuestDay=dt=>{if((qDayT+=dt)>5000){qDayT=0;ensureQuests()}}; // check for midnight rollover every 5s
 
 /* track(): single entry point called from the harvest / monster-kill / craft code. Updates lifetime stats + today's quests. */
@@ -817,94 +822,46 @@ function craftUI(){
    `<div style="font-size:12px;text-align:center;margin-top:6px">ใช้ผลผลิตแบบธรรมดาเท่านั้น (Golden/Rainbow จะไม่ถูกใช้) • ของที่ได้ใช้ได้จากเมนู Inventory</div>`);
 }
 
-/* =====================================================================================================
-   [PATCH 1.3]  SCARECROW GOLEM (หุ่นไล่กาโกเรม)
-   - Craft it in the ⚗ Craft menu (category "Golem Crafting"), then press Use in the Inventory.
-   - The golem runs by itself for GOLEM.dur ms (3 minutes): chases the nearest monster (monsters that are
-     eating crops get priority), hits it automatically, and every kill pays out normally (Zeny / EXP / drops / quests).
-   - It costs no Energy. Time left is saved in S.golem, so it keeps going after a reload.
-   - Tweak GOLEM {dur, spd, rng, cd, lv} and the recipe below to rebalance.
-   ===================================================================================================== */
-const GOLEM={dur:180000,spd:.11,rng:30,cd:550,lv:6}; // dur = ms active, spd = px/ms, rng = hit range px, cd = ms between hits, lv = craft level
-DROPS.golem={n:"Scarecrow Golem",sell:0,fx:1,d:"อัญเชิญหุ่นไล่กาโกเรม ไล่ฆ่ามอนสเตอร์อัตโนมัติ 3 นาที"};
-RECIPES.push({id:"golem",cat:"golem",ic:"🎃",lv:GOLEM.lv,out:["golem",1],ing:[["jelopy",15],["clover",3],["apple",3],["c_2",3]]}); // Jelopy x15 + Clover x3 + Apple x3 + Yellow Herb x3
-RCAT.golem="🎃 Golem Crafting";
-let GL=null; // runtime golem body (position etc.); not saved
-const newGL=()=>({x:OX+N*T/2,y:OY+N*T+34,f:1,ph:0,cd:0,sw:0,wx:0,wy:0,wt:0});
-function summonGolem(){
-  if(S.golem>0){say("🎃 Golem กำลังทำงานอยู่ อีก "+Math.ceil(S.golem/1000)+" วินาที");return false}
-  S.golem=GOLEM.dur;GL=newGL();SFX.craft();flo(GL.x,GL.y-48,"🎃 Golem!","#ffb84a");
-  say("🎃 หุ่นไล่กาโกเรมตื่นแล้ว! ไล่ฆ่ามอนสเตอร์ให้นาน "+GOLEM.dur/60000+" นาที");return true}
-FX.golem=summonGolem;
-function tickGolem(dt){
-  if(!(S.golem>0))return;
-  if(!GL)GL=newGL();
-  if((S.golem-=dt)<=0){S.golem=0;flo(GL.x,GL.y-48,"🎃 Golem หมดเวลา","#ffb84a");say("🎃 หุ่นไล่กาโกเรมหมดเวลาแล้ว");GL=null;save();return}
-  GL.ph+=dt/150;GL.cd=Math.max(0,GL.cd-dt);GL.sw=Math.max(0,GL.sw-dt);
-  let tg=null,bs=1e9;
-  for(const m of mons){const s=Math.hypot(m.x-GL.x,m.y-GL.y)-(m.eat>0?150:0);if(s<bs){bs=s;tg=m}} // monsters eating crops come first
-  let tx,ty,stop;
-  if(tg){tx=tg.x;ty=tg.y+10;stop=GOLEM.rng-8}
-  else{ // no monsters: stroll slowly around the farm
-    if((GL.wt-=dt)<=0){GL.wt=2500+Math.random()*2500;GL.wx=OX+Math.random()*N*T;GL.wy=OY+Math.random()*N*T}
-    tx=GL.wx;ty=GL.wy;stop=6}
-  const d=Math.hypot(tx-GL.x,ty-GL.y);
-  if(d>stop){const sp=Math.min(d,dt*GOLEM.spd*(tg?1:.35));if(Math.abs(tx-GL.x)>2)GL.f=tx>GL.x?1:-1;GL.x+=(tx-GL.x)/d*sp;GL.y+=(ty-GL.y)/d*sp}
-  if(tg&&GL.cd<=0&&Math.hypot(tg.x-GL.x,tg.y-GL.y)<=GOLEM.rng){
-    GL.cd=GOLEM.cd;GL.sw=220;GL.f=tg.x>=GL.x?1:-1;
-    const dmg=Math.round((10+S.str*2+(Math.random()*5|0))*(1+.25*has("dummy")));
-    tg.hp-=dmg;tg.hit=150;SFX.hit();flo(tg.x,tg.y-26,"-"+dmg,"#ffd27a");
-    if(tg.hp<=0)die(tg)}
-}
-function drawGolem(now){
-  if(!(S.golem>0)||!GL)return;
-  const b=Math.abs(Math.sin(GL.ph))*3,x=GL.x,y=GL.y-b,sw=GL.sw>0;
-  ell(x,GL.y+17,15,5,"#0004");
-  g.save();g.translate(x,y);g.scale(GL.f,1);
-  rect(-8,6,5,12,"#8b5a2b");rect(3,6,5,12,"#8b5a2b");rect(-10,17,8,3,"#5a3a1c");rect(2,17,8,3,"#5a3a1c"); // legs + feet
-  rect(-11,-16,22,22,"#c9a45a");rect(-6,-10,6,6,"#a8743a");rect(2,-4,5,5,"#b58a45");                          // burlap body + patches
-  g.strokeStyle="#5a3a1c";g.lineWidth=1;g.strokeRect(-5.5,-9.5,5,5);
-  rect(-11,0,22,3,"#7a4a21");rect(-2,-1,4,5,"#e0b030");                                                        // belt
-  rect(-26,-14,15,4,"#8b5a2b");rect(-30,-18,5,11,"#f2d24a");rect(-28,-20,2,4,"#f2d24a");                       // back arm + straw hand
-  if(sw){rect(10,-8,18,4,"#8b5a2b");rect(26,-14,6,14,"#f2d24a");g.fillStyle="#fff8";g.beginPath();g.arc(30,-6,12,-1.2,1.2);g.lineTo(30,-6);g.fill()} // attack swing
-  else{rect(10,-14,15,4,"#8b5a2b");rect(24,-18,5,11,"#f2d24a")}
-  ell(0,-26,11,11,"#e6c27a");                                                                                    // sack head
-  rect(-5,-29,3,4,"#ffb000");rect(2,-29,3,4,"#ffb000");                                                          // glowing eyes
-  g.strokeStyle="#5a3a1c";g.beginPath();g.moveTo(-5,-20);g.lineTo(5,-20);g.stroke();for(let i=-4;i<=4;i+=3){g.beginPath();g.moveTo(i,-22);g.lineTo(i,-18);g.stroke()} // stitched mouth
-  rect(-15,-35,30,4,"#6e4520");rect(-8,-47,16,13,"#6e4520");rect(-8,-39,16,3,"#c9302c");                         // straw hat
-  g.restore();
-  rect(x-16,y-56,32,5,"#432");rect(x-15,y-55,30*S.golem/GOLEM.dur,3,"#ffb84a");                                  // time-left bar
-}
-
 /* ===== [PATCH 1.1] HUD + init ===== */
 const setTxt=(id,t)=>{const e=$(id);if(e.textContent!==t)e.textContent=t};
 let bfCache="";
-function hud(){ // called from ui() every frame; only touches the DOM when something changed
+let hudT=0;
+function hud(){ // called from ui() every frame; throttled to 4x/sec and only touches the DOM when something changed
   if(!S.q)return;
+  const nw=performance.now();if(nw-hudT<250)return;hudT=nw;
+  if(ADMIN&&Date.now()-admLast>ADMIN_IDLE_MS)adminLogout("🔒 Admin หมดเวลา (ไม่มีการใช้งาน 15 นาที)");
   checkAch();
   const n=claimable(),u=nextGrid();
   setTxt("bExpand",u?"🌾 Expand Farm ("+S.gs+"×"+S.gs+")":"🌾 Farm "+S.gs+"×"+S.gs+" (MAX)");
   $("bExpand").classList.toggle("on",canExpand());
   setTxt("bQuest","📜 Quests"+(n?" ("+n+"❗)":""));$("bQuest").classList.toggle("on",n>0);
   setTxt("bFert","🧪 Fert ("+(S.inv.fert||0)+")");
-  const h=(ADMIN?`<span class="chip" style="background:#ffc9c9">🛠 ADMIN</span>`:"")+(S.golem>0?`<span class="chip" style="background:linear-gradient(#ffe9b0,#ffb84a)">🎃 Golem ${Math.ceil(S.golem/1000)}s</span>`:"")+Object.keys(S.bf).map(id=>`<span class="chip">${BUFFS[id].ic} ${BUFFS[id].n} ${Math.ceil(S.bf[id]/1000)}s</span>`).join("");
+  const h=(ADMIN?`<span class="chip" style="background:#ffc9c9">🛠 ADMIN</span>`:"")+Object.keys(S.bf).map(id=>`<span class="chip">${BUFFS[id].ic} ${BUFFS[id].n} ${Math.ceil(S.bf[id]/1000)}s</span>`).join("");
   if(h!==bfCache){bfCache=h;$("buffs").innerHTML=h}
 }
 function initPatch(){
   ensureQuests();achReady().forEach(a=>annc.add(a.id+(S.ach[a.id]||0))); // don't announce achievements earned before this patch
-  $("lv").onclick=adminTap; // [PATCH 1.2] hidden admin entry: tap the "Lv" label 7 times
+  adminInit(); // [PATCH 1.3] hidden admin entry + listeners
+  stabilityInit(); // [PATCH 1.4]
   $("bExpand").onclick=expandUI;$("bQuest").onclick=()=>questUI();$("bCraft").onclick=craftUI;
 }
 
 /* =====================================================================================================
-   [PATCH 1.2]  ADMIN SYSTEM  (hidden from normal players)
-   - Open: tap the "Lv" label in the top bar 7 times quickly -> enter the passcode. Admin state is NOT saved,
-     so it ends when the page reloads.
-   - Change the passcode: open the browser console, run  adminHash("your new passcode")  and paste the number into ADMIN_HASH.
-   - NOTE: this is a client-side game, so this only keeps casual players out. Anyone who edits the page or localStorage can
-     still cheat; real protection needs a server.
+   [PATCH 1.4]  STABILITY + ADMIN SYSTEM v3  (admin is hidden from normal players)
+   Open:   tap the "Lv" label 7 times quickly (or Alt+Shift+A on desktop) -> enter the passcode.
+   Stability (1.4): game loop survives a bad frame, saves are locked while reloading, backups are verified (3 auto + 1 manual),
+           imports are fully validated, unreadable saves are kept for recovery, Admin > Data has Diagnose/Repair + error log.
+   Safety: admin state is never saved, auto-logout after 15 min idle, 5 wrong passcodes lock login for 5 min (survives reload),
+           every change is preceded by an automatic backup, destructive buttons need a second press to confirm.
+   Passcode: run  adminHash("new passcode")  in the browser console and paste the number into ADMIN_HASH.
+   NOTE: this is a client-side game - it keeps casual players out, it cannot stop someone who edits the page or localStorage.
+   Add a tool: add one function to ADMCMD (return a message string, or throw Error("reason") for bad input),
+               then add a button in adminUI() with  B(label, "command", argOrUndefined, "inputIdsToRead").
    ===================================================================================================== */
 const ADMIN_HASH=903635439638604;                       // hash of the default passcode "RMR-Admin-1.2"  <- CHANGE BEFORE RELEASE
+const ADMIN_IDLE_MS=15*60*1000, ADMIN_LOCK_MS=5*60*1000, ADMIN_MAX_FAILS=5, ADM_CONFIRM_MIN=500, ADM_BAK_KEEP=3;
+let ADM_RELOAD_MS=8000;
+const ADM_LOCKK="rmr_adm_lock", ADM_EPOCHK="rmr_admin_epoch", ADM_BAK={man:"rmr_admin_bak_man",auto:"rmr_admin_bak_auto"};
 function adminHash(str,seed=0){                          // cyrb53 string hash (not cryptographic; keeps the passcode out of plain sight)
   let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;
   for(let i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}
@@ -912,71 +869,289 @@ function adminHash(str,seed=0){                          // cyrb53 string hash (
   h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return 4294967296*(2097151&h2)+(h1>>>0);
 }
-let admTaps=0,admT=0,admFail=0,admTab="c";
-function adminTap(){
-  const n=performance.now();admTaps=n-admT<1500?admTaps+1:1;admT=n;
-  if(admTaps>=7){admTaps=0;ADMIN?adminUI():adminLogin()}
+/* ---- [PATCH 1.4] error log + reload lock + cross-tab sync ---- */
+const ERRLOG=[];let errN=0;
+function noteErr(src,e){ // called by the frame guard, window.onerror and the admin panel; never throws
+  try{
+    errN++;const m=(e&&e.message)||String(e),l=ERRLOG[0];
+    if(l&&l.src==src&&l.m==m){l.n++;l.t=Date.now()}else{ERRLOG.unshift({t:Date.now(),src,m,n:1});ERRLOG.length=Math.min(ERRLOG.length,10)}
+    if(errN<=3||errN%200==0)console.error("["+src+"]",e);
+    if(errN==5)say("⚠ เกิดข้อผิดพลาดซ้ำ ลองรีโหลดหน้า (แอดมินดูรายละเอียดได้)");
+  }catch(_){}
 }
+/* admReload(write): lock saving, run write() (localStorage change), tell other tabs, reload. If the reload never happens, unlock again. */
+function admReload(write){
+  SAVE_LOCK=true;removeEventListener("beforeunload",save);
+  try{if(write){write();lsSet(ADM_EPOCHK,Date.now())}location.reload()}catch(e){SAVE_LOCK=false;addEventListener("beforeunload",save);throw e}
+  setTimeout(()=>{SAVE_LOCK=false;addEventListener("beforeunload",save);say("⚠ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง (ปลดล็อกการบันทึกแล้ว)");if(ADMIN){admNote("✗ รีโหลดหน้าไม่สำเร็จ — กดรีเฟรชเอง",0);adminUI()}},ADM_RELOAD_MS);
+}
+function stabilityInit(){
+  addEventListener("error",ev=>noteErr("window",ev.error||ev.message));
+  addEventListener("unhandledrejection",ev=>noteErr("promise",ev.reason));
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)save()}); // mobile browsers often skip beforeunload
+  addEventListener("pagehide",save);
+  addEventListener("storage",e=>{if(e.key===ADM_EPOCHK&&e.newValue&&!SAVE_LOCK)admReload(null)}); // another tab changed the save via Admin -> reload, never overwrite it
+}
+
+/* ---- small helpers ---- */
+const lsGet=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const lsSetOk=(k,v)=>{try{const t=JSON.stringify(v);localStorage.setItem(k,t);return localStorage.getItem(k)===t}catch(e){return false}}; // write + read back
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const num=(v,min,max)=>{const n=Math.trunc(Number(v));if(v===""||v==null||!Number.isFinite(n))throw new Error("ตัวเลขไม่ถูกต้อง");return Math.max(min,Math.min(max,n))};
+const allKeys=()=>[...CROPS.flatMap((c,i)=>["s_","c_","g_","r_"].map(p=>p+i)),...Object.keys(DROPS)]; // every valid inventory key
+/* ---- session state (in memory only) ---- */
+let admTab="p",admLast=0,admArm={c:"",t:0},admMsg={t:0,m:"",ok:1},admIn={},admExp="",admLog=[],admBacked=false,admTaps=0,admT=0,admTimer=0;
+const admNote=(m,ok)=>{admMsg={t:Date.now(),m,ok}};
+const logA=m=>{admLog.unshift(new Date().toTimeString().slice(0,8)+" "+m);admLog.length=Math.min(admLog.length,30)};
+const bakList=()=>{const m=lsGet(ADM_BAK.man,null),a=lsGet(ADM_BAK.auto,[]);return {man:m&&m.s?m:null,auto:(Array.isArray(a)?a:[a]).filter(b=>b&&b.s)}};
+function admBackup(slot,why){ // throws if the backup could not be stored AND read back -> the command that needed it is cancelled
+  const e={t:Date.now(),why,s:JSON.stringify(S)},fail=()=>{throw new Error("สำรองเซฟไม่สำเร็จ (พื้นที่เก็บข้อมูลเต็ม?) — ยกเลิกคำสั่ง")};
+  if(slot=="man"){if(!lsSetOk(ADM_BAK.man,e))fail();return}
+  const a=bakList().auto;a.unshift(e);a.length=Math.min(a.length,ADM_BAK_KEEP);
+  if(!lsSetOk(ADM_BAK.auto,a)){a.length=1;if(!lsSetOk(ADM_BAK.auto,a))fail()}   // low on space: keep only the newest
+}
+
+/* ---- login (in-game modal: window.prompt is blocked in many mobile webviews/iframes) ---- */
+const adminLockLeft=()=>Math.max(0,lsGet(ADM_LOCKK,{n:0,u:0}).u-Date.now());
+function adminTap(){const n=performance.now();admTaps=n-admT<1500?admTaps+1:1;admT=n;if(admTaps>=7){admTaps=0;adminOpen()}}
+function adminOpen(){ADMIN?adminUI(true):adminLogin()}
 function adminLogin(){
-  if(admFail>=5){say("🔒 ล็อกการเข้าสู่ระบบแล้ว (รีโหลดหน้าเพื่อลองใหม่)");return}
-  const p=prompt("Admin passcode");if(p===null)return;
-  if(adminHash(p)===ADMIN_HASH){ADMIN=true;admFail=0;SFX.lvl();say("🛠 Admin mode เปิดใช้งาน");adminUI()}
-  else{admFail++;SFX.bad();say("รหัสผ่านไม่ถูกต้อง ("+admFail+"/5)")}
+  const left=adminLockLeft();
+  if(left>0){modal(`<h3>🔒 ถูกล็อก</h3><div>ใส่รหัสผิดหลายครั้ง ลองใหม่ได้ในอีก ${hms(left)}</div>`);return}
+  modal(`<h3>🛠 Admin</h3><input id="admPass" type="password" autocomplete="off" placeholder="Passcode" style="width:100%;box-sizing:border-box;padding:8px;font-size:16px"><div id="admLoginMsg" style="min-height:18px;color:#c0182b;font-size:12px;margin:4px 0"></div><button style="width:100%" onclick="adminSubmit()">เข้าสู่ระบบ</button>`);
+  const i=$("admPass");i.onkeydown=e=>{if(e.key=="Enter")adminSubmit()};setTimeout(()=>i.focus(),50);
 }
-/* All admin actions go through adm(); every one is refused unless an admin session is active. */
+function adminSubmit(){
+  const i=$("admPass");if(!i)return;
+  if(adminLockLeft()>0)return adminLogin();
+  const ok=adminHash(i.value)===ADMIN_HASH;i.value="";
+  if(ok){lsSet(ADM_LOCKK,{n:0,u:0});ADMIN=true;admLast=Date.now();admBacked=false;admLog=[];const pr=checkState();admDiag=pr.map(x=>x.m);admNote(pr.length?"⚠ พบปัญหาในเซฟ "+pr.length+" รายการ (แท็บ ข้อมูล → ตรวจสอบ/ซ่อม)":"เข้าสู่ระบบแล้ว • สถานะเกมปกติ",!pr.length);SFX.lvl();adminUI(true);return}
+  const l=lsGet(ADM_LOCKK,{n:0,u:0});l.n++;if(l.n>=ADMIN_MAX_FAILS){l.u=Date.now()+ADMIN_LOCK_MS;l.n=0}
+  lsSet(ADM_LOCKK,l);SFX.bad();
+  if(l.u>Date.now())return adminLogin();
+  $("admLoginMsg").textContent="รหัสไม่ถูกต้อง (เหลืออีก "+(ADMIN_MAX_FAILS-l.n)+" ครั้ง)";
+}
+function adminLogout(reason){ADMIN=false;admArm={c:"",t:0};closeM();if(reason)say(reason)}
+
+/* validateSave(): full structural check so an imported/restored save can never brick the game */
+function validateSave(o){
+  const bad=m=>{throw new Error("ไฟล์เซฟไม่ถูกต้อง: "+m)};
+  if(!o||typeof o!="object"||Array.isArray(o))bad("ต้องเป็น object");
+  for(const k of ["z","exp","lv","en"])if(!Number.isFinite(o[k])||o[k]<0)bad(k);
+  for(const k of ["str","dex","luk","pt"])if(o[k]!==undefined&&(!Number.isFinite(o[k])||o[k]<0))bad(k);
+  if(o.lv<1||o.lv>999)bad("lv");
+  if(!Array.isArray(o.tiles)||!o.tiles.length)bad("tiles");
+  const n=Math.sqrt(o.tiles.length);if(!Number.isInteger(n)||n>12)bad("จำนวนแปลงต้องเป็นกำลังสอง (1×1–12×12)");
+  if(o.gs!==undefined&&o.gs!==n)bad("gs ไม่ตรงกับจำนวนแปลง");
+  o.tiles.forEach((t,i)=>{if(!t||typeof t!="object"||![0,1,2].includes(t.st))bad("แปลง "+i);if(t.st==2&&!(Number.isInteger(t.k)&&t.k>=0&&t.k<CROPS.length&&Number.isFinite(t.g)))bad("พืชในแปลง "+i)});
+  if(!o.inv||typeof o.inv!="object"||Array.isArray(o.inv))bad("inv");
+  const keys=new Set(allKeys());for(const k in o.inv){if(!keys.has(k))bad("ไอเทมที่ไม่รู้จัก "+k);if(!Number.isFinite(o.inv[k])||o.inv[k]<=0)bad("จำนวนไอเทม "+k)}
+  return o;
+}
+function parseSave(a){
+  if(typeof a!="string"||a.length>2e6)throw new Error("ข้อความว่างหรือใหญ่เกินไป");
+  let o;try{o=JSON.parse(a)}catch(e){throw new Error("JSON ไม่ถูกต้อง")}
+  return validateSave(o);
+}
+function getBak(a){ // a = "man" | "a0".."a2"
+  const L=bakList(),b=a=="man"?L.man:L.auto[+String(a).slice(1)];if(!b)throw new Error("ยังไม่มี backup นี้");
+  let o;try{o=JSON.parse(b.s)}catch(e){throw new Error("backup เสียหาย")}validateSave(o);return b;
+}
+const PRECHECK={import:parseSave,restore:getBak};                  // bad input is rejected immediately, before asking to confirm
+
+/* ---- diagnose / repair: the same checks the game relies on, with an automatic fix for each ---- */
+let admDiag=[];
+function checkState(){
+  const P=[],add=(m,fix)=>P.push({m,fix});
+  const nz=(k,min,def)=>{if(!Number.isFinite(S[k])||S[k]<min)add(k+" ผิดปกติ ("+S[k]+")",()=>{S[k]=def})};
+  nz("z",0,0);nz("exp",0,0);nz("pt",0,0);nz("lv",1,1);nz("str",1,1);nz("dex",1,1);nz("luk",1,1);
+  if(!Number.isFinite(S.en)||S.en<0||S.en>maxEn()+1)add("Energy ผิดปกติ ("+S.en+")",()=>{S.en=Math.min(Math.max(Number.isFinite(S.en)?S.en:maxEn(),0),maxEn())});
+  const n=S.gs,len=S.tiles.length;
+  if(!Number.isInteger(n)||n<1||n>12||len!=n*n)add("จำนวนแปลง ("+len+") ไม่ตรงกับขนาดฟาร์ม ("+n+"×"+n+")",()=>{
+    const ow=Math.max(1,Math.round(Math.sqrt(len))),nn=Number.isInteger(n)&&n>=1&&n<=12?n:Math.min(12,Math.max(GRID.start,ow));
+    const nt=Array.from({length:nn*nn},()=>({st:0}));S.tiles.forEach((t,i)=>{const r=i/ow|0,c=i%ow;if(r<nn&&c<nn)nt[r*nn+c]=t});
+    S.tiles=nt;S.gs=nn;setGrid(nn);mons.forEach(m=>{m.tg=-1})});
+  else if(N!==n)add("ขนาดกริดที่แสดง (N="+N+") ไม่ตรงกับเซฟ ("+n+")",()=>setGrid(n));
+  const badT=[];S.tiles.forEach((t,i)=>{if(!t||typeof t!="object"||![0,1,2].includes(t.st)||(t.st==2&&(!Number.isInteger(t.k)||t.k<0||t.k>=CROPS.length||!Number.isFinite(t.g))))badT.push(i)});
+  if(badT.length)add("แปลงเสีย "+badT.length+" แปลง",()=>badT.forEach(i=>{const t=S.tiles[i];S.tiles[i]=t&&typeof t=="object"&&t.st==2?{st:1}:{st:0}}));
+  const keys=new Set(allKeys()),badI=Object.keys(S.inv).filter(k=>!keys.has(k)||!Number.isFinite(S.inv[k])||S.inv[k]<=0);
+  if(badI.length)add("ไอเทมผิดปกติ: "+badI.slice(0,4).join(", ")+(badI.length>4?"…":""),()=>badI.forEach(k=>{delete S.inv[k]}));
+  const badB=Object.keys(S.bf).filter(k=>!BUFFS[k]||!Number.isFinite(S.bf[k]));
+  if(badB.length)add("บัฟผิดปกติ: "+badB.join(", "),()=>{badB.forEach(k=>{delete S.bf[k]});rebuildSE()});
+  if(S.ev&&!EVENTS[S.ev.id])add("อีเวนต์ที่ไม่รู้จัก ("+S.ev.id+")",()=>{S.ev=null;rebuildSE()});
+  if(!S.q||!Array.isArray(S.q.list)||S.q.list.length!=3||!S.q.list.every(qValid))add("เควสต์ประจำวันผิดปกติ",()=>newDay());
+  const badM=mons.filter(x=>x.tg>=S.tiles.length||x.tg<-1||!Number.isFinite(x.x)||!Number.isFinite(x.y)||!MON[x.ty]);
+  if(badM.length)add("มอนสเตอร์ผิดปกติ "+badM.length+" ตัว",()=>{for(let i=mons.length-1;i>=0;i--)if(badM.includes(mons[i]))mons.splice(i,1)});
+  return P;
+}
+
+/* ---- commands: every admin action lives here. return "message" on success, throw Error("reason") on bad input ---- */
+const ADMRO=new Set(["tab","export","logout","diag","corrupt","clearerr"]);                    // read-only: no backup, no log
+const DANGER=new Set(["reset","restore","import","clearcrops","resetstats"]); // need a 2nd press within 4s
+const RELOAD=new Set(["reset","restore","import"]);                // these reload the page
+const ADMCMD={
+ tab:a=>{admTab=a},
+ /* player */
+ z:a=>{const n=num(a,-1e9,1e9);S.z=Math.max(0,S.z+n);return (n>=0?"+":"")+n.toLocaleString()+"z"},
+ setz:a=>{S.z=num(a,0,1e12);return "Zeny = "+S.z.toLocaleString()},
+ setlv:a=>{const n=num(a,1,99),up=n-S.lv,pt=up*(3+has("attic"));if(up>0)S.pt+=pt;S.lv=n;S.exp=0;S.en=maxEn();rebuildSE();return "Level = "+n+(up>0?" (+"+pt+" Stat Points)":"")},
+ lvup:()=>ADMCMD.setlv(S.lv+1),
+ pt:a=>{const n=num(a,-999,999);S.pt=Math.max(0,S.pt+n);return "Stat Points "+(n>=0?"+":"")+n},
+ en:()=>{S.en=maxEn();return "Energy เต็ม"},
+ give:a=>{const [k,q]=a,n=num(q,-9999,9999);if(!allKeys().includes(k))throw new Error("ไม่รู้จักไอเทม: "+k);add(k,n);refreshSeeds();return (n>=0?"+":"")+n+" "+nm2(k)},
+ giveall:()=>{Object.keys(DROPS).forEach(k=>{if(!DROPS[k].sell)add(k,5)});CROPS.forEach((c,i)=>add("s_"+i,5));refreshSeeds();return "+5 ไอเทมใช้งาน/เมล็ดทุกชนิด"},
+ buff:a=>{if(!BUFFS[a])throw new Error("ไม่รู้จักบัฟ");startBuff(a);return "เริ่มบัฟ "+BUFFS[a].n},
+ nobuff:()=>{S.bf={};rebuildSE();return "ล้างบัฟทั้งหมด"},
+ /* farm */
+ expand:()=>{const u=nextGrid();if(!u)throw new Error("ไม่มีขั้นถัดไปใน GRID.ups (ใช้ 'ขยายเป็น' แทน)");applyExpand(u);return "ขยายฟาร์มเป็น "+u.size+"×"+u.size+" (ฟรี)"},
+ expandto:a=>{const n=num(a,1,12);if(n<=S.gs)throw new Error("ต้องใหญ่กว่า "+S.gs+"×"+S.gs+" (ย่อไม่ได้ เพื่อกันพืชหาย)");applyExpand({size:n});return "ขยายฟาร์มเป็น "+n+"×"+n},
+ water:()=>{let c=0;S.tiles.forEach(t=>{if(t.st==2&&!t.w){t.w=true;c++}});return "รดน้ำ "+c+" แปลง"},
+ grow:()=>{let c=0;S.tiles.forEach(t=>{if(t.st==2&&t.g<need(t.k)){t.g=need(t.k);c++}});return "พืชโตเต็ม "+c+" ต้น"},
+ hoe:()=>{let c=0;S.tiles.forEach((t,i)=>{if(t.st==0){S.tiles[i]={st:1};c++}});return "พรวน "+c+" แปลง"},
+ clearcrops:()=>{let c=0;S.tiles.forEach((t,i)=>{if(t.st==2){S.tiles[i]={st:1};c++}});return "ถอนพืช "+c+" ต้น"},
+ /* quests / achievements */
+ qnew:()=>{newDay();return "สุ่มเควสต์ใหม่ 3 ข้อ"},
+ qdone:()=>{S.q.list.forEach(q=>{q.p=q.need});return "ทำเควสต์ครบทั้งหมด"},
+ qone:a=>{const q=S.q.list[num(a,0,2)];q.p=q.need;return "เควสต์สำเร็จ: "+qText(q)},
+ qrep:a=>{const i=num(a,0,2);S.q.list[i]=genQuest(S.q.list.map(qKey));return "เปลี่ยนเควสต์ข้อ "+(i+1)},
+ resetstats:()=>{S.stats={h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0};S.ach={};annc.clear();return "รีเซ็ต Stats / Achievements"},
+ /* world */
+ season:a=>{const n=num(a,0,3);S.sx=n*SEASON_MS+1;admSyncSeason();return "ข้ามไป "+SEASONS[n].n+" (ไม่เก็บค่าบำรุงสวน)"},
+ skip:a=>{const n=num(a,1,600);S.sx=(S.sx||0)+n*1000;if(seasonIdx()!=curSe)admSyncSeason();return "เดินเวลาฤดูกาล +"+n+" วินาที"},
+ ev:a=>{if(!EVENTS[a])throw new Error("ไม่รู้จักอีเวนต์");if(S.ev)endEv(true);startEv(a);return "เริ่ม "+EVENTS[a].n},
+ endev:()=>{if(!S.ev)throw new Error("ไม่มีอีเวนต์ที่กำลังทำงาน");endEv();return "จบอีเวนต์"},
+ mon:a=>{if(!MON[a])throw new Error("ไม่รู้จักมอนสเตอร์");spawn(a,true);return "เสก "+MON[a].n},
+ clearmon:()=>{const n=mons.length;mons.length=0;return "ลบมอนสเตอร์ "+n+" ตัว"},
+ /* data */
+ backup:()=>{admBackup("man","สำรองด้วยมือ");return "สำรองเซฟแล้ว"},
+ restore:a=>{const b=getBak(a);admReload(()=>localStorage.setItem("rmr_save",b.s));return "กำลังกู้คืน..."},
+ export:()=>{admExp=JSON.stringify(S);try{navigator.clipboard&&navigator.clipboard.writeText(admExp).catch(()=>{})}catch(e){}return "ส่งออกเซฟแล้ว (คัดลอกจากช่องด้านล่างได้)"},
+ import:a=>{const o=parseSave(a);admReload(()=>localStorage.setItem("rmr_save",JSON.stringify(o)));return "กำลังนำเข้า..."},
+ reset:()=>{admReload(()=>localStorage.removeItem("rmr_save"));return "กำลังรีเซ็ต..."},
+ /* diagnose / repair / recovery */
+ diag:()=>{const p=checkState();admDiag=p.map(x=>x.m);return p.length?"พบปัญหา "+p.length+" รายการ":"สถานะเกมปกติ ✓"},
+ repair:()=>{let n=0;for(let i=0;i<3;i++){const p=checkState();if(!p.length)break;p.forEach(x=>{try{x.fix();n++}catch(e){noteErr("repair",e)}})}const left=checkState();admDiag=left.map(x=>x.m);return "ซ่อม "+n+" รายการ"+(left.length?" (เหลือ "+left.length+")":" • ปกติ ✓")},
+ corrupt:()=>{const r=localStorage.getItem("rmr_save_corrupt");if(!r)throw new Error("ไม่มีเซฟเสียที่ถูกเก็บไว้");admExp=r;return "แสดงเซฟที่เสียในช่องส่งออกแล้ว"},
+ dropcorrupt:()=>{localStorage.removeItem("rmr_save_corrupt");return "ลบเซฟที่เสียแล้ว"},
+ clearerr:()=>{ERRLOG.length=0;errN=0;return "ล้างบันทึกข้อผิดพลาด"},
+ logout:()=>{adminLogout()}
+};
+function admSyncSeason(){ // what the frame loop does on a season change, minus payUpkeep() so admin jumps never drain the player's Zeny
+  const si=seasonIdx();curSe=si;if(S.ev)endEv(true);rebuildSE();const e=SEASONS[si];flo(240,210,e.ic+" "+e.n,"#fff");say(e.ic+" (Admin) "+e.n);
+}
+/* adm(): the ONLY entry point for admin actions. Refused without an admin session; errors are shown, never thrown. */
 function adm(c,a){
   if(!ADMIN)return;
-  switch(c){
-   case "z":S.z+=a;break;
-   case "coin":add("coin",a);break;
-   case "lv":S.lv++;S.exp=0;S.pt+=3;S.en=maxEn();rebuildSE();break;
-   case "en":S.en=maxEn();break;
-   case "items":Object.keys(DROPS).forEach(k=>{if(!DROPS[k].sell)add(k,5)});refreshSeeds();break;   // +5 of every non-sellable item
-   case "seeds":CROPS.forEach((c,i)=>add("s_"+i,5));refreshSeeds();break;
-   case "expand":{const u=nextGrid();if(u)applyExpand(u);break}                                      // free, ignores level/cost
-   case "qnew":newDay();break;
-   case "qdone":S.q.list.forEach(q=>{q.p=q.need});break;
-   case "season":S.sx=a*SEASON_MS+1;break;                                                           // frame loop handles the season change
-   case "ev":startEv(a);break;
-   case "endev":endEv(true);break;
-   case "mon":spawn(a,true);break;
-   case "clearmon":mons.length=0;break;
-   case "nobuff":S.bf={};rebuildSE();break;
-   case "reset":
-     if(!confirm("ลบเซฟทั้งหมดและเริ่มใหม่?"))return;
-     removeEventListener("beforeunload",save);localStorage.removeItem("rmr_save");location.reload();return;
-   case "logout":ADMIN=false;closeM();return;
-  }
-  save();adminUI();
+  admLast=Date.now();admSaveInputs();
+  try{
+    const fn=ADMCMD[c];if(!fn)throw new Error("คำสั่งไม่ถูกต้อง: "+c);
+    if(PRECHECK[c])PRECHECK[c](a);
+    if(DANGER.has(c)){
+      const dt=Date.now()-admArm.t;
+      if(admArm.c!=c||dt>=4000){admArm={c,t:Date.now()};admNote("⚠ กดปุ่มเดิมอีกครั้ง (ภายใน 4 วินาที) เพื่อยืนยัน",0);adminUI();return}
+      if(dt<ADM_CONFIRM_MIN)return;                                 // a double-click must not confirm by accident
+    }
+    admArm={c:"",t:0};
+    if(!ADMRO.has(c)){                                              // safety net: snapshot before changing anything
+      if(DANGER.has(c)){if(c!="restore")admBackup("auto","ก่อน "+c)}
+      else if(!admBacked)admBackup("auto","เริ่มเซสชัน");
+      admBacked=true;
+    }
+    const m=fn(a);
+    if(m){admNote("✓ "+m,1);if(!ADMRO.has(c)||c=="export")logA(m)}
+    if(RELOAD.has(c))return;
+    if(!ADMRO.has(c))save();
+  }catch(err){admNote("✗ "+err.message,0);logA("ERR "+c+": "+err.message);console.warn("[admin]",c,err)}
+  if(ADMIN)adminUI(c=="tab");
 }
-function adminUI(t){
-  if(!ADMIN)return;if(t)admTab=t;
-  const B=(l,c,a)=>`<button style="flex:1 1 45%" onclick="adm('${c}'${a===undefined?"":","+JSON.stringify(a).replace(/"/g,"'")})">${l}</button>`,G=h=>`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px">${h}</div>`;
-  const tabs=`<div style="display:flex;gap:4px;margin-bottom:6px"><button class="${admTab=="c"?"on":""}" onclick="adminUI('c')">💰 Tools</button><button class="${admTab=="e"?"on":""}" onclick="adminUI('e')">📅 Season / Events</button></div>`;
-  let h=`<h3>🛠 Admin</h3>`+tabs;
-  if(admTab=="c"){
-    h+=`<b>ทรัพยากร</b>`+G(B("+10,000z","z",10000)+B("+5 Gacha Coin","coin",5)+B("+1 Level","lv")+B("เติม Energy","en")+B("+5 ไอเทมใช้งานทุกชนิด","items")+B("+5 เมล็ดทุกชนิด","seeds"))+
-     `<b>ฟาร์ม</b>`+G(B("ขยายฟาร์มฟรี ("+S.gs+"×"+S.gs+" → "+(nextGrid()?nextGrid().size+"×"+nextGrid().size:"MAX")+")","expand"))+
-     `<b>เควสต์</b>`+G(B("สุ่มเควสต์ใหม่","qnew")+B("ทำเควสต์ครบทั้งหมด","qdone"))+
-     `<b>มอนสเตอร์ / บัฟ</b>`+G(Object.keys(MON).map(k=>B("เสก "+MON[k].n,"mon",k)).join("")+B("ลบมอนสเตอร์ทั้งหมด","clearmon")+B("ล้างบัฟ","nobuff"))+
-     `<b>ระบบ</b>`+G(B("🗑 ลบเซฟ / เริ่มใหม่","reset")+B("ออกจาก Admin","logout"));
+function admSaveInputs(){const b=$("mbox");if(!b)return;b.querySelectorAll("input,select,textarea").forEach(e=>{if(e.id&&e.id.startsWith("adm")&&e.id!="admPass")admIn[e.id]=e.value})}
+function admClick(e){ // one delegated listener instead of inline onclick strings (no quoting bugs)
+  const b=e.target.closest&&e.target.closest("[data-adm]");if(!b||!ADMIN)return;
+  const ids=(b.dataset.in||"").split(",").filter(Boolean);let a=b.dataset.a;
+  if(ids.length)a=ids.length>1?ids.map(i=>($(i)||{}).value):($(i=ids[0])||{}).value;
+  adm(b.dataset.adm,a);
+}
+
+/* ---- panel ---- */
+const ADM_TABS=[["p","💰 ผู้เล่น"],["f","🌾 ฟาร์ม"],["w","🌍 โลก"],["d","💾 ข้อมูล"]];
+function admStatHTML(){
+  const se=SEASONS[seasonIdx()],ev=S.ev&&EVENTS[S.ev.id];
+  return `💰 ${S.z.toLocaleString()}z • Lv ${S.lv} • ⚡${Math.floor(S.en)}/${maxEn()} • 🌾 ${S.gs}×${S.gs} • ${se.ic} ${Math.ceil((SEASON_MS-(S.sx||0)%SEASON_MS)/1000)}s • ${ev?ev.ic+" "+Math.ceil(S.ev.l/1000)+"s":"ไม่มีอีเวนต์"} • 👾 ${mons.length}`;
+}
+function admStartTimer(){ // live status line; stops itself when the panel closes
+  if(admTimer)return;
+  admTimer=setInterval(()=>{try{const e=$("admStat");if(!ADMIN||!e||$("modal").style.display=="none"){clearInterval(admTimer);admTimer=0;return}const h=admStatHTML();if(e.innerHTML!==h)e.innerHTML=h}catch(err){clearInterval(admTimer);admTimer=0;noteErr("adminStat",err)}},500);
+}
+function adminUI(rs){ // a rendering bug can never break the game: fall back to a minimal panel
+  if(!ADMIN)return;
+  try{admRender(rs)}catch(e){noteErr("adminUI",e);modal(`<h3>🛠 Admin</h3><div style="color:#c0182b;font-size:13px">แผงแสดงผลผิดพลาด: ${esc(e.message)}</div><div style="display:flex;gap:4px;margin-top:6px"><button style="flex:1" onclick="adm('tab','d')">แท็บข้อมูล</button><button style="flex:1" onclick="adm('logout')">ออก</button></div>`)}
+}
+function admRender(resetScroll){
+  if(!ADMIN)return;
+  const box=$("mbox"),sc=resetScroll?0:(box.scrollTop||0);
+  const I=(id,d)=>esc(admIn[id]!==undefined?admIn[id]:d);
+  const B=(l,c,a,x)=>{const arm=DANGER.has(c)&&admArm.c==c&&Date.now()-admArm.t<4000;
+    return `<button data-adm="${c}"${a!==undefined?` data-a="${esc(a)}"`:""}${x?` data-in="${x}"`:""} class="${arm?"on":""}" style="flex:1 1 30%">${arm?"⚠ ยืนยัน? ":""}${l}</button>`};
+  const G=h=>`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 9px;align-items:center">${h}</div>`;
+  const H=t=>`<div style="font-weight:bold;margin-top:4px">${t}</div>`;
+  const NI=(id,d,w)=>`<input id="${id}" type="number" inputmode="numeric" value="${I(id,d)}" style="width:${w||90}px;padding:4px">`;
+  const msg=admMsg.m&&Date.now()-admMsg.t<8000?`<div style="font-size:12px;margin:2px 0 4px;color:${admMsg.ok?"#1f7a3a":"#c0182b"}">${esc(admMsg.m)}</div>`:"";
+  let h=`<h3>🛠 Admin</h3><div id="admStat" style="font-size:12px;background:#fff8;border-radius:6px;padding:4px 6px;margin-bottom:4px">${admStatHTML()}</div>`+
+   `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">${ADM_TABS.map(([id,l])=>`<button data-adm="tab" data-a="${id}" class="${admTab==id?"on":""}" style="flex:1 1 22%">${l}</button>`).join("")}</div>`+msg;
+  if(admTab=="p"){
+    const opts=allKeys().map(k=>`<option value="${k}"${(admIn.admItem||"fert")==k?" selected":""}>${esc(nm2(k))}</option>`).join("");
+    h+=H("Zeny")+G(NI("admZ",1000,96)+B("เพิ่ม","z",undefined,"admZ")+B("ตั้งเป็น","setz",undefined,"admZ"))+
+     H("เลเวล / แต้ม / Energy")+G(NI("admLv",S.lv,60)+B("ตั้งเลเวล","setlv",undefined,"admLv")+B("+1 Lv","lvup")+B("+10 Stat Pts","pt",10)+B("เติม Energy","en"))+
+     H("ให้ / ลบไอเทม (ใส่เลขติดลบเพื่อลบ)")+G(`<select id="admItem" style="flex:2 1 140px;padding:4px">${opts}</select>`+NI("admQty",5,60)+B("ตกลง","give",undefined,"admItem,admQty")+B("+5 ทุกชนิด","giveall"))+
+     H("บัฟ")+G(Object.keys(BUFFS).map(k=>B(BUFFS[k].ic+" "+BUFFS[k].n,"buff",k)).join("")+B("ล้างบัฟ","nobuff"));
+  }else if(admTab=="f"){
+    const nx=nextGrid(),sizes=[];for(let n=S.gs+1;n<=12;n++)sizes.push(`<option value="${n}"${(admIn.admSize||S.gs+1)==n?" selected":""}>${n}×${n}</option>`);
+    h+=H("ขนาดฟาร์ม ("+S.gs+"×"+S.gs+")")+G(B(nx?"ขั้นถัดไป "+nx.size+"×"+nx.size+" (ฟรี)":"ขั้นถัดไป (ไม่มี)","expand")+(sizes.length?`<select id="admSize" style="padding:4px">${sizes.join("")}</select>`+B("ขยายเป็น","expandto",undefined,"admSize"):""))+
+     H("แปลงเพาะปลูก")+G(B("💧 รดน้ำทุกต้น","water")+B("🌳 โตเต็มทุกต้น","grow")+B("⛏ พรวนทุกแปลง","hoe")+B("🗑 ถอนพืชทั้งหมด","clearcrops"))+
+     H("เควสต์วันนี้")+S.q.list.map((q,i)=>`<div class="row"><span style="flex:1;font-size:12px">${i+1}. ${qText(q)} <b>${q.p}/${q.need}</b>${q.cl?" ✓รับแล้ว":""}</span>${B("สำเร็จ","qone",i)}${B("เปลี่ยน","qrep",i)}</div>`).join("")+
+     G(B("สุ่มใหม่ทั้งหมด","qnew")+B("ทำครบทุกข้อ","qdone")+B("รีเซ็ต Stats/Achv","resetstats"));
+  }else if(admTab=="w"){
+    h+=H("ฤดูกาล")+G(SEASONS.map((e,i)=>B(e.ic+" "+e.n,"season",i)).join("")+B("+30s","skip",30)+B("+120s","skip",120))+
+     H("อีเวนต์")+G(Object.keys(EVENTS).map(k=>{const E=EVENTS[k];return B((E.h?"⚠ ":"")+E.ic+" "+E.n,"ev",k)}).join("")+B("⏹ จบอีเวนต์","endev"))+
+     H("มอนสเตอร์")+G(Object.keys(MON).map(k=>B("เสก "+MON[k].n,"mon",k)).join("")+B("ลบทั้งหมด","clearmon"));
   }else{
-    h+=`<b>ข้ามไปฤดูกาล</b>`+G(SEASONS.map((e,i)=>B(e.ic+" "+e.n,"season",i)).join(""))+
-     `<b>เริ่มอีเวนต์ทันที</b>`+G(Object.keys(EVENTS).map(k=>{const E=EVENTS[k];return B((E.h?"⚠ ":"")+E.ic+" "+E.n,"ev",k)}).join("")+B("จบอีเวนต์ปัจจุบัน","endev"));
+    const L=bakList(),raw=localStorage.getItem("rmr_save_corrupt");
+    const row=(b,a,label)=>`<div class="row"><span style="flex:1;font-size:12px"><b>${label}</b><br>${b?esc(new Date(b.t).toLocaleString()+" • "+b.why):"— ยังไม่มี —"}</span>${b?B("กู้คืน","restore",a):""}</div>`;
+    h+=H("🩺 ตรวจสอบสถานะเกม")+G(B("ตรวจสอบ","diag")+(admDiag.length?B("🔧 ซ่อมอัตโนมัติ ("+admDiag.length+")","repair"):""))+
+     (admDiag.length?`<div style="font-size:11px;color:#c0182b;margin:-4px 0 8px">${admDiag.map(esc).join("<br>")}</div>`:"")+
+     H("สำรอง / กู้คืนเซฟ")+row(L.man,"man","ด้วยมือ")+
+     (L.auto.length?L.auto.map((b,i)=>row(b,"a"+i,"อัตโนมัติ "+(i?"#"+(i+1):"(ล่าสุด)"))).join(""):row(null,"a0","อัตโนมัติ"))+
+     G(B("💾 สำรองเซฟตอนนี้","backup"))+
+     (raw?H("⚠ พบเซฟที่อ่านไม่ได้ (เก็บไว้ตอนเปิดเกม)")+G(B("แสดงข้อความดิบ","corrupt")+B("ลบทิ้ง","dropcorrupt")):"")+
+     H("ส่งออก / นำเข้า (JSON)")+G(B("📤 ส่งออก","export"))+
+     (admExp?`<textarea id="admExp" readonly rows="3" onclick="this.select()" style="width:100%;box-sizing:border-box;font-size:11px">${esc(admExp)}</textarea>`:"")+
+     `<textarea id="admImp" rows="3" placeholder="วาง JSON เซฟที่นี่แล้วกดนำเข้า" style="width:100%;box-sizing:border-box;font-size:11px;margin-top:4px">${I("admImp","")}</textarea>`+
+     G(B("📥 นำเข้า","import",undefined,"admImp")+B("🗑 ลบเซฟ / เริ่มใหม่","reset"))+
+     H("ข้อผิดพลาดล่าสุด ("+ERRLOG.length+")")+`<div style="font-size:11px;max-height:80px;overflow:auto;background:#fff8;padding:4px;border-radius:6px;margin-bottom:4px">${ERRLOG.length?ERRLOG.map(e=>esc(new Date(e.t).toTimeString().slice(0,8)+" ["+e.src+"] "+e.m+(e.n>1?" ×"+e.n:""))).join("<br>"):"—"}</div>`+G(B("ล้างบันทึก","clearerr"))+
+     H("ประวัติคำสั่ง (เซสชันนี้)")+`<div style="font-size:11px;max-height:90px;overflow:auto;background:#fff8;padding:4px;border-radius:6px;margin-bottom:8px">${admLog.length?admLog.map(esc).join("<br>"):"—"}</div>`+
+     G(B("🚪 ออกจาก Admin","logout"));
   }
-  modal(h+`<div style="font-size:12px;text-align:center;margin-top:6px">ปิดอัตโนมัติเมื่อรีโหลดหน้า • ไม่ถูกบันทึกในเซฟ</div>`);
+  modal(h+`<div style="font-size:12px;text-align:center;margin-top:6px">ไม่ถูกบันทึกในเซฟ • ออกอัตโนมัติเมื่อไม่ใช้งาน 15 นาที</div>`);
+  box.scrollTop=sc;admStartTimer();
+}
+function adminInit(){
+  $("lv").onclick=adminTap;                                        // hidden entry: tap the "Lv" label 7 times
+  $("mbox").addEventListener("click",admClick);
+  addEventListener("keydown",e=>{if(e.altKey&&e.shiftKey&&e.code=="KeyA"){e.preventDefault();adminOpen()}});
+  addEventListener("pointerdown",()=>{if(ADMIN)admLast=Date.now()});  // any activity keeps the session alive
 }
 
 /* ===== MODULE: Game Loop (requestAnimationFrame, ~60 FPS) ===== */
 let last=performance.now(),saveWarn=0;
-function frame(now){
+function frame(now){try{frameBody(now)}catch(e){noteErr("frame",e)}requestAnimationFrame(frame)} // [PATCH 1.4] one bad frame can no longer freeze the whole game
+function frameBody(now){
   const dt=Math.min(100,now-last);last=now;
   S.en=Math.min(maxEn(),S.en+dt/1500*SE().regen);if(S.scare>0)S.scare-=dt;
   S.sx=(S.sx||0)+dt;if(has("mailbox")){S.mt=(S.mt||0)+dt;if(S.mt>=90000){S.mt=0;mail()}}
   const si=seasonIdx();if(si!=curSe){curSe=si;if(S.ev)endEv(true);rebuildSE();const e=SEASONS[si];say(e.ic+" เข้าสู่"+e.n+"! "+e.s);flo(240,210,e.ic+" "+e.n,"#fff");SFX.harvest();payUpkeep()}
   if(flash>0)flash-=dt;
   tickBuffs(dt);tickQuestDay(dt); // [PATCH 1.1]
-  tickGolem(dt); // [PATCH 1.3]
   if(S.ev){const e=EVENTS[S.ev.id];S.ev.l-=dt;e.tk&&e.tk(dt);if(S.ev.l<=0)endEv()}
   else if((evT-=dt)<=0)startEv(pickEv(si));
   S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*SE().grow*(t.f?2:1))});
@@ -984,8 +1159,7 @@ function frame(now){
   mons.forEach(m=>updMon(m,dt));
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.l-=dt;f.y-=dt*.03;if(f.l<=0)floats.splice(i,1)}
   if(msgT>0&&(msgT-=dt)<=0)$("msg").textContent="";
-  scene(now);mons.slice().sort((a,b)=>a.y-b.y).forEach(monster);drawGolem(now);drawFx(now,dt);drawFloats();ui();
-  requestAnimationFrame(frame);
+  scene(now);mons.slice().sort((a,b)=>a.y-b.y).forEach(monster);drawFx(now,dt);drawFloats();ui();
 }
 if(S.ev&&!EVENTS[S.ev.id])S.ev=null;rebuildSE();initPatch(); // [PATCH 1.1]
 markTool();refreshSeeds();say("พรวนดิน → ปลูก → รดน้ำ → รอโต → เก็บเกี่ยว!");
