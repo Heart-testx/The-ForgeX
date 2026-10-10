@@ -90,7 +90,8 @@ const DROPS={jelopy:{n:"Jelopy",sell:8},clover:{n:"Clover",sell:50},apple:{n:"Ap
  fert:{n:"Quick-Gro Fertilizer",sell:0,fx:1,d:"กดปุ่ม 🧪 Fert แล้วแตะแปลงที่กำลังโต: เวลาโตที่เหลือ -50%"},
  brew:{n:"Berserk Brew",sell:0,fx:1,buff:"power",d:"ดาเมจโจมตี +50% นาน 60 วินาที"},
  stew:{n:"Herbal Stew",sell:0,fx:1,buff:"feast",d:"EXP +30% นาน 90 วินาที"},
- gardener:{n:"Gardener Contract",sell:0,fx:1,d:"จ้างชาวสวนทำฟาร์มให้อัตโนมัติ 2 นาทีครึ่ง (พรวน→ปลูก→รดน้ำ→เก็บเกี่ยว) • ใช้ซ้อนเพื่อต่อเวลาได้"},
+ gardener:{n:"Gardener Contract",sell:0,fx:1,d:"จ้างชาวสวน 1 คน ทำฟาร์มให้อัตโนมัติ 2 นาทีครึ่ง (พรวน→ปลูก→รดน้ำ→เก็บเกี่ยว) • จ้างพร้อมกันได้สูงสุด 5 คน แบ่งงานกันไม่ซ้ำแปลง • ใช้เมล็ดจาก Inventory"},
+ golem:{n:"Golem Contract",sell:0,fx:1,d:"จ้างโกเลม 1 ตัว ตีมอนสเตอร์ให้อัตโนมัติ 2 นาทีครึ่ง • จ้างพร้อมกันได้สูงสุด 5 ตัว แบ่งเป้าหมายกัน • ไม่ใช้ Energy ได้ Zeny/EXP/ดรอปเหมือนผู้เล่นฆ่าเอง"},
  tea:{n:"Lucky Tea",sell:0,fx:1,buff:"lucky",d:"โอกาสต้นทอง/รุ้ง x1.5 นาน 90 วินาที"}};
 const MON={
  poring: {n:"Poring", hp:20,z:15,exp:10,d:[["jelopy",.6],["apple",.15]]},
@@ -114,7 +115,8 @@ S.dec=S.dec||{}; // owned decorations {key:1}
    q = today's quests, ach = claimed achievement tiers, bf = active buffs {id:msLeft} */
 S.gs=S.gs||Math.round(Math.sqrt(S.tiles.length))||GRID.start;setGrid(S.gs);
 S.stats=Object.assign({h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0},S.stats);
-S.ach=S.ach||{};S.bf=S.bf||{};S.gd=Number.isFinite(S.gd)&&S.gd>0?S.gd:0; // [PATCH 1.6] gardener time left (ms)
+S.ach=S.ach||{};S.bf=S.bf||{};S.gl=(Array.isArray(S.gl)?S.gl:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.8] time left (ms) of each hired golem, max 5
+S.gd=(Array.isArray(S.gd)?S.gd:S.gd>0?[S.gd]:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.7] time left (ms) of each hired gardener, max 5 (old single-number saves are converted)
 const has=k=>S.dec[k]?1:0;
 // Money sinks: shop prices inflate with level and owned decorations; Sell All is taxed; decorations cost upkeep each season
 const TAX=.08;
@@ -264,7 +266,8 @@ function shop(){
   CROPS.map((c,i)=>({c,i})).sort((a,b)=>a.c.t-b.c.t).forEach(({c,i})=>h+=`<div class="row"><span>${c.n} (${P(c.cost)}z)${c.lv?` <small>[Lv ${c.lv}]</small>`:""}<br><small>โต ${c.t}s • ขาย ${c.sell}z</small></span>${S.lv<(c.lv||0)?`<button disabled>🔒 Lv ${c.lv}</button>`:`<button onclick="buy('s_${i}',${P(c.cost)})">Buy</button>`}</div>`);
   h+=`<div class="row"><span>Red Potion +50 Energy (${P(40)}z)</span><button onclick="buy('potion',${P(40)})">Buy</button></div>`;
   h+=`<div class="row"><span>Yggdrasil Dew (โต 100% ทันที) (${P(1500).toLocaleString()}z)</span><button onclick="buy('ygg_dew',${P(1500)})">Buy</button></div>`;
-  h+=`<div class="row"><span>🧑‍🌾 Gardener Contract (ทำฟาร์มให้ 2:30 นาที) (${P(2500).toLocaleString()}z)</span><button onclick="buy('gardener',${P(2500)})">Buy</button></div>`;
+  h+=`<div class="row"><span>🧑‍🌾 Gardener Contract (ชาวสวน 1 คน 2:30 นาที สูงสุด 5 คน) (${P(2500).toLocaleString()}z)</span><button onclick="buy('gardener',${P(2500)})">Buy</button></div>`;
+  h+=`<div class="row"><span>🗿 Golem Contract (โกเลม 1 ตัว 2:30 นาที สูงสุด 5 ตัว) (${P(3000).toLocaleString()}z)</span><button onclick="buy('golem',${P(3000)})">Buy</button></div>`;
   h+=`<div class="row"><span>Gacha Coin 🎰 (${P(1000).toLocaleString()}z)</span><button onclick="buy('coin',${P(1000)})">Buy</button></div>`;
   const tot=sellTotal();h+=`<div style="font-size:12px;text-align:center;margin-top:6px">ราคาขาย: ธรรมดา x1 • ✨Golden x5 • 🌈Rainbow x15<br>ภาษีขาย ${TAX*100}% (หักจากยอดขายแล้ว)</div>`;
   h+=`<button style="width:100%;margin-top:8px;background:linear-gradient(#ffe98a,#f0b429)" onclick="sellAll()">💰 Sell All Harvest (${tot}z)</button>`;
@@ -295,8 +298,8 @@ const RAR=[{n:"Common",c:"#7d8bb0",w:55},{n:"Uncommon",c:"#2fa84f",w:28},{n:"Rar
 const PRIZE=[ // prizes per rarity: [item key, quantity]
  [["s_0",3],["potion",1],["tiller",1],["s_1",1]],
  [["s_1",2],["s_2",1],["sprinkler",1],["scare",1],["s_5",1]],
- [["s_2",2],["s_3",1],["elixir",1],["golden",1],["s_5",2],["s_6",1],["gardener",1]],
- [["s_4",1],["golden",2],["s_3",2],["elixir",2],["s_6",2],["gardener",2]]];
+ [["s_2",2],["s_3",1],["elixir",1],["golden",1],["s_5",2],["s_6",1],["gardener",1],["golem",1]],
+ [["s_4",1],["golden",2],["s_3",2],["elixir",2],["s_6",2],["gardener",2],["golem",2]]];
 let gres=[];
 function roll(minR){
   let x=Math.random()*100,r=0;for(;r<3&&x>=RAR[r].w;r++)x-=RAR[r].w;
@@ -836,23 +839,41 @@ function craftUI(){
    `<div style="font-size:12px;text-align:center;margin-top:6px">ใช้ผลผลิตแบบธรรมดาเท่านั้น (Golden/Rainbow จะไม่ถูกใช้) • ของที่ได้ใช้ได้จากเมนู Inventory</div>`);
 }
 
-/* ===== [PATCH 1.6] MODULE 5: Gardener (auto-farm worker, 2.5 minutes per Gardener Contract) =====
-   S.gd = ms left. While > 0 a worker walks the field and, for each plot, does the first thing that applies:
-   hoe -> plant (selected seed, else best seed in the bag) -> water -> harvest (normal harvest rules: rarity, double, EXP, quests).
-   Costs no Energy; seeds are still used. Tune GARDENER_MS / GARDENER_STEP below. */
-const GARDENER_MS=150000, GARDENER_STEP=350;      // 2m30s, one plot handled every 0.35s
-let gdAcc=0,gdCur=0,gx=50,gy=84,gtx=50,gty=84,gdWarn=0,gdMove=0;
-FX.gardener=()=>{S.gd=(S.gd||0)+GARDENER_MS;flo(240,200,"🧑‍🌾 ชาวสวนมาแล้ว!","#7dffb0");say("🧑‍🌾 ชาวสวนทำฟาร์มให้ อีก "+Math.ceil(S.gd/1000)+" วินาที");return true};
+/* ===== [PATCH 1.7] MODULE 5: Gardeners (up to 5 auto-farm workers, 2.5 minutes each) =====
+   Each Gardener Contract hires ONE gardener for GARDENER_MS (max GARDENER_MAX at once). S.gd = [msLeft, ...] (saved);
+   GW = runtime workers {x,y,tg,wk,mv} kept in the same order as S.gd.
+   Teamwork: a plot is CLAIMED by the gardener walking to it (tg), so no two gardeners ever go for the same plot, and planting is
+   limited to the seeds actually left in the Inventory minus the seeds other gardeners are already about to plant.
+   Choosing work: every actionable plot gets score = distance - priority*45 (harvest 4 > water 3 > plant 2 > hoe 1), lowest score wins,
+   so each gardener takes the closest useful job and the team naturally spreads over the field.
+   Tasks per plot: hoe -> plant (selected seed, else best seed in the bag) -> water -> harvest (normal rules: rarity, double, EXP, quests).
+   No Energy cost; seeds are taken from the Inventory. */
+const GARDENER_MS=150000, GARDENER_MAX=5, GARDENER_WORK=260, GARDENER_SPEED=.22;
+const GW=[], GHAT=["#c23b2b","#2f7bff","#9a5cd8","#e69a00","#1f9a6a"];
+let gdWarn=0;
+const gdSay=m=>{if(Date.now()-gdWarn>8000){gdWarn=Date.now();say(m)}};
+const gdRest=i=>({x:30+i*26,y:68});
+FX.gardener=()=>{
+  if(S.gd.length>=GARDENER_MAX){say("🧑‍🌾 มีชาวสวนครบ "+GARDENER_MAX+" คนแล้ว รอให้คนใดคนหนึ่งเลิกงานก่อน");return false}
+  S.gd.push(GARDENER_MS);flo(240,200,"🧑‍🌾 ชาวสวนคนที่ "+S.gd.length+" มาแล้ว!","#7dffb0");say("🧑‍🌾 จ้างชาวสวนแล้ว "+S.gd.length+"/"+GARDENER_MAX+" คน (คนละ 2:30 นาที)");return true;
+};
+const seedsTotal=()=>CROPS.reduce((a,c,i)=>a+(S.inv["s_"+i]||0),0);
 function gSeed(){ // seeds ALWAYS come from the Inventory (S.inv["s_<id>"]): selected seed first, otherwise the most valuable seed still in the bag
   if(S.inv["s_"+S.seed]>0)return S.seed;
   let b=-1;CROPS.forEach((c,i)=>{if(S.inv["s_"+i]>0&&(b<0||c.sell>CROPS[b].sell))b=i});return b;
 }
-function gAct(i){ // returns true if the gardener did something on plot i
+function gNeed(i){ // what does plot i need right now? 0 nothing, 1 hoe, 2 plant, 3 water, 4 harvest
+  const t=S.tiles[i];if(!t)return 0;
+  if(t.st==2)return !t.w?3:t.g>=need(t.k)?4:0;
+  if(t.st==1)return gSeed()>=0?2:0;
+  return t.st==0?1:0;
+}
+function gAct(i){ // does the job on plot i; returns true if something was done
   const t=S.tiles[i],cx=tcx(i),cy=tcy(i);if(!t)return false;
   if(t.st==0){t.st=1;flo(cx,cy,"พรวนดิน","#e8c28a");return true}
   if(t.st==1){
-    const k=gSeed();if(k<0){if(Date.now()-gdWarn>8000){gdWarn=Date.now();say("🧑‍🌾 ชาวสวน: เมล็ดใน Inventory หมด! ซื้อที่ Kafra Shop")}return false}
-    if(k!==S.seed&&Date.now()-gdWarn>8000){gdWarn=Date.now();say("🧑‍🌾 เมล็ดที่เลือกหมด ใช้ "+CROPS[k].n+" จาก Inventory แทน")}
+    const k=gSeed();if(k<0){gdSay("🧑‍🌾 ชาวสวน: เมล็ดใน Inventory หมด! ซื้อที่ Kafra Shop");return false}
+    if(k!==S.seed)gdSay("🧑‍🌾 เมล็ดที่เลือกหมด ใช้ "+CROPS[k].n+" จาก Inventory แทน");
     add("s_"+k,-1);Object.assign(t,{st:2,k,g:0,w:!!(has("well")&&Math.random()<.3),rar:rollRar(),f:0});refreshSeeds();flo(cx,cy,"🌱 เหลือ "+(S.inv["s_"+k]||0),"#9dff7a");return true;
   }
   if(t.st==2){
@@ -861,33 +882,108 @@ function gAct(i){ // returns true if the gardener did something on plot i
       const n=1+(Math.random()<S.str*.04+SE().dbl?1:0),rr=t.rar||0,rk="cgr"[rr],c=CROPS[t.k];
       add(rk+"_"+t.k,n);track("harvest",{k:t.k,rar:rr,n});
       flo(cx,cy,rr?(rr==2?"🌈RAINBOW!":"✨GOLDEN!"):"+"+n+(n>1?" DOUBLE!":""),rr==2?"#ff7bff":rr?"#ffd700":"#fff");
-      gainExp(Math.round(c.exp*CR[rk].e*n),cx,cy+14);beep(880,.06,"square",0,0,.035);
+      gainExp(Math.round(c.exp*CR[rk].e*n),cx,cy+14);beep(880,.06,"square",0,0,.03);
       t.st=1;delete t.k;delete t.f;return true;
     }
   }
   return false;
 }
-function tickGardener(dt){
-  if(!(S.gd>0))return;
-  if((S.gd-=dt)<=0){S.gd=0;say("🧑‍🌾 ชาวสวนหมดเวลาทำงานแล้ว");flo(240,200,"🧑‍🌾 เลิกงาน","#fff");save();return}
-  gdAcc+=dt;const len=S.tiles.length;
-  while(gdAcc>=GARDENER_STEP){
-    gdAcc-=GARDENER_STEP;
-    for(let k=0;k<len;k++){const i=(gdCur+k)%len;if(gAct(i)){gdCur=(i+1)%len;gtx=tcx(i)+10;gty=tcy(i)+16;gdMove=400;break}}
+function gPick(w,idx){ // choose the best unclaimed plot for gardener idx (or -1)
+  const claimed=new Set();let planting=0;
+  GW.forEach((o,j)=>{if(j!==idx&&o.tg>=0){claimed.add(o.tg);if(S.tiles[o.tg]&&S.tiles[o.tg].st==1)planting++}});
+  const seeds=seedsTotal()-planting;let best=-1,bs=1e9,blocked=false;
+  for(let i=0;i<S.tiles.length;i++){
+    if(claimed.has(i))continue;const p=gNeed(i);
+    if(!p){if(S.tiles[i].st==1&&gSeed()<0)blocked=true;continue}
+    if(p==2&&seeds<=0){blocked=true;continue}
+    const sc=Math.hypot(tcx(i)-w.x,tcy(i)-w.y)-p*45;if(sc<bs){bs=sc;best=i}
   }
+  if(best<0&&blocked)gdSay("🧑‍🌾 ชาวสวน: เมล็ดใน Inventory หมด! ซื้อที่ Kafra Shop");
+  return best;
+}
+function tickGardener(dt){
+  if(!S.gd.length){GW.length=0;return}
+  while(GW.length<S.gd.length){const r=gdRest(GW.length);GW.push({x:r.x,y:r.y,tg:-1,wk:0,mv:false})}
+  GW.length=S.gd.length;
+  for(let i=S.gd.length-1;i>=0;i--)if((S.gd[i]-=dt)<=0){S.gd.splice(i,1);GW.splice(i,1);say("🧑‍🌾 ชาวสวนคนหนึ่งเลิกงานแล้ว (เหลือ "+S.gd.length+" คน)");save()}
+  GW.forEach((w,i)=>{
+    w.mv=false;
+    if(w.tg>=S.tiles.length)w.tg=-1;
+    if(w.wk>0){ // working on the plot
+      if((w.wk-=dt)<=0){w.wk=0;if(w.tg>=0)gAct(w.tg);w.tg=-1}
+      return;
+    }
+    if(w.tg<0)w.tg=gPick(w,i);
+    if(w.tg>=0&&!gNeed(w.tg))w.tg=-1;                     // job disappeared (crop eaten, etc.)
+    const tx=w.tg>=0?tcx(w.tg)+10:gdRest(i).x,ty=w.tg>=0?tcy(w.tg)+16:gdRest(i).y,d=Math.hypot(tx-w.x,ty-w.y);
+    if(d>4){const st=Math.min(d,dt*GARDENER_SPEED);w.x+=(tx-w.x)/d*st;w.y+=(ty-w.y)/d*st;w.mv=true}
+    else if(w.tg>=0)w.wk=GARDENER_WORK;
+  });
   if(Math.random()<dt/2500)save();
 }
 function drawGardener(now){
-  if(!(S.gd>0))return;
-  const dx=gtx-gx,dy=gty-gy,d=Math.hypot(dx,dy),mv=d>2;
-  if(mv){const sp=Math.min(d,Math.max(3,d*.15));gx+=dx/d*sp;gy+=dy/d*sp}
-  const b=mv?Math.abs(Math.sin(now/90))*3:Math.sin(now/300)*1,x=gx,y=gy-b;
-  ell(x,gy+13,10,3,"#0003");rect(x-6,y-8,12,16,"#4a8a3a");rect(x-6,y+2,12,3,"#7a4a21");
-  rect(x-8,y-6,3,10,"#ffd7b0");rect(x+5,y-6,3,10,"#ffd7b0");ell(x,y-13,6,6,"#ffd7b0");
-  ell(x,y-17,13,4,"#e8c860");ell(x,y-20,6,5,"#e8c860");rect(x-6,y-18,12,2,"#c23b2b");
-  g.fillStyle="#222";g.fillRect(x-3,y-13,2,2);g.fillRect(x+1,y-13,2,2);
-  rect(x+9,y-14,2,26,"#8b5a2b"); // hoe handle
-  rect(x+6,y+10,8,2,"#aaa");
+  GW.map((w,i)=>({w,i})).sort((a,b)=>a.w.y-b.w.y).forEach(({w,i})=>{
+    const b=w.mv?Math.abs(Math.sin(now/90+i))*3:w.wk>0?Math.abs(Math.sin(now/70))*2:Math.sin(now/300+i)*1,x=w.x,y=w.y-b,sh=GHAT[i%GHAT.length];
+    ell(x,w.y+13,10,3,"#0003");rect(x-6,y-8,12,16,"#4a8a3a");rect(x-6,y+2,12,3,"#7a4a21");
+    rect(x-8,y-6,3,10,"#ffd7b0");rect(x+5,y-6,3,10,"#ffd7b0");ell(x,y-13,6,6,"#ffd7b0");
+    ell(x,y-17,13,4,"#e8c860");ell(x,y-20,6,5,"#e8c860");rect(x-6,y-18,12,2,sh);
+    g.fillStyle="#222";g.fillRect(x-3,y-13,2,2);g.fillRect(x+1,y-13,2,2);
+    rect(x+9,y-14,2,26,"#8b5a2b");rect(x+6,y+10,8,2,"#aaa");
+  });
+}
+
+/* ===== [PATCH 1.8] MODULE 6: Golems (up to 5 auto-fighters, 2.5 minutes each) =====
+   Same idea as the gardeners: each Golem Contract hires ONE golem (max GOLEM_MAX at once). S.gl = [msLeft,...] (saved),
+   GL = runtime workers {x,y,tg,cd,sw,mv}. Each golem picks a monster, walks to it and hits it every GOLEM_HIT ms (no Energy cost).
+   Teamwork: monsters already being chased by a golem are avoided (at most 2 golems per monster, only when there are fewer monsters than golems),
+   and monsters that are eating a crop are hunted first. Kills go through die(), so Zeny / EXP / drops / Gacha Coins / quests all work. */
+const GOLEM_MS=150000, GOLEM_MAX=5, GOLEM_SPEED=.2, GOLEM_HIT=700, GOLEM_RANGE=24;
+const GL=[];
+const glRest=i=>({x:90+i*30,y:464});
+FX.golem=()=>{
+  if(S.gl.length>=GOLEM_MAX){say("🗿 มีโกเลมครบ "+GOLEM_MAX+" ตัวแล้ว รอให้ตัวใดตัวหนึ่งหมดเวลาก่อน");return false}
+  S.gl.push(GOLEM_MS);flo(240,200,"🗿 โกเลมตัวที่ "+S.gl.length+" มาแล้ว!","#7dffb0");say("🗿 จ้างโกเลมแล้ว "+S.gl.length+"/"+GOLEM_MAX+" ตัว (ตัวละ 2:30 นาที)");return true;
+};
+function glHit(m){ // same damage formula as attack(), but free of Energy
+  const dmg=Math.round((6+S.str*2+(Math.random()*4|0))*(1+.25*has("dummy"))*SE().dmg);
+  m.hp-=dmg;m.hit=150;beep(260,.05,"sawtooth",80,0,.03);flo(m.x,m.y-26,"-"+dmg,"#d8ffd8");
+  if(m.hp<=0)die(m);
+}
+function glPick(w,idx){
+  const cnt=new Map();GL.forEach((o,j)=>{if(j!==idx&&o.tg)cnt.set(o.tg,(cnt.get(o.tg)||0)+1)});
+  let best=null,bs=1e9;
+  mons.forEach(m=>{
+    const c=cnt.get(m)||0;if(c>=2)return;
+    const sc=Math.hypot(m.x-w.x,m.y-w.y)-(m.eat>0?150:0)+c*400;if(sc<bs){bs=sc;best=m}
+  });
+  return best;
+}
+function tickGolem(dt){
+  if(!S.gl.length){GL.length=0;return}
+  while(GL.length<S.gl.length){const r=glRest(GL.length);GL.push({x:r.x,y:r.y,tg:null,cd:0,sw:0,mv:false})}
+  GL.length=S.gl.length;
+  for(let i=S.gl.length-1;i>=0;i--)if((S.gl[i]-=dt)<=0){S.gl.splice(i,1);GL.splice(i,1);say("🗿 โกเลมตัวหนึ่งหมดเวลาแล้ว (เหลือ "+S.gl.length+" ตัว)");save()}
+  GL.forEach((w,i)=>{
+    w.mv=false;w.cd=Math.max(0,w.cd-dt);w.sw=Math.max(0,w.sw-dt);
+    if(w.tg&&!mons.includes(w.tg))w.tg=null;
+    if(!w.tg)w.tg=glPick(w,i);
+    let tx,ty;if(w.tg){tx=w.tg.x;ty=w.tg.y}else{const r=glRest(i);tx=r.x;ty=r.y}
+    const d=Math.hypot(tx-w.x,ty-w.y);
+    if(w.tg&&d<=GOLEM_RANGE){if(w.cd<=0){w.cd=GOLEM_HIT;w.sw=260;glHit(w.tg)}}
+    else if(d>4){const st=Math.min(d,dt*GOLEM_SPEED);w.x+=(tx-w.x)/d*st;w.y+=(ty-w.y)/d*st;w.mv=true}
+  });
+  if(Math.random()<dt/2500)save();
+}
+function drawGolem(now){
+  GL.map((w,i)=>({w,i})).sort((a,b)=>a.w.y-b.w.y).forEach(({w,i})=>{
+    const b=w.mv?Math.abs(Math.sin(now/110+i))*3:0,x=w.x,y=w.y-b,sw=w.sw>0?Math.sin(w.sw/260*Math.PI)*10:0;
+    ell(x,w.y+14,14,4,"#0004");
+    rect(x-9,y-4,7,16,"#7d7a74");rect(x+2,y-4,7,16,"#7d7a74");                 // legs
+    rect(x-12,y-22,24,22,"#8d8a84");rect(x-12,y-22,24,3,"#a8a49c");              // body
+    rect(x-17,y-20,6,16,"#7d7a74");rect(x+11,y-20-sw,6,16,"#7d7a74");           // arms (right one swings)
+    rect(x-8,y-33,16,12,"#a8a49c");rect(x-5,y-29,3,3,"#ffd84a");rect(x+2,y-29,3,3,"#ffd84a"); // head + glowing eyes
+    ell(x,y-13,3,3,GHAT[i%GHAT.length]);                                          // coloured gem = which golem
+  });
 }
 
 /* ===== [PATCH 1.1] HUD + init ===== */
@@ -904,7 +1000,7 @@ function hud(){ // called from ui() every frame; throttled to 4x/sec and only to
   $("bExpand").classList.toggle("on",canExpand());
   setTxt("bQuest","📜 Quests"+(n?" ("+n+"❗)":""));$("bQuest").classList.toggle("on",n>0);
   setTxt("bFert","🧪 Fert ("+(S.inv.fert||0)+")");
-  const h=(ADMIN?`<span class="chip" style="background:#ffc9c9">🛠 ADMIN</span>`:"")+(S.gd>0?`<span class="chip" style="background:linear-gradient(#e8ffd8,#b8e89a)">🧑‍🌾 Gardener ${Math.ceil(S.gd/1000)}s</span>`:"")+Object.keys(S.bf).map(id=>`<span class="chip">${BUFFS[id].ic} ${BUFFS[id].n} ${Math.ceil(S.bf[id]/1000)}s</span>`).join("");
+  const h=(ADMIN?`<span class="chip" style="background:#ffc9c9">🛠 ADMIN</span>`:"")+(S.gd.length?`<span class="chip" style="background:linear-gradient(#e8ffd8,#b8e89a)">🧑‍🌾 ×${S.gd.length}/${GARDENER_MAX} • ${S.gd.map(v=>Math.ceil(v/1000)+"s").join(" / ")}</span>`:"")+(S.gl.length?`<span class="chip" style="background:linear-gradient(#eeeeee,#c9c6c0)">🗿 ×${S.gl.length}/${GOLEM_MAX} • ${S.gl.map(v=>Math.ceil(v/1000)+"s").join(" / ")}</span>`:"")+Object.keys(S.bf).map(id=>`<span class="chip">${BUFFS[id].ic} ${BUFFS[id].n} ${Math.ceil(S.bf[id]/1000)}s</span>`).join("");
   if(h!==bfCache){bfCache=h;$("buffs").innerHTML=h}
 }
 function initPatch(){
@@ -1047,6 +1143,8 @@ function checkState(){
   if(badI.length)add("ไอเทมผิดปกติ: "+badI.slice(0,4).join(", ")+(badI.length>4?"…":""),()=>badI.forEach(k=>{delete S.inv[k]}));
   const badB=Object.keys(S.bf).filter(k=>!BUFFS[k]||!Number.isFinite(S.bf[k]));
   if(badB.length)add("บัฟผิดปกติ: "+badB.join(", "),()=>{badB.forEach(k=>{delete S.bf[k]});rebuildSE()});
+  if(!Array.isArray(S.gd)||S.gd.length>GARDENER_MAX||S.gd.some(v=>!Number.isFinite(v)))add("ข้อมูลชาวสวนผิดปกติ",()=>{S.gd=(Array.isArray(S.gd)?S.gd:[]).filter(Number.isFinite).slice(0,GARDENER_MAX)});
+  if(!Array.isArray(S.gl)||S.gl.length>GOLEM_MAX||S.gl.some(v=>!Number.isFinite(v)))add("ข้อมูลโกเลมผิดปกติ",()=>{S.gl=(Array.isArray(S.gl)?S.gl:[]).filter(Number.isFinite).slice(0,GOLEM_MAX)});
   if(S.ev&&!EVENTS[S.ev.id])add("อีเวนต์ที่ไม่รู้จัก ("+S.ev.id+")",()=>{S.ev=null;rebuildSE()});
   if(!S.q||!Array.isArray(S.q.list)||S.q.list.length!=3||!S.q.list.every(qValid))add("เควสต์ประจำวันผิดปกติ",()=>newDay());
   const badM=mons.filter(x=>x.tg>=S.tiles.length||x.tg<-1||!Number.isFinite(x.x)||!Number.isFinite(x.y)||!MON[x.ty]);
@@ -1070,8 +1168,9 @@ const ADMCMD={
  give:a=>{const [k,q]=a,n=num(q,-9999,9999);if(!allKeys().includes(k))throw new Error("ไม่รู้จักไอเทม: "+k);add(k,n);refreshSeeds();return (n>=0?"+":"")+n+" "+nm2(k)},
  giveall:()=>{Object.keys(DROPS).forEach(k=>{if(!DROPS[k].sell)add(k,5)});CROPS.forEach((c,i)=>add("s_"+i,5));refreshSeeds();return "+5 ไอเทมใช้งาน/เมล็ดทุกชนิด"},
  buff:a=>{if(!BUFFS[a])throw new Error("ไม่รู้จักบัฟ");startBuff(a);return "เริ่มบัฟ "+BUFFS[a].n},
- gard:()=>{S.gd=(S.gd||0)+GARDENER_MS;return "ชาวสวน +2:30 (เหลือ "+Math.ceil(S.gd/1000)+" วิ)"},
- nobuff:()=>{S.bf={};S.gd=0;rebuildSE();return "ล้างบัฟทั้งหมด"},
+ gard:()=>{if(S.gd.length>=GARDENER_MAX)throw new Error("ชาวสวนครบ "+GARDENER_MAX+" คนแล้ว");S.gd.push(GARDENER_MS);return "จ้างชาวสวนเพิ่ม 1 คน ("+S.gd.length+"/"+GARDENER_MAX+")"},
+ golem:()=>{if(S.gl.length>=GOLEM_MAX)throw new Error("โกเลมครบ "+GOLEM_MAX+" ตัวแล้ว");S.gl.push(GOLEM_MS);return "จ้างโกเลมเพิ่ม 1 ตัว ("+S.gl.length+"/"+GOLEM_MAX+")"},
+ nobuff:()=>{S.bf={};S.gd=[];GW.length=0;S.gl=[];GL.length=0;rebuildSE();return "ล้างบัฟทั้งหมด"},
  /* farm */
  expand:()=>{const u=nextGrid();if(!u)throw new Error("ไม่มีขั้นถัดไปใน GRID.ups (ใช้ 'ขยายเป็น' แทน)");applyExpand(u);return "ขยายฟาร์มเป็น "+u.size+"×"+u.size+" (ฟรี)"},
  expandto:a=>{const n=num(a,1,12);if(n<=S.gs)throw new Error("ต้องใหญ่กว่า "+S.gs+"×"+S.gs+" (ย่อไม่ได้ เพื่อกันพืชหาย)");applyExpand({size:n});return "ขยายฟาร์มเป็น "+n+"×"+n},
@@ -1173,7 +1272,7 @@ function admRender(resetScroll){
     h+=H("Zeny")+G(NI("admZ",1000,96)+B("เพิ่ม","z",undefined,"admZ")+B("ตั้งเป็น","setz",undefined,"admZ"))+
      H("เลเวล / แต้ม / Energy")+G(NI("admLv",S.lv,60)+B("ตั้งเลเวล","setlv",undefined,"admLv")+B("+1 Lv","lvup")+B("+10 Stat Pts","pt",10)+B("เติม Energy","en"))+
      H("ให้ / ลบไอเทม (ใส่เลขติดลบเพื่อลบ)")+G(`<select id="admItem" style="flex:2 1 140px;padding:4px">${opts}</select>`+NI("admQty",5,60)+B("ตกลง","give",undefined,"admItem,admQty")+B("+5 ทุกชนิด","giveall"))+
-     H("บัฟ")+G(Object.keys(BUFFS).map(k=>B(BUFFS[k].ic+" "+BUFFS[k].n,"buff",k)).join("")+B("🧑‍🌾 Gardener +2:30","gard")+B("ล้างบัฟ","nobuff"));
+     H("บัฟ")+G(Object.keys(BUFFS).map(k=>B(BUFFS[k].ic+" "+BUFFS[k].n,"buff",k)).join("")+B("🧑‍🌾 +1 Gardener","gard")+B("🗿 +1 Golem","golem")+B("ล้างบัฟ","nobuff"));
   }else if(admTab=="f"){
     const nx=nextGrid(),sizes=[];for(let n=S.gs+1;n<=12;n++)sizes.push(`<option value="${n}"${(admIn.admSize||S.gs+1)==n?" selected":""}>${n}×${n}</option>`);
     h+=H("ขนาดฟาร์ม ("+S.gs+"×"+S.gs+")")+G(B(nx?"ขั้นถัดไป "+nx.size+"×"+nx.size+" (ฟรี)":"ขั้นถัดไป (ไม่มี)","expand")+(sizes.length?`<select id="admSize" style="padding:4px">${sizes.join("")}</select>`+B("ขยายเป็น","expandto",undefined,"admSize"):""))+
@@ -1220,7 +1319,7 @@ function frameBody(now){
   S.sx=(S.sx||0)+dt;if(has("mailbox")){S.mt=(S.mt||0)+dt;if(S.mt>=90000){S.mt=0;mail()}}
   const si=seasonIdx();if(si!=curSe){curSe=si;if(S.ev)endEv(true);rebuildSE();const e=SEASONS[si];say(e.ic+" เข้าสู่"+e.n+"! "+e.s);flo(240,210,e.ic+" "+e.n,"#fff");SFX.harvest();payUpkeep()}
   if(flash>0)flash-=dt;
-  tickBuffs(dt);tickGardener(dt);tickQuestDay(dt); // [PATCH 1.1]
+  tickBuffs(dt);tickGardener(dt);tickGolem(dt);tickQuestDay(dt); // [PATCH 1.1]
   if(S.ev){const e=EVENTS[S.ev.id];S.ev.l-=dt;e.tk&&e.tk(dt);if(S.ev.l<=0)endEv()}
   else if((evT-=dt)<=0)startEv(pickEv(si));
   S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*SE().grow*(t.f?2:1))});
@@ -1228,7 +1327,7 @@ function frameBody(now){
   mons.forEach(m=>updMon(m,dt));
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.l-=dt;f.y-=dt*.03;if(f.l<=0)floats.splice(i,1)}
   if(msgT>0&&(msgT-=dt)<=0)$("msg").textContent="";
-  scene(now);mons.slice().sort((a,b)=>a.y-b.y).forEach(monster);drawGardener(now);drawFx(now,dt);drawFloats();ui();
+  scene(now);mons.slice().sort((a,b)=>a.y-b.y).forEach(monster);drawGardener(now);drawGolem(now);drawFx(now,dt);drawFloats();ui();
 }
 if(S.ev&&!EVENTS[S.ev.id])S.ev=null;rebuildSE();initPatch(); // [PATCH 1.1]
 markTool();refreshSeeds();say("พรวนดิน → ปลูก → รดน้ำ → รอโต → เก็บเกี่ยว!");
