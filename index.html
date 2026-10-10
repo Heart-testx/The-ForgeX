@@ -48,7 +48,7 @@ button:active{filter:brightness(.9)}button:disabled{opacity:.5}
     <button id="bBag">🎒 Inventory</button><button id="bShop">🏪 Kafra Shop</button><button id="bStat">📊 Stats</button><button id="bDecor">🏡 Decor</button><button id="bSeason">📅 Season</button><button id="bGacha">🎰 Gacha</button>
   </div>
   <!-- [PATCH 1.1] new menu row: Expand Farm / Quests / Craft -->
-  <div id="menu2"><button id="bExpand">🌾 Expand Farm</button><button id="bQuest">📜 Quests</button><button id="bCraft">⚗ Craft</button></div>
+  <div id="menu2"><button id="bExpand">🌾 Expand Farm</button><button id="bQuest">📜 Quests</button><button id="bCraft">⚗ Craft</button><button id="bBarn">🐔 Barn</button></div>
 </div>
 <div id="modal"><div class="win" id="mbox"></div></div>
 
@@ -77,7 +77,7 @@ const CROPS=[ // t = seconds to full growth
  {n:"Yggdrasil Berry",t:160,sell:800,cost:500, exp:120,c:"#a45cff"},
  {n:"Blue Herb",t:65,sell:190,cost:105,exp:35,c:"#3a7bff",lv:6},
  {n:"Mastela Fruit",t:120,sell:450,cost:260,exp:70,c:"#ff8c1a",lv:12}];
-const DROPS={jelopy:{n:"Jelopy",sell:8},clover:{n:"Clover",sell:50},apple:{n:"Apple",sell:20,heal:30},potion:{n:"Red Potion",sell:0,heal:50,d:"ฟื้น Energy +50"},
+const DROPS={jelopy:{n:"Jelopy",sell:8,d:"วัตถุดิบสำหรับ Craft / Cook หลายสูตร • ขาย 8z"},clover:{n:"Clover",sell:50,d:"ใบโคลเวอร์ ใช้ทำ Lucky Tea ได้ • ขาย 50z"},apple:{n:"Apple",sell:20,heal:30,d:"ฟื้น Energy +30 • ใช้ทำ Herbal Stew ได้ • ขาย 20z"},potion:{n:"Red Potion",sell:0,heal:50,d:"ฟื้น Energy +50"},
  coin:{n:"Gacha Coin",sell:0,d:"ใช้หมุนที่ Gachapon"},
  sprinkler:{n:"Sprinkler Scroll",sell:0,fx:1,d:"รดน้ำพืชทุกต้นทันที"},
  elixir:{n:"Growth Elixir",sell:0,fx:1,d:"พืชทุกต้นโตเพิ่ม 40%"},
@@ -92,6 +92,12 @@ const DROPS={jelopy:{n:"Jelopy",sell:8},clover:{n:"Clover",sell:50},apple:{n:"Ap
  stew:{n:"Herbal Stew",sell:0,fx:1,buff:"feast",d:"EXP +30% นาน 90 วินาที"},
  gardener:{n:"Gardener Contract",sell:0,fx:1,d:"จ้างชาวสวน 1 คน ทำฟาร์มให้อัตโนมัติ 2 นาทีครึ่ง (พรวน→ปลูก→รดน้ำ→เก็บเกี่ยว) • จ้างพร้อมกันได้สูงสุด 5 คน แบ่งงานกันไม่ซ้ำแปลง • ใช้เมล็ดจาก Inventory"},
  golem:{n:"Golem Contract",sell:0,fx:1,d:"จ้างโกเลม 1 ตัว ตีมอนสเตอร์ให้อัตโนมัติ 2 นาทีครึ่ง • จ้างพร้อมกันได้สูงสุด 5 ตัว แบ่งเป้าหมายกัน • ไม่ใช้ Energy ได้ Zeny/EXP/ดรอปเหมือนผู้เล่นฆ่าเอง"},
+ egg:{n:"Egg",sell:70,d:"จากไก่ • ใช้ทำอาหารได้"},
+ wool:{n:"Wool",sell:180,d:"จากแกะ • ใช้คราฟต์ได้"},
+ milk:{n:"Milk",sell:400,d:"จากวัว • ใช้ทำอาหารได้"},
+ omelet:{n:"Herb Omelet",sell:0,heal:80,d:"ฟื้น Energy +80"},
+ soup:{n:"Hearty Soup",sell:0,fx:1,buff:"hearty",d:"EXP +50% นาน 120 วินาที"},
+ scarf:{n:"Wool Scarf",sell:0,fx:1,buff:"cozy",d:"Energy ฟื้นเร็ว x2 นาน 120 วินาที"},
  tea:{n:"Lucky Tea",sell:0,fx:1,buff:"lucky",d:"โอกาสต้นทอง/รุ้ง x1.5 นาน 90 วินาที"}};
 const MON={
  poring: {n:"Poring", hp:20,z:15,exp:10,d:[["jelopy",.6],["apple",.15]]},
@@ -100,6 +106,18 @@ const MON={
 const CR={c:{p:"",m:1,e:1},g:{p:"✨Golden ",m:5,e:2},r:{p:"🌈Rainbow ",m:15,e:4}}; // crop rarity: prefix, sell multiplier, exp multiplier
 const itemName=k=>k[1]=="_"?CR[k[0]].p+CROPS[+k.slice(2)].n.replace(" Seed",""):DROPS[k].n;
 const itemSell=k=>k[1]=="_"?CROPS[+k.slice(2)].sell*CR[k[0]].m:DROPS[k].sell;
+
+/* ===== [PATCH 1.9] Barn data =====
+   ANIMALS: lv = level to buy, cost = base Zeny, feed = [[crop inventory key, qty]] per production cycle (normal-quality crops only),
+   cycle = ms of "fed" time per product, out = DROPS key. BARN_TIERS: animal slots (cap) + level/Zeny needed to upgrade TO that tier. */
+const ANIMALS={
+ chicken:{n:"Chicken",ic:"🐔",lv:3, cost:600, feed:[["c_0",1]],cycle:45000, out:"egg"},
+ sheep:  {n:"Sheep",  ic:"🐑",lv:8, cost:1800,feed:[["c_1",1]],cycle:70000, out:"wool"},
+ cow:    {n:"Cow",    ic:"🐄",lv:12,cost:3500,feed:[["c_2",1]],cycle:100000,out:"milk"}};
+const BARN_TIERS=[{cap:2},{cap:4,lv:6,cost:2000},{cap:6,lv:12,cost:6000},{cap:8,lv:18,cost:15000}];
+const BARN_STORE=5, BARN_FEED_MAX=5;   // max products waiting in the barn / max feed charges per animal
+const normBarn=b=>{b=b&&typeof b=="object"?b:{};const c=Number.isInteger(b.c)&&b.c>=0&&b.c<BARN_TIERS.length?b.c:0;
+ return {c,a:(Array.isArray(b.a)?b.a:[]).filter(x=>x&&ANIMALS[x.k]).slice(0,BARN_TIERS[c].cap).map(x=>({k:x.k,p:Math.max(0,+x.p||0),f:Math.min(BARN_FEED_MAX,Math.max(0,x.f|0)),o:Math.min(BARN_STORE,Math.max(0,x.o|0))}))}};
 
 /* ===== MODULE: Save / State ===== */
 const fresh=()=>({z:200,exp:0,lv:1,pt:0,str:1,dex:1,luk:1,en:100,inv:{s_0:5},seed:0,
@@ -114,7 +132,7 @@ S.dec=S.dec||{}; // owned decorations {key:1}
    gs = grid size (old saves had a fixed 6x6 = 36 tiles, so they keep their 6x6 farm), stats = lifetime counters,
    q = today's quests, ach = claimed achievement tiers, bf = active buffs {id:msLeft} */
 S.gs=S.gs||Math.round(Math.sqrt(S.tiles.length))||GRID.start;setGrid(S.gs);
-S.stats=Object.assign({h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0},S.stats);
+S.stats=Object.assign({h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0,an:0},S.stats);S.barn=normBarn(S.barn); // [PATCH 1.9]
 S.ach=S.ach||{};S.bf=S.bf||{};S.gl=(Array.isArray(S.gl)?S.gl:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.8] time left (ms) of each hired golem, max 5
 S.gd=(Array.isArray(S.gd)?S.gd:S.gd>0?[S.gd]:[]).filter(v=>Number.isFinite(v)&&v>0).slice(0,5); // [PATCH 1.7] time left (ms) of each hired gardener, max 5 (old single-number saves are converted)
 const has=k=>S.dec[k]?1:0;
@@ -327,6 +345,7 @@ const C=$("c"),g=C.getContext("2d");
 C.addEventListener("pointerdown",e=>{
   e.preventDefault();const r=C.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*W/r.height;
   for(const m of mons)if(Math.hypot(m.x-x,m.y-10-y)<28)return attack(m); // monsters have priority
+  if(x>=434&&x<=480&&y>=76&&y<=128)return barnUI(); // [PATCH 1.9] tap the barn
   const cx=Math.floor((x-OX)/T),cy=Math.floor((y-OY)/T);
   if(cx>=0&&cy>=0&&cx<N&&cy<N)useTool(cy*N+cx);
 });
@@ -367,7 +386,7 @@ function scene(now){
       if(t.f){g.fillStyle="#2e8b2e";g.beginPath();g.moveTo(-21,-27);g.lineTo(-13,-16);g.lineTo(-29,-16);g.fill();g.fillStyle="#7dff6a";g.beginPath();g.moveTo(-21,-29);g.lineTo(-14,-19);g.lineTo(-28,-19);g.fill();g.fillRect(-23,-19,4,7)} // fertilised marker
       g.restore()}
   });
-  drawDecor(now);
+  drawDecor(now);drawBarn(now);
 }
 function crop(t,x,y,now,ph=x){ // ph = sway phase (x is local now that the sprite is scaled) // every crop has its own silhouette at each growth stage; rarity = aura + sparkle only
   const s=stageOf(t),k=t.k,C=CROPS[k].c,rr=s==3?(t.rar||0):0,hue=now/4%360;
@@ -684,7 +703,9 @@ function expandUI(){
 const BUFFS={
  power:{n:"Berserk",ic:"💪",dur:60000,m:{dmg:1.5}},
  feast:{n:"Herbal Feast",ic:"🍲",dur:90000,m:{exp:1.3}},
- lucky:{n:"Lucky Tea",ic:"🍀",dur:90000,m:{rare:1.5}}};
+ lucky:{n:"Lucky Tea",ic:"🍀",dur:90000,m:{rare:1.5}},
+ hearty:{n:"Hearty Soup",ic:"🥛",dur:120000,m:{exp:1.5}},
+ cozy:{n:"Wool Scarf",ic:"🧣",dur:120000,m:{regen:2}}};
 function applyBuffMods(){SEC.dmg=1;for(const id in S.bf){const b=BUFFS[id];if(!b){delete S.bf[id];continue}for(const k in b.m)SEC[k]=(SEC[k]||1)*b.m[k]}}
 function startBuff(id){const b=BUFFS[id];S.bf[id]=b.dur;rebuildSE();flo(240,200,b.ic+" "+b.n+"!","#7dffb0");say(b.ic+" "+b.n+" นาน "+b.dur/1000+" วินาที");return true}
 function tickBuffs(dt){let ch=0;for(const id in S.bf){if((S.bf[id]-=dt)<=0){const b=BUFFS[id];delete S.bf[id];ch=1;say((b?b.ic+" "+b.n:"Buff")+" หมดเวลา")}}if(ch)rebuildSE()}
@@ -709,20 +730,22 @@ const QUEST_POOL=[
  {w:4,make:()=>{const ty=pick(Object.keys(MON)),n=ri(3,8);return {type:"kill",tg:ty,need:n,rw:[["z",n*35],...pick(BONUS)]}}},
  {w:2,make:()=>{const n=ri(6,12);return {type:"killAny",tg:null,need:n,rw:[["z",n*30],...pick(BONUS)]}}},
  {w:2,ok:()=>S.lv>=3,make:()=>{const n=ri(1,3);return {type:"craft",tg:null,need:n,rw:[["z",n*120],...pick(BONUS)]}}},
+ {w:2,ok:()=>S.barn.a.length>0,make:()=>{const n=ri(3,8);return {type:"barn",tg:null,need:n,rw:[["z",n*60],...pick(BONUS)]}}}, // collect animal products
  {w:1.5,ok:()=>S.lv>=4,make:()=>({type:"harvestRar",tg:1,need:1,rw:[["z",400],["coin",1]]})},                       // Golden or better
  {w:.7,ok:()=>S.lv>=8,make:()=>({type:"harvestRar",tg:2,need:1,rw:[["coin",2],["golden",1],["z",800]]})}];          // Rainbow
 const qKey=q=>q.type+":"+q.tg;
 const qValid=q=>!!q&&Number.isFinite(q.p)&&Number.isFinite(q.need)&&q.need>0&&Array.isArray(q.rw)&&q.rw.every(r=>r[0]=="z"||!!DROPS[r[0]])&&
- (q.type=="harvest"?!!CROPS[q.tg]:q.type=="kill"?!!MON[q.tg]:["harvestAny","harvestRar","killAny","craft"].includes(q.type)); // [PATCH 1.4]
+ (q.type=="harvest"?!!CROPS[q.tg]:q.type=="kill"?!!MON[q.tg]:["harvestAny","harvestRar","killAny","craft","barn"].includes(q.type)); // [PATCH 1.4]
 const qText=q=>({ // lazy functions: only the entry for q.type is evaluated
  harvest:()=>`เก็บเกี่ยว ${crn(q.tg)} ${q.need} ชิ้น`,
  harvestAny:()=>`เก็บเกี่ยวผลผลิตอะไรก็ได้ ${q.need} ชิ้น`,
  harvestRar:()=>q.tg==2?`เก็บเกี่ยว 🌈Rainbow ${q.need} ชิ้น`:`เก็บเกี่ยว ✨Golden ขึ้นไป ${q.need} ชิ้น`,
  kill:()=>`กำจัด ${MON[q.tg].n} ${q.need} ตัว`,
  killAny:()=>`กำจัดมอนสเตอร์ ${q.need} ตัว`,
+ barn:()=>`เก็บผลผลิตจากคอกสัตว์ ${q.need} ชิ้น`,
  craft:()=>`คราฟต์ / ทำอาหาร ${q.need} ครั้ง`}[q.type])();
 const qMatch=(q,ev,d)=>({harvest:ev=="harvest"&&d.k==q.tg,harvestAny:ev=="harvest",harvestRar:ev=="harvest"&&d.rar>=q.tg,
- kill:ev=="kill"&&d.ty==q.tg,killAny:ev=="kill",craft:ev=="craft"}[q.type]);
+ kill:ev=="kill"&&d.ty==q.tg,killAny:ev=="kill",craft:ev=="craft",barn:ev=="barn"}[q.type]);
 function genQuest(taken){
   const pool=QUEST_POOL.filter(e=>!e.ok||e.ok()),tot=pool.reduce((a,e)=>a+e.w,0);
   for(let tr=0;tr<30;tr++){
@@ -743,6 +766,7 @@ function track(ev,d){
   if(ev=="harvest"){st.h+=n;st.hc[d.k]=(st.hc[d.k]||0)+n;if(d.rar>=1)st.hg+=n;if(d.rar>=2)st.hr+=n}
   else if(ev=="kill"){st.k++;st.kc[d.ty]=(st.kc[d.ty]||0)+1}
   else if(ev=="craft")st.cr+=n;
+  else if(ev=="barn")st.an+=n;
   S.q.list.forEach(q=>{
     if(q.cl||q.p>=q.need||!qMatch(q,ev,d))return;
     q.p=Math.min(q.need,q.p+n);
@@ -772,6 +796,8 @@ const ACH=[
   tiers:[[1,[["coin",3]]],[5,[["coin",6],["golden",3]]],[20,[["coin",15]]]]},
  {id:"craft",ic:"🍳",n:"Kafra Chef",d:"คราฟต์ / ทำอาหารสะสม",val:()=>S.stats.cr,
   tiers:[[5,[["z",400]]],[25,[["z",1500],["coin",1]]],[100,[["z",5000],["coin",3]]]]},
+ {id:"barn",ic:"🐔",n:"Rancher",d:"เก็บผลผลิตจากคอกสัตว์สะสม",val:()=>S.stats.an,
+  tiers:[[10,[["z",300]]],[60,[["z",1500],["coin",1]]],[250,[["z",5000],["coin",3]]]]},
  {id:"level",ic:"⭐",n:"Adventurer",d:"เลเวลผู้เล่น",val:()=>S.lv,
   tiers:[[5,[["z",500]]],[10,[["z",1500],["coin",1]]],[20,[["z",5000],["coin",3]]],[30,[["z",15000],["coin",8]]]]},
  {id:"farm",ic:"🌾",n:"Land Baron",d:"ขนาดฟาร์ม",val:()=>S.gs,fmt:v=>v+"×"+v,
@@ -819,6 +845,9 @@ const RECIPES=[
  {id:"fert",cat:"craft",ic:"🌱",out:["fert",1],ing:[["jelopy",3],["c_0",2]]},                    // Jelopy x3 + Poring x2     -> Fertilizer (-50% growth time)
  {id:"brew",cat:"craft",ic:"💪",lv:4,out:["brew",1],ing:[["jelopy",3],["c_1",2]]},               // Jelopy x3 + Red Herb x2   -> Berserk Brew (buff)
  {id:"stew",cat:"cook",ic:"🍲",lv:3,out:["stew",1],ing:[["jelopy",2],["apple",1],["c_2",1]]},     // Jelopy x2 + Apple + Yellow Herb -> Herbal Stew (buff)
+ {id:"omelet",cat:"cook",ic:"🍳",lv:3,out:["omelet",1],ing:[["egg",2],["c_1",1]]},                     // Egg x2 + Red Herb          -> Herb Omelet (+80 Energy)
+ {id:"soup",cat:"cook",ic:"🥛",lv:6,out:["soup",1],ing:[["milk",1],["egg",1],["c_2",1]]},          // Milk + Egg + Yellow Herb   -> Hearty Soup (EXP +50%)
+ {id:"scarf",cat:"craft",ic:"🧣",lv:8,out:["scarf",1],ing:[["wool",2],["jelopy",2]]},              // Wool x2 + Jelopy x2        -> Wool Scarf (Energy regen x2)
  {id:"tea",cat:"cook",ic:"🍵",lv:5,out:["tea",1],ing:[["jelopy",2],["clover",1]]}];              // Jelopy x2 + Clover        -> Lucky Tea (buff)
 const RCAT={craft:"⚗ Crafting",cook:"🍳 Cooking"};
 const craftMax=r=>Math.min(99,...r.ing.map(([k,q])=>Math.floor((S.inv[k]||0)/q)));
@@ -986,6 +1015,85 @@ function drawGolem(now){
   });
 }
 
+/* ===== [PATCH 1.9] MODULE 7: Barn (animals) =====
+   S.barn = {c: tier index, a: [{k: animal id, p: ms of progress, f: feed charges, o: products waiting}]}.
+   Feed an animal with crops from the Inventory (normal quality) -> while it has feed charges it makes one product per `cycle` ms
+   (speed follows the season / event growth modifier). Products wait in the barn (max BARN_STORE each) until you Collect them. */
+const barnCap=()=>BARN_TIERS[S.barn.c].cap;
+const barnReady=()=>S.barn.a.reduce((t,a)=>t+a.o,0);
+const feedMax=(a,want)=>Math.min(want,BARN_FEED_MAX-a.f,...ANIMALS[a.k].feed.map(([k,q])=>Math.floor((S.inv[k]||0)/q)));
+function tickBarn(dt){
+  let made=0;
+  S.barn.a.forEach(a=>{
+    const d=ANIMALS[a.k];if(a.f<=0||a.o>=BARN_STORE)return;
+    a.p+=dt*SE().grow;
+    while(a.p>=d.cycle&&a.f>0&&a.o<BARN_STORE){a.p-=d.cycle;a.f--;a.o++;made++}
+    if(a.f<=0||a.o>=BARN_STORE)a.p=Math.min(a.p,d.cycle*.999); // idle animals keep their partial progress, never an overflow
+  });
+  if(made){SFX.coin();flo(459,70,"🐔 +"+made,"#ffe36a");save()}
+}
+function buyAnimal(k){
+  const d=ANIMALS[k],c=P(d.cost);
+  if(!d||S.lv<d.lv||S.z<c||S.barn.a.length>=barnCap()){SFX.bad();return}
+  S.z-=c;S.barn.a.push({k,p:0,f:0,o:0});SFX.lvl();flo(240,210,d.ic+" "+d.n+"!","#7dffb0");save();barnUI();
+}
+function upgradeBarn(){
+  const u=BARN_TIERS[S.barn.c+1];if(!u||S.lv<u.lv||S.z<P(u.cost)){SFX.bad();return}
+  S.z-=P(u.cost);S.barn.c++;SFX.lvl();flo(240,210,"🏚 Barn "+u.cap+" ตัว!","#7dffb0");save();barnUI();
+}
+function feedAnimal(i,n){
+  const a=S.barn.a[i];if(!a)return;const m=feedMax(a,n);if(m<1){SFX.bad();say("🐔 ไม่มีอาหารใน Inventory หรืออิ่มเต็มแล้ว");return}
+  ANIMALS[a.k].feed.forEach(([k,q])=>add(k,-q*m));a.f+=m;SFX.plant();save();barnUI();
+}
+function feedAll(){
+  let tot=0;S.barn.a.forEach(a=>{const m=feedMax(a,BARN_FEED_MAX);if(m>0){ANIMALS[a.k].feed.forEach(([k,q])=>add(k,-q*m));a.f+=m;tot+=m}});
+  if(!tot){SFX.bad();say("🐔 ไม่มีอาหารใน Inventory หรืออิ่มเต็มแล้ว")}else{SFX.plant();say("🌾 ให้อาหารสัตว์รวม "+tot+" มื้อ")}save();barnUI();
+}
+function collect(list){
+  let n=0;list.forEach(a=>{if(a.o>0){add(ANIMALS[a.k].out,a.o);n+=a.o;a.o=0}});
+  if(!n){SFX.bad();return}track("barn",{n});SFX.harvest();flo(240,230,"🧺 +"+n+" ผลผลิตจากคอก","#ffe36a");save();barnUI();
+}
+let barnTm=0;
+function barnLive(){ // updates bars/counters in place (a full re-render every tick would eat button clicks)
+  if(barnTm)return;
+  barnTm=setInterval(()=>{try{
+    if($("modal").style.display=="none"||!$("bp0")){clearInterval(barnTm);barnTm=0;return}
+    S.barn.a.forEach((a,i)=>{const e=$("bp"+i);if(!e)return;e.style.width=Math.min(100,a.p/ANIMALS[a.k].cycle*100)+"%";setTxt("bf"+i,a.f);setTxt("bo"+i,a.o)});
+  }catch(e){clearInterval(barnTm);barnTm=0;noteErr("barnLive",e)}},400);
+}
+function barnUI(){
+  const B=S.barn,cap=barnCap(),nx=BARN_TIERS[B.c+1],rd=barnReady();
+  let h=`<h3>🐔 Barn</h3><div class="row"><b>Zeny: ${S.z.toLocaleString()}z</b><span>สัตว์ ${B.a.length}/${cap}</span></div>`;
+  if(B.a.length){
+    h+=`<div style="display:flex;gap:4px;margin:6px 0"><button onclick="feedAll()">🌾 Feed All</button><button onclick="collect(S.barn.a)">🧺 Collect All (${rd})</button></div>`;
+    B.a.forEach((a,i)=>{
+      const d=ANIMALS[a.k],ing=d.feed.map(([k,q])=>{const hv=S.inv[k]||0;return `<small style="color:${hv>=q?"#1f7a3a":"#c0182b"}">${nm2(k)} ${hv}/${q}</small>`}).join(" + ");
+      h+=`<div class="row"><span style="flex:1">${d.ic} <b>${d.n}</b> → ${DROPS[d.out].n}<br><small>อาหาร/รอบ:</small> ${ing}
+      <div class="bar"><i id="bp${i}" style="width:${Math.min(100,a.p/d.cycle*100)}%;background:linear-gradient(#ffe36a,#e5a800)"></i></div>
+      <small>🍽 <span id="bf${i}">${a.f}</span>/${BARN_FEED_MAX} มื้อ • 📦 <span id="bo${i}">${a.o}</span>/${BARN_STORE} • ${d.cycle/1000}s/ชิ้น</small></span>
+      <span style="display:flex;flex-direction:column;gap:3px"><button onclick="feedAnimal(${i},1)">Feed</button><button onclick="feedAnimal(${i},${BARN_FEED_MAX})">Max</button><button onclick="collect([S.barn.a[${i}]])">Collect</button></span></div>`;
+    });
+  }else h+=`<div style="text-align:center;margin:8px 0;font-size:13px">ยังไม่มีสัตว์ในคอก • ซื้อด้านล่าง (ไก่ปลดล็อก Lv ${ANIMALS.chicken.lv})</div>`;
+  h+=`<b>🛒 ซื้อสัตว์</b>`+Object.keys(ANIMALS).map(k=>{
+    const d=ANIMALS[k],c=P(d.cost),lock=S.lv<d.lv,full=B.a.length>=cap;
+    return `<div class="row"><span>${d.ic} <b>${d.n}</b> (${c.toLocaleString()}z) <small>[Lv ${d.lv}]</small><br><small>กิน ${d.feed.map(([fk,q])=>nm2(fk)+" x"+q).join(", ")} → ${DROPS[d.out].n} (ขาย ${DROPS[d.out].sell}z) ทุก ${d.cycle/1000}s</small></span>
+    ${lock?`<button disabled>🔒 Lv ${d.lv}</button>`:`<button ${S.z>=c&&!full?"":"disabled"} onclick="buyAnimal('${k}')">${full?"เต็ม":"Buy"}</button>`}</div>`}).join("");
+  if(nx){const c=P(nx.cost),lvOk=S.lv>=nx.lv;
+    h+=`<div class="row"><span>🏚 ขยายคอกเป็น <b>${nx.cap} ตัว</b> (${c.toLocaleString()}z) <small>[Lv ${nx.lv}]</small></span>${lvOk?`<button ${S.z>=c?"":"disabled"} onclick="upgradeBarn()">Upgrade</button>`:`<button disabled>🔒 Lv ${nx.lv}</button>`}</div>`;
+  }else h+=`<div class="row"><b>🏆 คอกขยายสูงสุดแล้ว</b></div>`;
+  modal(h+`<div style="font-size:12px;text-align:center;margin-top:6px">ให้อาหารด้วยผลผลิตธรรมดาจาก Inventory (Golden/Rainbow ไม่ถูกใช้) • สัตว์ผลิตเฉพาะตอนมีอาหาร • ผลผลิตเก็บในคอกได้ ${BARN_STORE} ชิ้นต่อตัว<br>ฤดูกาลและอีเวนต์มีผลต่อความเร็ว • ขายผลผลิตได้ที่ Sell All หรือเอาไปทำอาหาร/คราฟต์</div>`);
+  if(B.a.length)barnLive();
+}
+function drawBarn(now){ // little barn in the right margin; tap it to open the Barn menu
+  const x=438,y=84,n=S.barn.a.length,rd=barnReady();
+  ell(459,y+40,22,4,"#0003");rect(x,y+16,42,24,"#b83a2e");rect(x,y+16,42,3,"#8f1f1b");
+  g.fillStyle="#7a2a20";g.beginPath();g.moveTo(x-3,y+17);g.lineTo(x+21,y-2);g.lineTo(x+45,y+17);g.fill();
+  rect(x+13,y+24,16,16,"#f3e3b0");g.strokeStyle="#b8923a";g.lineWidth=2;g.beginPath();g.moveTo(x+13,y+24);g.lineTo(x+29,y+40);g.moveTo(x+29,y+24);g.lineTo(x+13,y+40);g.stroke();g.lineWidth=1;
+  ell(x+21,y+10,4,4,"#f3e3b0");
+  g.textAlign="center";g.font="bold 11px Tahoma,sans-serif";g.fillStyle="#000";g.fillText(n+"/"+barnCap(),x+22,y+55);g.fillStyle="#fff";g.fillText(n+"/"+barnCap(),x+21,y+54);g.textAlign="left";
+  if(rd){const p=Math.sin(now/180)*2;ell(x+40,y-2+p,9,9,"#ffd84a");g.fillStyle="#6b3a00";g.font="bold 12px Tahoma,sans-serif";g.textAlign="center";g.fillText(rd,x+40,y+2+p);g.textAlign="left"}
+}
+
 /* ===== [PATCH 1.1] HUD + init ===== */
 const setTxt=(id,t)=>{const e=$(id);if(e.textContent!==t)e.textContent=t};
 let bfCache="";
@@ -999,6 +1107,7 @@ function hud(){ // called from ui() every frame; throttled to 4x/sec and only to
   setTxt("bExpand",u?"🌾 Expand Farm ("+S.gs+"×"+S.gs+")":"🌾 Farm "+S.gs+"×"+S.gs+" (MAX)");
   $("bExpand").classList.toggle("on",canExpand());
   setTxt("bQuest","📜 Quests"+(n?" ("+n+"❗)":""));$("bQuest").classList.toggle("on",n>0);
+  {const r=S.barn.a.reduce((t,a)=>t+a.o,0);setTxt("bBarn","🐔 Barn"+(r?" ("+r+"❗)":""));$("bBarn").classList.toggle("on",r>0)}
   setTxt("bFert","🧪 Fert ("+(S.inv.fert||0)+")");
   const h=(ADMIN?`<span class="chip" style="background:#ffc9c9">🛠 ADMIN</span>`:"")+(S.gd.length?`<span class="chip" style="background:linear-gradient(#e8ffd8,#b8e89a)">🧑‍🌾 ×${S.gd.length}/${GARDENER_MAX} • ${S.gd.map(v=>Math.ceil(v/1000)+"s").join(" / ")}</span>`:"")+(S.gl.length?`<span class="chip" style="background:linear-gradient(#eeeeee,#c9c6c0)">🗿 ×${S.gl.length}/${GOLEM_MAX} • ${S.gl.map(v=>Math.ceil(v/1000)+"s").join(" / ")}</span>`:"")+Object.keys(S.bf).map(id=>`<span class="chip">${BUFFS[id].ic} ${BUFFS[id].n} ${Math.ceil(S.bf[id]/1000)}s</span>`).join("");
   if(h!==bfCache){bfCache=h;$("buffs").innerHTML=h}
@@ -1007,7 +1116,7 @@ function initPatch(){
   ensureQuests();achReady().forEach(a=>annc.add(a.id+(S.ach[a.id]||0))); // don't announce achievements earned before this patch
   adminInit(); // [PATCH 1.3] hidden admin entry + listeners
   stabilityInit(); // [PATCH 1.4]
-  $("bExpand").onclick=expandUI;$("bQuest").onclick=()=>questUI();$("bCraft").onclick=craftUI;
+  $("bExpand").onclick=expandUI;$("bQuest").onclick=()=>questUI();$("bCraft").onclick=craftUI;$("bBarn").onclick=barnUI;
 }
 
 /* =====================================================================================================
@@ -1145,6 +1254,7 @@ function checkState(){
   if(badB.length)add("บัฟผิดปกติ: "+badB.join(", "),()=>{badB.forEach(k=>{delete S.bf[k]});rebuildSE()});
   if(!Array.isArray(S.gd)||S.gd.length>GARDENER_MAX||S.gd.some(v=>!Number.isFinite(v)))add("ข้อมูลชาวสวนผิดปกติ",()=>{S.gd=(Array.isArray(S.gd)?S.gd:[]).filter(Number.isFinite).slice(0,GARDENER_MAX)});
   if(!Array.isArray(S.gl)||S.gl.length>GOLEM_MAX||S.gl.some(v=>!Number.isFinite(v)))add("ข้อมูลโกเลมผิดปกติ",()=>{S.gl=(Array.isArray(S.gl)?S.gl:[]).filter(Number.isFinite).slice(0,GOLEM_MAX)});
+  if(!S.barn||!Array.isArray(S.barn.a)||S.barn.a.some(x=>!x||!ANIMALS[x.k]||!Number.isFinite(x.p)||!(x.f>=0&&x.f<=BARN_FEED_MAX)||!(x.o>=0&&x.o<=BARN_STORE))||S.barn.a.length>barnCap())add("ข้อมูลคอกสัตว์ผิดปกติ",()=>{S.barn=normBarn(S.barn)});
   if(S.ev&&!EVENTS[S.ev.id])add("อีเวนต์ที่ไม่รู้จัก ("+S.ev.id+")",()=>{S.ev=null;rebuildSE()});
   if(!S.q||!Array.isArray(S.q.list)||S.q.list.length!=3||!S.q.list.every(qValid))add("เควสต์ประจำวันผิดปกติ",()=>newDay());
   const badM=mons.filter(x=>x.tg>=S.tiles.length||x.tg<-1||!Number.isFinite(x.x)||!Number.isFinite(x.y)||!MON[x.ty]);
@@ -1170,6 +1280,9 @@ const ADMCMD={
  buff:a=>{if(!BUFFS[a])throw new Error("ไม่รู้จักบัฟ");startBuff(a);return "เริ่มบัฟ "+BUFFS[a].n},
  gard:()=>{if(S.gd.length>=GARDENER_MAX)throw new Error("ชาวสวนครบ "+GARDENER_MAX+" คนแล้ว");S.gd.push(GARDENER_MS);return "จ้างชาวสวนเพิ่ม 1 คน ("+S.gd.length+"/"+GARDENER_MAX+")"},
  golem:()=>{if(S.gl.length>=GOLEM_MAX)throw new Error("โกเลมครบ "+GOLEM_MAX+" ตัวแล้ว");S.gl.push(GOLEM_MS);return "จ้างโกเลมเพิ่ม 1 ตัว ("+S.gl.length+"/"+GOLEM_MAX+")"},
+ barnfill:()=>{const c=barnCap();while(S.barn.a.length<c)S.barn.a.push({k:Object.keys(ANIMALS)[S.barn.a.length%3],p:0,f:0,o:0});return "เติมคอกให้เต็ม ("+c+" ตัว)"},
+ barnfeed:()=>{S.barn.a.forEach(a=>{a.f=BARN_FEED_MAX});return "ให้อาหารสัตว์ทุกตัวเต็ม (ฟรี)"},
+ barnclear:()=>{S.barn={c:S.barn.c,a:[]};return "ลบสัตว์ทั้งหมด"},
  nobuff:()=>{S.bf={};S.gd=[];GW.length=0;S.gl=[];GL.length=0;rebuildSE();return "ล้างบัฟทั้งหมด"},
  /* farm */
  expand:()=>{const u=nextGrid();if(!u)throw new Error("ไม่มีขั้นถัดไปใน GRID.ups (ใช้ 'ขยายเป็น' แทน)");applyExpand(u);return "ขยายฟาร์มเป็น "+u.size+"×"+u.size+" (ฟรี)"},
@@ -1183,7 +1296,7 @@ const ADMCMD={
  qdone:()=>{S.q.list.forEach(q=>{q.p=q.need});return "ทำเควสต์ครบทั้งหมด"},
  qone:a=>{const q=S.q.list[num(a,0,2)];q.p=q.need;return "เควสต์สำเร็จ: "+qText(q)},
  qrep:a=>{const i=num(a,0,2);S.q.list[i]=genQuest(S.q.list.map(qKey));return "เปลี่ยนเควสต์ข้อ "+(i+1)},
- resetstats:()=>{S.stats={h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0};S.ach={};annc.clear();return "รีเซ็ต Stats / Achievements"},
+ resetstats:()=>{S.stats={h:0,hc:{},hg:0,hr:0,k:0,kc:{},cr:0,an:0};S.ach={};annc.clear();return "รีเซ็ต Stats / Achievements"},
  /* world */
  season:a=>{const n=num(a,0,3);S.sx=n*SEASON_MS+1;admSyncSeason();return "ข้ามไป "+SEASONS[n].n+" (ไม่เก็บค่าบำรุงสวน)"},
  skip:a=>{const n=num(a,1,600);S.sx=(S.sx||0)+n*1000;if(seasonIdx()!=curSe)admSyncSeason();return "เดินเวลาฤดูกาล +"+n+" วินาที"},
@@ -1272,7 +1385,7 @@ function admRender(resetScroll){
     h+=H("Zeny")+G(NI("admZ",1000,96)+B("เพิ่ม","z",undefined,"admZ")+B("ตั้งเป็น","setz",undefined,"admZ"))+
      H("เลเวล / แต้ม / Energy")+G(NI("admLv",S.lv,60)+B("ตั้งเลเวล","setlv",undefined,"admLv")+B("+1 Lv","lvup")+B("+10 Stat Pts","pt",10)+B("เติม Energy","en"))+
      H("ให้ / ลบไอเทม (ใส่เลขติดลบเพื่อลบ)")+G(`<select id="admItem" style="flex:2 1 140px;padding:4px">${opts}</select>`+NI("admQty",5,60)+B("ตกลง","give",undefined,"admItem,admQty")+B("+5 ทุกชนิด","giveall"))+
-     H("บัฟ")+G(Object.keys(BUFFS).map(k=>B(BUFFS[k].ic+" "+BUFFS[k].n,"buff",k)).join("")+B("🧑‍🌾 +1 Gardener","gard")+B("🗿 +1 Golem","golem")+B("ล้างบัฟ","nobuff"));
+     H("คอกสัตว์")+G(B("🐔 เติมคอกเต็ม","barnfill")+B("🌾 ให้อาหารฟรี","barnfeed")+B("🗑 ลบสัตว์","barnclear"))+H("บัฟ")+G(Object.keys(BUFFS).map(k=>B(BUFFS[k].ic+" "+BUFFS[k].n,"buff",k)).join("")+B("🧑‍🌾 +1 Gardener","gard")+B("🗿 +1 Golem","golem")+B("ล้างบัฟ","nobuff"));
   }else if(admTab=="f"){
     const nx=nextGrid(),sizes=[];for(let n=S.gs+1;n<=12;n++)sizes.push(`<option value="${n}"${(admIn.admSize||S.gs+1)==n?" selected":""}>${n}×${n}</option>`);
     h+=H("ขนาดฟาร์ม ("+S.gs+"×"+S.gs+")")+G(B(nx?"ขั้นถัดไป "+nx.size+"×"+nx.size+" (ฟรี)":"ขั้นถัดไป (ไม่มี)","expand")+(sizes.length?`<select id="admSize" style="padding:4px">${sizes.join("")}</select>`+B("ขยายเป็น","expandto",undefined,"admSize"):""))+
@@ -1319,7 +1432,7 @@ function frameBody(now){
   S.sx=(S.sx||0)+dt;if(has("mailbox")){S.mt=(S.mt||0)+dt;if(S.mt>=90000){S.mt=0;mail()}}
   const si=seasonIdx();if(si!=curSe){curSe=si;if(S.ev)endEv(true);rebuildSE();const e=SEASONS[si];say(e.ic+" เข้าสู่"+e.n+"! "+e.s);flo(240,210,e.ic+" "+e.n,"#fff");SFX.harvest();payUpkeep()}
   if(flash>0)flash-=dt;
-  tickBuffs(dt);tickGardener(dt);tickGolem(dt);tickQuestDay(dt); // [PATCH 1.1]
+  tickBuffs(dt);tickGardener(dt);tickGolem(dt);tickBarn(dt);tickQuestDay(dt); // [PATCH 1.1]
   if(S.ev){const e=EVENTS[S.ev.id];S.ev.l-=dt;e.tk&&e.tk(dt);if(S.ev.l<=0)endEv()}
   else if((evT-=dt)<=0)startEv(pickEv(si));
   S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*SE().grow*(t.f?2:1))});
