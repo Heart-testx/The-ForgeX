@@ -223,7 +223,8 @@ let SAVE_LOCK=false; // [PATCH 1.4] true while the page is about to reload (admi
 /* [PATCH 1.5] save() is now debounced: many taps in a row = ONE JSON.stringify + localStorage write (was one per tap).
    saveNow() writes immediately and is used when the page is hidden/closed. */
 let saveTm=0;
-const saveNow=()=>{if(saveTm){clearTimeout(saveTm);saveTm=0}if(SAVE_LOCK)return;try{localStorage.setItem("rmr_save",JSON.stringify(S))}catch(e){}};
+let lastSaved="";
+const saveNow=()=>{if(saveTm){clearTimeout(saveTm);saveTm=0}if(SAVE_LOCK)return;try{const j=JSON.stringify(S);if(j===lastSaved)return;localStorage.setItem("rmr_save",j);lastSaved=j}catch(e){}}; // [PATCH 1.14] unchanged state = no write
 const save=()=>{if(SAVE_LOCK||saveTm)return;saveTm=setTimeout(saveNow,350)};
 setInterval(saveNow,4000);addEventListener("beforeunload",saveNow);
 const maxEn=()=>100+(S.lv-1)*5+has("chimney")*10, needExp=()=>30+S.lv*25;
@@ -231,7 +232,9 @@ const add=(k,n=1)=>{S.inv[k]=(S.inv[k]||0)+n;if(S.inv[k]<=0)delete S.inv[k]};
 
 /* ===== MODULE: Audio (Web Audio 8-bit synth) ===== */
 let AC;
+let _bpN=0,_bpT=0;
 function beep(f,d=.1,type="square",to=0,delay=0,vol=.07){
+  const nw=performance.now();if(nw-_bpT>100){_bpT=nw;_bpN=0}if(++_bpN>8)return; // [PATCH 1.14] at most 8 oscillators per 100 ms
   try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
   const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);
@@ -249,12 +252,17 @@ const SFX={
  lvl:()=>[523,659,784,1047,1319].forEach((f,i)=>beep(f,.15,"square",0,i*.09))};
 
 /* ===== MODULE: UI helpers ===== */
-const $=id=>document.getElementById(id);
+/* [PATCH 1.14] getElementById cache. An entry is re-queried automatically if its element was removed (modal content is re-rendered often). */
+const _ec=new Map();
+const $=id=>{let e=_ec.get(id);if(e&&e.isConnected)return e;e=document.getElementById(id);if(e)_ec.set(id,e);else _ec.delete(id);return e};
 let tool="hoe",msgT=0;
 function say(t){$("msg").textContent=t;msgT=3000}
 const setSty=(id,w)=>{const e=$(id);if(e.style.width!==w)e.style.width=w};
+let _uiK="";
 function ui(){
-  /* [PATCH 1.5] cached DOM writes */
+  /* [PATCH 1.5] cached DOM writes   [PATCH 1.14] + one cheap signature check so an idle frame does no string building at all */
+  const nE=maxEn(),k=S.z+"|"+S.lv+"|"+S.exp+"|"+(S.en*20|0)+"|"+nE+"|"+(S.inv.coin||0);
+  if(k===_uiK){hud();return}_uiK=k;
   setTxt("lv","Lv "+S.lv);setTxt("zeny",S.z+"z");setTxt("bGacha","🎰 Gacha ("+(S.inv.coin||0)+")");
   setSty("expb",(S.exp/needExp()*100).toFixed(1)+"%");setSty("enb",(S.en/maxEn()*100).toFixed(1)+"%");
   const tt="EXP "+S.exp+"/"+needExp()+"  Energy "+Math.floor(S.en)+"/"+maxEn();if($("top").title!==tt)$("top").title=tt;
@@ -271,7 +279,7 @@ document.querySelectorAll("#tools button").forEach(b=>b.onclick=()=>{tool=b.data
 
 /* ===== MODULE: Progression ===== */
 const floats=[];
-const flo=(x,y,t,c="#fff")=>floats.push({x,y,t,c,l:1200});
+const flo=(x,y,t,c="#fff")=>{if(floats.length>=40)floats.shift();floats.push({x,y,t,c,l:1200})}; // [PATCH 1.14] never more than 40 floating texts
 function gainExp(n,x,y){
   n=Math.round(n*SE().exp*(1+.05*has("flowerpot")+.10*has("flag")));S.exp+=n;flo(x,y-14,"+"+n+" EXP","#ffe36a");
   while(S.exp>=needExp()){S.exp-=needExp();S.lv++;S.pt+=3+has("attic");S.en=maxEn();SFX.lvl();flo(240,200,"LEVEL UP!","#7dffb0");say("Level Up! +"+(3+has("attic"))+" Stat Points")}
@@ -424,7 +432,7 @@ $("bGacha").onclick=()=>{gres=[];gachaUI()};
 $("bBag").onclick=bag;$("bShop").onclick=shop;$("bStat").onclick=stats;
 
 /* ===== MODULE: Input (mouse + touch via pointer events) ===== */
-const C=$("c"),g=C.getContext("2d");
+const C=$("c"),g0=C.getContext("2d");let g=g0; // [PATCH 1.14] g can point to an offscreen layer while a cached layer is being rendered
 C.addEventListener("pointerdown",e=>{
   e.preventDefault();const r=C.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*W/r.height;
   for(const m of mons)if(Math.hypot(m.x-x,m.y-10-y)<28)return attack(m); // monsters have priority
@@ -443,28 +451,45 @@ function grassBG(){
   for(let y=0;y<W/32;y++)for(let x=0;x<W/32;x++){c.fillStyle=(x+y)%2?e.g1:e.g2;c.fillRect(x*32,y*32,32,32)}
   c.fillStyle=e.g3;for(let i=0;i<40;i++)c.fillRect((i*97)%W,(i*53)%W,3,3);return _gc;
 }
-function scene(now){
-  // Prontera grass
-  g.drawImage(grassBG(),0,0); // [PATCH 1.5] cached background
+/* [PATCH 1.14] Layer cache. Grass, house, fences and the soil of every plot never animate, so they are rendered into one offscreen canvas and
+   blitted with a single drawImage(). The layer is rebuilt only when the season colours, grid size or any plot's soil state (bare / hoed / watered) changes. */
+let _bl=null,_blk="",bgBuilds=0;
+function soilSig(){let h1=7,h2=13;const ts=S.tiles;for(let i=0;i<ts.length;i++){const t=ts[i],c=t.st==0?0:t.w?2:1;h1=Math.imul(h1,31)+c|0;h2=Math.imul(h2,17)+c+i|0}return h1+":"+h2+":"+ts.length}
+function bgLayer(){
+  const e=SE(),k=e.g1+e.g2+e.g3+"|"+N+"|"+T+"|"+soilSig();
+  if(_bl&&k===_blk)return _bl;
+  _blk=k;bgBuilds++;
+  if(!_bl){_bl=document.createElement("canvas");_bl.width=_bl.height=W}
+  const og=g;g=_bl.getContext("2d");g.clearRect(0,0,W,W);
+  g.drawImage(grassBG(),0,0);
   // house with red roof
   rect(10,8,90,56,"#e8d3a0");rect(10,8,90,4,"#c9b27c");rect(40,32,20,32,"#7a4a21");rect(18,28,14,14,"#8ad0ff");
   g.fillStyle="#c9302c";g.beginPath();g.moveTo(2,20);g.lineTo(55,-6);g.lineTo(108,20);g.fill();
   rect(2,18,106,4,"#8f1f1b");
-  // player (Novice) idle
-  const bob=Math.sin(now/300)*1.5;
-  ell(420,46,12,4,"#0003");rect(412,26+bob,16,20,"#eef");ell(420,22+bob,9,9,"#ffd7b0");ell(420,17+bob,9,6,"#b0541e");
-  rect(428,30+bob,3,12,"#ccd");rect(409,30+bob,4,3,"#ffd7b0");
-  g.fillStyle="#222";g.fillRect(417,22+bob,2,2);g.fillRect(422,22+bob,2,2);
   // fences
   for(let x=OX-14;x<OX+N*T+14;x+=16){rect(x,OY-18,6,18,"#8b5a2b");rect(x,OY+N*T,6,18,"#8b5a2b")}
   rect(OX-14,OY-10,N*T+28,4,"#a8743a");rect(OX-14,OY+N*T+8,N*T+28,4,"#a8743a");
-  // tiles
+  // soil
   S.tiles.forEach((t,i)=>{
     const x=OX+(i%N)*T,y=OY+(i/N|0)*T;
     if(t.st==0){rect(x+1,y+1,T-2,T-2,"rgba(0,0,0,.08)")}
     else{rect(x+2,y+2,T-4,T-4,t.w?"#5a3a1c":"#8a5a2e");g.fillStyle=t.w?"#46290f":"#6e4520";for(let r=10;r<T-6;r+=12)g.fillRect(x+6,y+r,T-12,3)}
     g.strokeStyle="rgba(0,0,0,.18)";g.strokeRect(x+.5,y+.5,T-1,T-1);
-    if(t.st==2){ // [PATCH 1.1] sprites are authored for a 64px tile, so scale them to the current tile size
+  });
+  g=og;return _bl;
+}
+function scene(now){
+  g.drawImage(bgLayer(),0,0);
+  // player (Novice) idle
+  const bob=Math.sin(now/300)*1.5;
+  ell(420,46,12,4,"#0003");rect(412,26+bob,16,20,"#eef");ell(420,22+bob,9,9,"#ffd7b0");ell(420,17+bob,9,6,"#b0541e");
+  rect(428,30+bob,3,12,"#ccd");rect(409,30+bob,4,3,"#ffd7b0");
+  g.fillStyle="#222";g.fillRect(417,22+bob,2,2);g.fillRect(422,22+bob,2,2);
+  // crops (the only per-plot thing that animates)
+  S.tiles.forEach((t,i)=>{
+    if(t.st!=2)return;
+    const x=OX+(i%N)*T,y=OY+(i/N|0)*T;
+    { // [PATCH 1.1] sprites are authored for a 64px tile, so scale them to the current tile size
       g.save();g.translate(x+T/2,y+T/2);g.scale(T/64,T/64);crop(t,0,10,now,i*53);
       if(t.f){g.fillStyle="#2e8b2e";g.beginPath();g.moveTo(-21,-27);g.lineTo(-13,-16);g.lineTo(-29,-16);g.fill();g.fillStyle="#7dff6a";g.beginPath();g.moveTo(-21,-29);g.lineTo(-14,-19);g.lineTo(-28,-19);g.fill();g.fillRect(-23,-19,4,7)} // fertilised marker
       g.restore()}
@@ -479,7 +504,7 @@ function crop(t,x,y,now,ph=x){ // ph = sway phase (x is local now that the sprit
     g.strokeStyle=rr==2?`hsl(${hue},90%,60%)`:"#ffd700";g.lineWidth=2;g.beginPath();g.ellipse(x,y-22,26,28,0,0,7);g.stroke()}
   g.save();g.translate(Math.sin(now/700+ph)*(s==3?1.2:.6),0); // gentle sway
   if(s==1){ // sprout: leaf colour already hints at the crop
-    const lc=["#7bd24a","#c0392b","#b5c42a","#2f9a3a","#6a4ab0","#4a8ad0","#e0912a"][k]||"#3cb043";
+    const lc=["#7bd24a","#c0392b","#b5c42a","#2f9a3a","#6a4ab0","#4a8ad0","#e0912a","#ff9fc4","#5fc04a","#e0922a","#8fd8f0"][k]||"#3cb043";
     stem(12,lc);R(x-5,y-12,5,3,-.5,lc);R(x+5,y-14,5,3,.5,lc);
   }else if(k==0){ // Poring Seed: a little pink Poring sprouting from the soil
     stem(8);R(x-8,y+2,7,3,-.4,"#3cb043");R(x+8,y+2,7,3,.4,"#3cb043");
@@ -509,6 +534,46 @@ function crop(t,x,y,now,ph=x){ // ph = sway phase (x is local now that the sprit
     else{stem(32,tc);R(x-9,y-2,9,3,-.8,tc);R(x+9,y-2,9,3,.8,tc);
       [[-9,-14],[9,-22],[0,-32]].forEach(q=>{g.strokeStyle=tc;g.lineWidth=2;g.beginPath();g.moveTo(x,y+q[1]-4);g.lineTo(x+q[0],y+q[1]-4);g.stroke();
         R(x+q[0],y+q[1],5,6.5,0,C);R(x+q[0],y+q[1]+6,4,1.6,0,"#fff")})}
+  }else if(k==7){ // [PATCH 1.15] Sakura Bud: slender cherry tree with clouds of pink blossom
+    const tr="#7a4a2a";
+    if(s==2){stem(16,tr);R(x-6,y-10,5,3,-.6,"#6fcf6f");R(x+6,y-14,5,3,.6,"#6fcf6f");R(x,y-20,4,4,0,C);R(x-5,y-16,2.5,2.5,0,"#ffd9e8")}
+    else{
+      g.strokeStyle=tr;g.lineWidth=3;g.beginPath();g.moveTo(x,y+4);g.lineTo(x,y-18);g.stroke();
+      g.lineWidth=2;g.beginPath();g.moveTo(x,y-10);g.lineTo(x-10,y-22);g.moveTo(x,y-14);g.lineTo(x+11,y-26);g.stroke();
+      [[0,-30,13,10],[-11,-24,9,7],[11,-28,9,7],[-4,-36,8,6],[6,-20,7,5]].forEach(([dx,dy,rx,ry])=>R(x+dx,y+dy,rx,ry,0,C));
+      [[-6,-31],[5,-35],[10,-27],[-12,-24],[2,-26]].forEach(([dx,dy])=>R(x+dx,y+dy,3,2.5,0,"#fff4f8"));
+      const f=(now/40+ph*7)%60;R(x+12+Math.sin(f/5)*3,y-14+f*.5,1.8,1.2,.5,C); // a falling petal
+    }
+  }else if(k==8){ // [PATCH 1.15] Sun Melon: ground vine with a big striped melon
+    const vine="#3f9a3a";
+    if(s==2){g.strokeStyle=vine;g.lineWidth=2;g.beginPath();g.moveTo(x-16,y+2);g.quadraticCurveTo(x-4,y-8,x+14,y);g.stroke();
+      R(x-10,y-6,6,3.5,-.5,vine);R(x+8,y-5,6,3.5,.5,vine);R(x,y-6,6,5.5,0,C)}
+    else{
+      g.strokeStyle=vine;g.lineWidth=2;g.beginPath();g.moveTo(x-20,y+3);g.quadraticCurveTo(x-6,y-6,x+20,y+2);g.stroke();
+      R(x-17,y-4,7,4,-.5,vine);R(x+17,y-4,7,4,.5,vine);
+      R(x,y-10,17,14,0,C);for(let i=-2;i<=2;i++)R(x+i*5.5,y-10,2.2,12.5-Math.abs(i)*1.8,0,"#2f8a2a"); // body + dark stripes
+      R(x-7,y-17,3.5,2,-.6,"#fff7");R(x+15,y-15,3,3,0,"#ffe14a");R(x+15,y-15,1.2,1.2,0,"#b8860b");
+    }
+  }else if(k==9){ // [PATCH 1.15] Harvest Pumpkin: ribbed orange pumpkin with a stem and tendril
+    const vine="#3f8a2a";
+    if(s==2){stem(8,vine);R(x-8,y-6,6,3.5,-.5,vine);R(x+8,y-5,6,3.5,.5,vine);R(x,y-5,7,6,0,C);rect(x-1,y-12,2,3,"#4a7a2a")}
+    else{
+      R(x-18,y-5,7,4,-.5,vine);R(x+18,y-5,7,4,.5,vine);
+      R(x-9,y-9,10,13,0,"#c96a14");R(x+9,y-9,10,13,0,"#c96a14");R(x,y-9,12,14,0,C);   // outer ribs, then the centre
+      R(x-5,y-9,6,13,0,"#d9822a");R(x+5,y-9,6,13,0,"#d9822a");R(x,y-9,3.5,13,0,"#eda040");
+      R(x-6,y-15,2.5,3,-.3,"#ffe2b8aa");rect(x-2,y-25,4,7,"#4a7a2a");
+      g.strokeStyle=vine;g.lineWidth=1.5;g.beginPath();g.moveTo(x+2,y-22);g.quadraticCurveTo(x+11,y-27,x+8,y-19);g.stroke();
+    }
+  }else if(k==10){ // [PATCH 1.15] Frost Berry: icy crystal-leaf shrub with blue berries and a twinkle
+    const ice="#bfeaff",st="#5a9ac0";
+    if(s==2){stem(14,st);R(x-6,y-9,5,2.5,-.6,ice);R(x+6,y-13,5,2.5,.6,ice);R(x,y-18,3,3,0,C)}
+    else{
+      stem(24,st);
+      [[-9,-10,-.6],[9,-14,.6],[-8,-20,-.9],[8,-24,.9],[0,-30,0]].forEach(([dx,dy,r])=>{ // diamond-shaped crystal leaves
+        g.save();g.translate(x+dx,y+dy);g.rotate(r);g.fillStyle=ice;g.beginPath();g.moveTo(0,-6);g.lineTo(3.2,0);g.lineTo(0,6);g.lineTo(-3.2,0);g.fill();g.fillStyle="#fff";g.fillRect(-.5,-4,1,6);g.restore()});
+      [[-6,-18],[6,-8],[3,-22],[-4,-26]].forEach(([dx,dy])=>{R(x+dx,y+dy,4,4,0,C);R(x+dx-1,y+dy-1.3,1.3,1.3,0,"#fff")});
+      const tw=.5+.5*Math.sin(now/260+ph);g.fillStyle=`rgba(255,255,255,${.4+.6*tw})`;g.fillRect(x+7,y-31,1.5,5);g.fillRect(x+5.3,y-29.3,5,1.5);
+    }
   }else{ // Mastela Fruit: low bush with orange fruits
     if(s==2){R(x,y-6,12,8,0,"#3cb043");[[-4,-8],[5,-5]].forEach(q=>R(x+q[0],y+q[1],3,3,0,"#9cd46a"))}
     else{R(x,y-8,20,13,0,"#2f9a3a");R(x-8,y-12,6,6,0,"#2a8a34");
@@ -1024,10 +1089,10 @@ function gSeed(){ // seeds ALWAYS come from the Inventory (S.inv["s_<id>"]): sel
   if(S.inv["s_"+S.seed]>0)return S.seed;
   let b=-1;CROPS.forEach((c,i)=>{if(S.inv["s_"+i]>0&&(b<0||c.sell>CROPS[b].sell))b=i});return b;
 }
-function gNeed(i){ // what does plot i need right now? 0 nothing, 1 hoe, 2 plant, 3 water, 4 harvest
+function gNeed(i,seedOk){ // what does plot i need right now? 0 nothing, 1 hoe, 2 plant, 3 water, 4 harvest   (seedOk = result of gSeed()>=0, computed once per planning pass)
   const t=S.tiles[i];if(!t)return 0;
   if(t.st==2)return !t.w?3:t.g>=need(t.k)?4:0;
-  if(t.st==1)return gSeed()>=0?2:0;
+  if(t.st==1)return (seedOk===undefined?gSeed()>=0:seedOk)?2:0;
   return t.st==0?1:0;
 }
 function gAct(i){ // does the job on plot i; returns true if something was done
@@ -1053,9 +1118,9 @@ function gAct(i){ // does the job on plot i; returns true if something was done
 function gPick(w,idx){ // choose the best unclaimed plot for gardener idx (or -1)
   const claimed=new Set();let planting=0;
   GW.forEach((o,j)=>{if(j!==idx&&o.tg>=0){claimed.add(o.tg);if(S.tiles[o.tg]&&S.tiles[o.tg].st==1)planting++}});
-  const seeds=seedsTotal()-planting;let best=-1,bs=1e9,blocked=false;
+  const seeds=seedsTotal()-planting,sOk=gSeed()>=0;let best=-1,bs=1e9,blocked=false;
   for(let i=0;i<S.tiles.length;i++){
-    if(claimed.has(i))continue;const p=gNeed(i);
+    if(claimed.has(i))continue;const p=gNeed(i,sOk);
     if(!p){if(S.tiles[i].st==1&&gSeed()<0)blocked=true;continue}
     if(p==2&&seeds<=0){blocked=true;continue}
     const sc=Math.hypot(tcx(i)-w.x,tcy(i)-w.y)-p*45;if(sc<bs){bs=sc;best=i}
@@ -1075,7 +1140,7 @@ function tickGardener(dt){
       if((w.wk-=dt)<=0){w.wk=0;if(w.tg>=0)gAct(w.tg);w.tg=-1}
       return;
     }
-    if(w.tg<0)w.tg=gPick(w,i);
+    if(w.tg<0){if((w.idle=(w.idle||0)-dt)<=0){w.tg=gPick(w,i);if(w.tg<0)w.idle=400}} // [PATCH 1.14] nothing to do -> look again in 0.4 s instead of every frame
     if(w.tg>=0&&!gNeed(w.tg))w.tg=-1;                     // job disappeared (crop eaten, etc.)
     const tx=w.tg>=0?tcx(w.tg)+10:gdRest(i).x,ty=w.tg>=0?tcy(w.tg)+16:gdRest(i).y,d=Math.hypot(tx-w.x,ty-w.y);
     if(d>4){const st=Math.min(d,dt*GARDENER_SPEED);w.x+=(tx-w.x)/d*st;w.y+=(ty-w.y)/d*st;w.mv=true}
@@ -1280,13 +1345,20 @@ function barnUI(){
   modal(h+`<div style="font-size:12px;text-align:center;margin-top:6px">ให้อาหารด้วยผลผลิตธรรมดาจาก Inventory • ✨ Feed ใช้พืช Golden (+4 ❤) หรือ Rainbow (+10 ❤) ชนิดเดียวกับอาหาร 1 ชิ้นแทน 1 มื้อ<br>ยิ่งสนิท (❤ เลเวลสูง) สัตว์ยิ่งผลิตเร็ว มีโอกาสได้ของคูณสอง และของทองราคาแพง<br>ผลผลิตเก็บในคอกได้ ${BARN_STORE} ชิ้นต่อตัว • เอาไปแปรรูปที่ Craft: ชีส เค้ก ผ้า</div>`);
   if(B.a.length)barnLive();
 }
-function drawBarn(now){ // little barn in the right margin; tap it to open the Barn menu
-  const x=438,y=84,n=S.barn.a.length,rd=barnReady();
-  ell(459,y+40,22,4,"#0003");rect(x,y+16,42,24,"#b83a2e");rect(x,y+16,42,3,"#8f1f1b");
-  g.fillStyle="#7a2a20";g.beginPath();g.moveTo(x-3,y+17);g.lineTo(x+21,y-2);g.lineTo(x+45,y+17);g.fill();
-  rect(x+13,y+24,16,16,"#f3e3b0");g.strokeStyle="#b8923a";g.lineWidth=2;g.beginPath();g.moveTo(x+13,y+24);g.lineTo(x+29,y+40);g.moveTo(x+29,y+24);g.lineTo(x+13,y+40);g.stroke();g.lineWidth=1;
-  ell(x+21,y+10,4,4,"#f3e3b0");
-  g.textAlign="center";g.font="bold 11px Tahoma,sans-serif";g.fillStyle="#000";g.fillText(n+"/"+barnCap(),x+22,y+55);g.fillStyle="#fff";g.fillText(n+"/"+barnCap(),x+21,y+54);g.textAlign="left";
+let _brn=null,_brnK="";
+function drawBarn(now){ // little barn in the right margin; tap it to open the Barn menu   [PATCH 1.14] static part cached
+  const x=438,y=84,n=S.barn.a.length,rd=barnReady(),k=n+"/"+barnCap();
+  if(k!==_brnK||!_brn){
+    _brnK=k;if(!_brn){_brn=document.createElement("canvas");_brn.width=64;_brn.height=84}
+    const og=g;g=_brn.getContext("2d");g.clearRect(0,0,64,84);g.translate(-(x-10),-(y-6));
+    ell(459,y+40,22,4,"#0003");rect(x,y+16,42,24,"#b83a2e");rect(x,y+16,42,3,"#8f1f1b");
+    g.fillStyle="#7a2a20";g.beginPath();g.moveTo(x-3,y+17);g.lineTo(x+21,y-2);g.lineTo(x+45,y+17);g.fill();
+    rect(x+13,y+24,16,16,"#f3e3b0");g.strokeStyle="#b8923a";g.lineWidth=2;g.beginPath();g.moveTo(x+13,y+24);g.lineTo(x+29,y+40);g.moveTo(x+29,y+24);g.lineTo(x+13,y+40);g.stroke();g.lineWidth=1;
+    ell(x+21,y+10,4,4,"#f3e3b0");
+    g.textAlign="center";g.font="bold 11px Tahoma,sans-serif";g.fillStyle="#000";g.fillText(k,x+22,y+55);g.fillStyle="#fff";g.fillText(k,x+21,y+54);g.textAlign="left";
+    g.setTransform(1,0,0,1,0,0);g=og;
+  }
+  g.drawImage(_brn,x-10,y-6);
   if(rd){const p=Math.sin(now/180)*2;ell(x+40,y-2+p,9,9,"#ffd84a");g.fillStyle="#6b3a00";g.font="bold 12px Tahoma,sans-serif";g.textAlign="center";g.fillText(rd,x+40,y+2+p);g.textAlign="left"}
 }
 
@@ -1710,9 +1782,18 @@ function adminInit(){
 
 /* ===== MODULE: Game Loop (requestAnimationFrame, ~60 FPS) ===== */
 let last=performance.now(),saveWarn=0;
+/* [PATCH 1.14] Performance governor. If the browser can't keep up (average frame > 28 ms for about 90 frames in a row) the game switches to "lite" mode:
+   game logic keeps running at full speed, but the picture is redrawn every 2nd frame only. It retries full speed after 20 s. */
+let lite=false,emaDt=16.7,liteBad=0,liteT=0,drawTick=0;
+function governor(raw,dt){
+  if(raw>120)return;                                    // tab was hidden / resumed: not a performance signal
+  emaDt+=(raw-emaDt)*.05;
+  if(!lite){if(emaDt>28){if(++liteBad>90){lite=true;liteBad=0;liteT=0;say("⚡ เครื่องช้า: ลดอัตราเฟรมอัตโนมัติ (เกมยังเดินปกติ)")}}else liteBad=0}
+  else if((liteT+=dt)>20000){lite=false;liteT=0;emaDt=16.7}   // try full speed again
+}
 function frame(now){try{frameBody(now)}catch(e){noteErr("frame",e)}requestAnimationFrame(frame)} // [PATCH 1.4] one bad frame can no longer freeze the whole game
 function frameBody(now){
-  const dt=Math.min(100,now-last);last=now;
+  const raw=now-last,dt=Math.min(100,raw);last=now;governor(raw,dt);
   S.en=Math.min(maxEn(),S.en+dt/1500*SE().regen);if(S.scare>0)S.scare-=dt;
   S.sx=(S.sx||0)+dt;if(has("mailbox")){S.mt=(S.mt||0)+dt;if(S.mt>=90000){S.mt=0;mail()}}
   const si=seasonIdx();if(si!=curSe){const old=curSe;curSe=si;if(S.ev)endEv(true);rebuildSE();const e=SEASONS[si];say(e.ic+" เข้าสู่"+e.n+"! "+e.s);flo(240,210,e.ic+" "+e.n,"#fff");SFX.harvest();payUpkeep();const gt=gradeSeason(old);if(gt)$("msg").textContent+=" • "+gt}
@@ -1720,12 +1801,13 @@ function frameBody(now){
   tickBuffs(dt);tickGardener(dt);tickGolem(dt);tickBarn(dt);tickQuestDay(dt); // [PATCH 1.1]
   if(S.ev){const e=EVENTS[S.ev.id];S.ev.l-=dt;e.tk&&e.tk(dt);if(S.ev.l<=0)endEv()}
   else if((evT-=dt)<=0)startEv(pickEv(si));
-  S.tiles.forEach(t=>{if(t.st==2&&t.w&&t.g<need(t.k))t.g=Math.min(need(t.k),t.g+dt*(1+S.dex*.04)*cropGrow(t.k)*(t.f?2:1))});
+  {const ts=S.tiles,dx=dt*(1+S.dex*.04);for(let i=0;i<ts.length;i++){const t=ts[i];if(t.st==2&&t.w){const nk=need(t.k);if(t.g<nk)t.g=Math.min(nk,t.g+dx*cropGrow(t.k)*(t.f?2:1))}}} // [PATCH 1.14] plain loop
   spawnT-=dt;if(spawnT<=0){spawn();spawnT=(10000+Math.random()*12000)*SE().sp}
   mons.forEach(m=>updMon(m,dt));
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.l-=dt;f.y-=dt*.03;if(f.l<=0)floats.splice(i,1)}
   if(msgT>0&&(msgT-=dt)<=0)$("msg").textContent="";
-  scene(now);mons.slice().sort((a,b)=>a.y-b.y).forEach(monster);drawGardener(now);drawGolem(now);drawFx(now,dt);drawFloats();ui();
+  if(!lite||(drawTick++&1)){scene(now);(mons.length>1?mons.slice().sort((a,b)=>a.y-b.y):mons).forEach(monster);drawGardener(now);drawGolem(now);drawFx(now,dt);drawFloats()} // lite mode: every 2nd frame
+  ui();
 }
 if(S.ev&&!EVENTS[S.ev.id])S.ev=null;rebuildSE();initPatch(); // [PATCH 1.1]
 markTool();refreshSeeds();say("พรวนดิน → ปลูก → รดน้ำ → รอโต → เก็บเกี่ยว!");
